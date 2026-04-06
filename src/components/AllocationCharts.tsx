@@ -30,13 +30,28 @@ function PieCard({
   title: string;
   items: { label: string; value: number; weight: number }[];
 }) {
-  if (!items.length) {
+  const hasData = items.length > 0 && items.some((i) => i.value > 0);
+
+  if (!hasData) {
     return (
       <div className="glass-card p-5">
         <h3 className="text-sm font-semibold text-text-primary">{title}</h3>
         <div className="mt-4 flex h-44 items-center justify-center text-sm text-text-muted">
-          No data yet
+          No data yet — refresh prices
         </div>
+        {items.length > 0 && (
+          <div className="mt-2 space-y-1.5">
+            {items.map((item, i) => (
+              <div key={item.label} className="flex items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-xs">
+                <div className="flex min-w-0 items-center gap-2">
+                  <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: PIE_COLORS[i % PIE_COLORS.length] }} />
+                  <span className="truncate text-text-secondary">{item.label}</span>
+                </div>
+                <span className="shrink-0 font-mono text-text-muted">{item.weight.toFixed(1)}%</span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     );
   }
