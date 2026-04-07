@@ -4,7 +4,7 @@ const KNOWN_FUND_SCHEME_CODES: Array<{ pattern: RegExp; schemeCode: string }> = 
   { pattern: /bandhan\s+small\s+cap\s+fund/i, schemeCode: "147946" },
   { pattern: /bandhan\s+nifty\s+50\s+index\s+fund/i, schemeCode: "118482" },
   { pattern: /nippon.*small\s+cap\s+fund/i, schemeCode: "118778" },
-  { pattern: /motilal\s+oswal\s+midcap\s+fund/i, schemeCode: "120847" },
+  { pattern: /motilal\s+oswal\s+midcap\s+fund/i, schemeCode: "127042" },
 ];
 
 function inferSchemeCode(assetName: string) {
