@@ -43,7 +43,7 @@ export default function HoldingModal({ holding, inrToAedRate, onSave, onClose }:
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div className="absolute inset-0 bg-slate-900/20 backdrop-blur-sm" />
-      <div className="w-full max-w-5xl overflow-y-auto rounded-2xl bg-white p-6 shadow-xl ring-1 ring-slate-200" onClick={(event) => event.stopPropagation()}>
+      <div className="w-full max-w-5xl overflow-y-auto rounded-2xl bg-white p-4 shadow-xl ring-1 ring-slate-200 sm:p-6" onClick={(event) => event.stopPropagation()}>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
             <div>
@@ -53,7 +53,7 @@ export default function HoldingModal({ holding, inrToAedRate, onSave, onClose }:
               </p>
             </div>
 
-            <div className="grid min-w-[300px] gap-2 rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-200">
+            <div className="grid gap-2 rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-200 xl:min-w-[300px]">
               <PreviewRow label="Invested" value={formatMoney(preview.investedAmount, form.currency || "AED")} />
               <PreviewRow label="Current Value" value={formatMoney(preview.currentValue, form.currency || "AED")} />
               <PreviewRow label="AED Rate Used" value={preview.rateToAed.toFixed(4)} />

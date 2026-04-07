@@ -45,11 +45,11 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onEdit, onDe
 
   return (
     <section className="rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
-      <div className="border-b border-slate-200 p-5">
+      <div className="border-b border-slate-200 p-4 sm:p-5">
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-xl font-semibold text-slate-900">Holdings</h2>
-          <div className="flex items-center gap-3">
-            <div className="text-sm text-slate-500">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="text-xs text-slate-500 sm:text-sm">
               {filteredHoldings.length} of {holdings.length}
             </div>
             <button
@@ -61,7 +61,7 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onEdit, onDe
           </div>
         </div>
 
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+        <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
           <FilterInput label="Search" value={filters.search} onChange={(value) => setFilters({ ...filters, search: value })} placeholder="Asset, ticker, sector" />
           <FilterSelect label="Platform" value={filters.platform} options={platforms} onChange={(value) => setFilters({ ...filters, platform: value })} />
           <FilterSelect label="Class" value={filters.assetClass} options={["All", ...ASSET_CLASS_OPTIONS]} onChange={(value) => setFilters({ ...filters, assetClass: value })} />

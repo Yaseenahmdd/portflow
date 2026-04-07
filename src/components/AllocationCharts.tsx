@@ -15,10 +15,12 @@ export default function AllocationCharts({ holdings, totalValue }: Props) {
   const byGeography = getAllocation(holdings, "geography", totalValue);
 
   return (
-    <section className="grid gap-4 xl:grid-cols-3">
-      <PieAllocationCard title="By platform" items={byPlatform} />
-      <PieAllocationCard title="By asset class" items={byAssetClass} />
-      <PieAllocationCard title="By geography" items={byGeography} />
+    <section className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+      <div className="grid auto-cols-[85%] grid-flow-col gap-3 sm:auto-cols-auto sm:grid-flow-row sm:grid-cols-2 sm:gap-4 xl:grid-cols-3">
+        <PieAllocationCard title="By platform" items={byPlatform} />
+        <PieAllocationCard title="By asset class" items={byAssetClass} />
+        <PieAllocationCard title="By geography" items={byGeography} />
+      </div>
     </section>
   );
 }
@@ -35,7 +37,7 @@ function PieAllocationCard({
       <h2 className="text-base font-semibold text-slate-900">{title}</h2>
       {items.length ? (
         <>
-          <div className="mt-3 h-44 w-full">
+          <div className="mt-3 h-40 w-full sm:h-44">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie data={items} dataKey="value" nameKey="label" innerRadius={34} outerRadius={56} paddingAngle={2}>
