@@ -1,36 +1,142 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Portflow
 
-## Getting Started
+Portflow is a responsive portfolio tracker built with Next.js and Supabase. It supports authenticated users, live market price refresh, holdings import/export, Supabase-backed persistence, and installability as a PWA.
 
-First, run the development server:
+## Features
+
+- Portfolio dashboard with holdings, allocation views, and portfolio metrics
+- Auth with Supabase
+- Holdings stored per user in Supabase, with local fallback for demo mode
+- Import/export holdings as JSON
+- Price refresh across:
+  - Yahoo Finance for Indian stocks and ETFs
+  - Twelve Data for US ETFs and UAE stocks
+  - CoinGecko for crypto
+  - Frankfurter for FX
+  - MFAPI for Indian mutual funds
+- Mobile-friendly holdings view
+- Installable PWA with manifest, icons, and a lightweight service worker
+
+## Stack
+
+- Next.js 16 App Router
+- React 19
+- TypeScript
+- Supabase Auth + Postgres
+- Tailwind CSS v4
+- Recharts
+
+## Project Structure
+
+```text
+src/
+  app/
+    dashboard/            Authenticated app screens
+    api/prices/           Market data route handlers
+    auth/callback/        Supabase auth callback
+    manifest.ts           Web app manifest
+    icon.tsx              Generated app icon
+    apple-icon.tsx        Generated Apple touch icon
+  components/             UI components
+  lib/
+    api/                  Market data helpers
+    supabase/             Supabase browser/server setup
+    holdings-store.ts     Supabase holdings persistence helpers
+supabase/
+  migrations/             SQL migrations
+public/
+  sw.js                   Service worker
+```
+
+## Environment Variables
+
+Create `.env.local` from `.env.example`.
+
+Required for auth and persistence:
+
+```bash
+NEXT_PUBLIC_SUPABASE_URL=...
+NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+```
+
+Optional/market-data specific:
+
+```bash
+TWELVE_DATA_API_KEY=...
+ALPHA_VANTAGE_API_KEY=...
+```
+
+Note: the app now uses Yahoo Finance for Indian equity pricing, so `ALPHA_VANTAGE_API_KEY` is no longer required for the current dashboard flow.
+
+## Local Development
+
+Install dependencies:
+
+```bash
+npm install
+```
+
+Run the app:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Database Setup
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Apply the holdings migration to your Supabase project:
 
-## Learn More
+```sql
+supabase/migrations/20260407_create_holdings_table.sql
+```
 
-To learn more about Next.js, take a look at the following resources:
+This creates:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- `public.holdings`
+- updated-at trigger
+- row-level security policies for per-user access
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Import and Sync Behavior
 
-## Deploy on Vercel
+- On dashboard load, the app reads holdings from Supabase first
+- If Supabase is empty and local holdings exist, it migrates local holdings into Supabase
+- Dashboard edits sync back to Supabase automatically
+- `Import holdings` replaces the current user’s holdings in Supabase and updates local cache
+- `Reset` clears both Supabase and local cache
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## PWA
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Portflow includes:
+
+- `manifest.webmanifest`
+- generated app icons
+- Apple touch icon
+- service worker registration
+
+To test installability:
+
+1. Run the app in production mode or deploy it
+2. Open it in Chrome or Safari on a supported device
+3. Use “Add to Home Screen” / install
+
+## Scripts
+
+```bash
+npm run dev
+npm run build
+npm run start
+npm run lint
+```
+
+## Current Notes
+
+- `npm run build` passes
+- `npm run lint` is still affected by the archived `investment-portfolio-app` directory, which is outside the active app
+
+## Deployment
+
+Recommended deployment target: Vercel.
+
+Make sure the deployed environment includes the same Supabase and market-data environment variables as local development.
