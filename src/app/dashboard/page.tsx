@@ -4,12 +4,17 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { DEFAULT_HOLDINGS, type Holding, type ComputedHolding, ASSET_CLASS_OPTIONS, GEOGRAPHY_OPTIONS, RISK_OPTIONS, PIE_COLORS, type Currency } from "@/lib/constants";
 import { computeHolding, formatMoney, getAllocation, generateId, toNumber, timeAgo } from "@/lib/utils";
 import { computeInrToAed } from "@/lib/api/frankfurter";
+import { createClient } from "@/lib/supabase/client";
 import AllocationCharts from "@/components/AllocationCharts";
 import HoldingsTable from "@/components/HoldingsTable";
 import HoldingModal from "@/components/HoldingModal";
 
-const STORAGE_KEY = "assetviz-holdings";
-const RATE_STORAGE_KEY = "assetviz-inr-aed-rate";
+function getStorageKey(userId: string) {
+  return `assetviz-holdings-${userId}`;
+}
+function getRateStorageKey(userId: string) {
+  return `assetviz-inr-aed-rate-${userId}`;
+}
 
 export default function DashboardPage() {
   const [holdings, setHoldings] = useState<Holding[]>([]);
@@ -20,33 +25,45 @@ export default function DashboardPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingHolding, setEditingHolding] = useState<Holding | null>(null);
   const [mounted, setMounted] = useState(false);
+  const [userId, setUserId] = useState<string>("default");
 
-  // Load from localStorage on mount
+  // Get current user and load their data from localStorage
   useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    const savedRate = localStorage.getItem(RATE_STORAGE_KEY);
-    if (saved) {
-      try {
-        setHoldings(JSON.parse(saved));
-      } catch {
+    async function init() {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      const uid = user?.id || "default";
+      setUserId(uid);
+
+      const storageKey = getStorageKey(uid);
+      const rateKey = getRateStorageKey(uid);
+
+      const saved = localStorage.getItem(storageKey);
+      const savedRate = localStorage.getItem(rateKey);
+      if (saved) {
+        try {
+          setHoldings(JSON.parse(saved));
+        } catch {
+          setHoldings(DEFAULT_HOLDINGS);
+        }
+      } else {
         setHoldings(DEFAULT_HOLDINGS);
       }
-    } else {
-      setHoldings(DEFAULT_HOLDINGS);
+      if (savedRate) setInrToAedRate(Number(savedRate));
+      setMounted(true);
     }
-    if (savedRate) setInrToAedRate(Number(savedRate));
-    setMounted(true);
+    init();
   }, []);
 
-  // Persist holdings
+  // Persist holdings (user-specific)
   useEffect(() => {
-    if (mounted) localStorage.setItem(STORAGE_KEY, JSON.stringify(holdings));
-  }, [holdings, mounted]);
+    if (mounted) localStorage.setItem(getStorageKey(userId), JSON.stringify(holdings));
+  }, [holdings, mounted, userId]);
 
-  // Persist rate
+  // Persist rate (user-specific)
   useEffect(() => {
-    if (mounted) localStorage.setItem(RATE_STORAGE_KEY, String(inrToAedRate));
-  }, [inrToAedRate, mounted]);
+    if (mounted) localStorage.setItem(getRateStorageKey(userId), String(inrToAedRate));
+  }, [inrToAedRate, mounted, userId]);
 
   const computedHoldings = useMemo(
     () => holdings.map((h) => computeHolding(h, inrToAedRate)),
@@ -127,11 +144,12 @@ export default function DashboardPage() {
           }
 
           if (result.source === "crypto") {
-            const prices = result.data as Record<string, { aed: number }>;
+            const prices = result.data as Record<string, { usd: number; aed: number }>;
             if (prices.bitcoin) {
-              const idx = updated.findIndex((h) => h.ticker === "BTC" && h.currency === "AED");
+              const idx = updated.findIndex((h) => h.ticker === "BTC");
               if (idx !== -1) {
-                updated[idx] = { ...updated[idx], currentPrice: prices.bitcoin.aed, lastPriceUpdate: now };
+                const btcPrice = updated[idx].currency === "AED" ? prices.bitcoin.aed : prices.bitcoin.usd;
+                updated[idx] = { ...updated[idx], currentPrice: btcPrice, lastPriceUpdate: now };
               }
             }
           }

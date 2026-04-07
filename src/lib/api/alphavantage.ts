@@ -1,72 +1,69 @@
 /**
- * Alpha Vantage API helper — used for Indian stocks/ETFs on NSE.
- * Requires ALPHA_VANTAGE_API_KEY env var.
- * Free tier: 25 requests/day, 5/min.
+ * Yahoo Finance API helper — used for Indian stocks/ETFs on NSE.
+ * Replaces Alpha Vantage due to 25 requests/day limit.
+ * No API key required.
  */
 
-export interface AlphaVantageQuote {
+export interface StockQuote {
   symbol: string;
   price: number;
   previousClose: number;
   changePercent: string;
 }
 
-function delay(ms: number) {
-  return new Promise((r) => setTimeout(r, ms));
-}
-
-export async function fetchAlphaVantageQuote(symbol: string): Promise<AlphaVantageQuote | null> {
-  const apiKey = process.env.ALPHA_VANTAGE_API_KEY;
-  if (!apiKey) {
-    console.warn('ALPHA_VANTAGE_API_KEY not set, skipping Alpha Vantage fetch');
-    return null;
-  }
-
+export async function fetchStockQuote(symbol: string): Promise<StockQuote | null> {
   try {
-    const params = new URLSearchParams({
-      function: 'GLOBAL_QUOTE',
-      symbol,
-      apikey: apiKey,
+    // Convert symbol like NSE:GOLDBEES to GOLDBEES.NS for Yahoo Finance
+    const yfSymbol = symbol.replace('NSE:', '') + '.NS';
+    
+    // Using Yahoo Finance's unauthenticated v8 chart API
+    const res = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${yfSymbol}?interval=1d&range=1d`, {
+      next: { revalidate: 300 }, // Cache 5 min
     });
-
-    const res = await fetch(`https://www.alphavantage.co/query?${params}`, {
-      next: { revalidate: 1800 }, // Cache 30 min
-    });
-    if (!res.ok) throw new Error(`Alpha Vantage error: ${res.status}`);
+    
+    if (!res.ok) throw new Error(`Yahoo Finance error: ${res.status}`);
     const data = await res.json();
 
-    const gq = data['Global Quote'];
-    if (!gq || !gq['05. price']) return null;
+    const result = data?.chart?.result?.[0];
+    if (!result?.meta) return null;
+
+    const price = result.meta.regularMarketPrice;
+    const previousClose = result.meta.chartPreviousClose;
+    
+    let changePercent = '0.00%';
+    if (price && previousClose) {
+      changePercent = (((price - previousClose) / previousClose) * 100).toFixed(2) + '%';
+    }
 
     return {
       symbol,
-      price: parseFloat(gq['05. price']),
-      previousClose: parseFloat(gq['08. previous close']),
-      changePercent: gq['10. change percent'],
+      price: price || 0,
+      previousClose: previousClose || 0,
+      changePercent,
     };
   } catch (err) {
-    console.error(`Alpha Vantage: failed to fetch ${symbol}:`, err);
+    console.error(`Yahoo Finance: failed to fetch ${symbol}:`, err);
     return null;
   }
 }
 
 /**
- * Fetch multiple Indian stock quotes with rate limiting (1s between calls).
+ * Fetch multiple Indian stock quotes
  */
 export async function fetchAlphaVantageMultiple(
   symbols: string[]
-): Promise<Record<string, AlphaVantageQuote>> {
-  const results: Record<string, AlphaVantageQuote> = {};
+): Promise<Record<string, StockQuote>> {
+  const results: Record<string, StockQuote> = {};
 
-  for (let i = 0; i < symbols.length; i++) {
-    if (i > 0) await delay(1200); // Respect rate limit
-    const quote = await fetchAlphaVantageQuote(symbols[i]);
+  // Yahoo Finance doesn't have the severe 5 req/min limits like AV, so we can fetch concurrently
+  const promises = symbols.map(async (sym) => {
+    const quote = await fetchStockQuote(sym);
     if (quote) {
-      // Use the raw ticker (without NSE: prefix) as key
-      const key = symbols[i].replace('NSE:', '');
+      const key = sym.replace('NSE:', '');
       results[key] = quote;
     }
-  }
+  });
 
+  await Promise.all(promises);
   return results;
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { createClient } from "@/lib/supabase/client";
 
 interface ApiStatus {
   name: string;
@@ -11,12 +12,25 @@ interface ApiStatus {
 }
 
 export default function SettingsPage() {
+  const [userId, setUserId] = useState<string>("default");
+
+  useEffect(() => {
+    async function getUser() {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      setUserId(user?.id || "default");
+    }
+    getUser();
+  }, []);
+
+  const storageKey = `assetviz-holdings-${userId}`;
+
   const [apiStatuses, setApiStatuses] = useState<ApiStatus[]>([
     { name: "MFAPI.in", description: "Indian mutual fund NAV data", status: "ok", keyRequired: false },
     { name: "CoinGecko", description: "Cryptocurrency prices", status: "ok", keyRequired: false },
     { name: "Frankfurter", description: "Currency exchange rates", status: "ok", keyRequired: false },
     { name: "Binance WebSocket", description: "Real-time BTC price stream", status: "ok", keyRequired: false },
-    { name: "Alpha Vantage", description: "Indian stocks/ETFs (NSE)", status: "unknown", keyRequired: true, envVar: "ALPHA_VANTAGE_API_KEY" },
+    { name: "Yahoo Finance", description: "Indian stocks/ETFs (NSE)", status: "ok", keyRequired: false },
     { name: "Twelve Data", description: "US ETFs + UAE stocks (DFM)", status: "unknown", keyRequired: true, envVar: "TWELVE_DATA_API_KEY" },
   ]);
 
@@ -37,7 +51,7 @@ export default function SettingsPage() {
     setTesting(true);
     const endpoints = [
       { name: "MFAPI.in", path: "/api/prices/indian-mf" },
-      { name: "Alpha Vantage", path: "/api/prices/indian-stocks" },
+      { name: "Yahoo Finance", path: "/api/prices/indian-stocks" },
       { name: "Twelve Data", path: "/api/prices/us-etfs" },
       { name: "CoinGecko", path: "/api/prices/crypto" },
       { name: "Frankfurter", path: "/api/prices/currency" },
@@ -116,12 +130,12 @@ export default function SettingsPage() {
       <div className="glass-card p-5">
         <h2 className="text-lg font-semibold text-text-primary">Data Management</h2>
         <p className="mt-1 text-sm text-text-muted">
-          Your holdings are stored in your browser&apos;s localStorage. Use these tools to manage your data.
+          Your holdings are stored in your browser&apos;s localStorage, scoped to your account. Use these tools to manage your data.
         </p>
         <div className="mt-4 flex flex-wrap gap-3">
           <button
             onClick={() => {
-              const data = localStorage.getItem("assetviz-holdings");
+              const data = localStorage.getItem(storageKey);
               if (data) {
                 const blob = new Blob([data], { type: "application/json" });
                 const url = URL.createObjectURL(blob);
@@ -147,7 +161,7 @@ export default function SettingsPage() {
                   const text = await file.text();
                   try {
                     JSON.parse(text); // validate
-                    localStorage.setItem("assetviz-holdings", text);
+                    localStorage.setItem(storageKey, text);
                     window.location.reload();
                   } catch {
                     alert("Invalid JSON file");
@@ -163,7 +177,7 @@ export default function SettingsPage() {
           <button
             onClick={() => {
               if (confirm("Reset all holdings to defaults? This cannot be undone.")) {
-                localStorage.removeItem("assetviz-holdings");
+                localStorage.removeItem(storageKey);
                 window.location.reload();
               }
             }}
