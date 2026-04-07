@@ -14,6 +14,7 @@ export default function DashboardShell({
 }) {
   const router = useRouter();
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const [isAmountsVisible, setIsAmountsVisible] = useState(true);
   const profileMenuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -25,6 +26,18 @@ export default function DashboardShell({
 
     document.addEventListener("pointerdown", handlePointerDown);
     return () => document.removeEventListener("pointerdown", handlePointerDown);
+  }, []);
+
+  useEffect(() => {
+    function handleVisibility(event: Event) {
+      const detail = (event as CustomEvent<{ visible: boolean }>).detail;
+      if (detail && typeof detail.visible === "boolean") {
+        setIsAmountsVisible(detail.visible);
+      }
+    }
+
+    window.addEventListener("portflow:visibility-state", handleVisibility as EventListener);
+    return () => window.removeEventListener("portflow:visibility-state", handleVisibility as EventListener);
   }, []);
 
   const handleSignOut = async () => {
@@ -50,6 +63,33 @@ export default function DashboardShell({
                 className="rounded-full border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
               >
                 Refresh
+              </button>
+
+              <button
+                onClick={() =>
+                  window.dispatchEvent(
+                    new CustomEvent("portflow:toggle-visibility", {
+                      detail: { visible: !isAmountsVisible },
+                    })
+                  )
+                }
+                className="rounded-full border border-slate-200 bg-slate-50 p-2.5 text-slate-700 hover:bg-slate-100"
+                title={isAmountsVisible ? "Hide values" : "Show values"}
+                aria-label={isAmountsVisible ? "Hide values" : "Show values"}
+              >
+                {isAmountsVisible ? (
+                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                ) : (
+                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 15.25c2.1-1.85 4.6-2.75 7.5-2.75s5.4.9 7.5 2.75" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 9.75l1.75 1.5" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M17.25 9.75l-1.75 1.5" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 8.75v1.75" />
+                  </svg>
+                )}
               </button>
 
               <div ref={profileMenuRef} className="relative">

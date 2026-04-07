@@ -229,6 +229,30 @@ export default function DashboardPage() {
     return () => window.removeEventListener("portflow:refresh-prices", handleRefresh);
   }, [refreshPrices]);
 
+  useEffect(() => {
+    function handleToggleVisibility(event: Event) {
+      const detail = (event as CustomEvent<{ visible: boolean }>).detail;
+      if (detail && typeof detail.visible === "boolean") {
+        setIsAmountsVisible(detail.visible);
+      } else {
+        setIsAmountsVisible((current) => !current);
+      }
+    }
+
+    function publishVisibilityState() {
+      window.dispatchEvent(
+        new CustomEvent("portflow:visibility-state", {
+          detail: { visible: isAmountsVisible },
+        })
+      );
+    }
+
+    window.addEventListener("portflow:toggle-visibility", handleToggleVisibility as EventListener);
+    publishVisibilityState();
+
+    return () => window.removeEventListener("portflow:toggle-visibility", handleToggleVisibility as EventListener);
+  }, [isAmountsVisible]);
+
   const handleSaveHolding = (holding: Holding) => {
     if (editingHolding) {
       setHoldings((current) => current.map((item) => (item.id === holding.id ? holding : item)));
