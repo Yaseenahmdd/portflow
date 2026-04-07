@@ -122,7 +122,13 @@ export default function DashboardPage() {
     setIsRefreshing(true);
 
     try {
-      const response = await fetch("/api/prices/refresh-all");
+      const response = await fetch("/api/prices/refresh-all", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ holdings }),
+      });
       const data = await response.json();
       if (!data.success) {
         throw new Error("Refresh failed");
@@ -157,7 +163,10 @@ export default function DashboardPage() {
           if (result.source === "indian-stocks") {
             const quotes = result.data as Record<string, { price: number }>;
             for (const [ticker, quote] of Object.entries(quotes)) {
-              const index = updated.findIndex((holding) => holding.ticker === ticker);
+              const index = updated.findIndex(
+                (holding) =>
+                  holding.ticker === ticker || holding.ticker === `NSE:${ticker}`
+              );
               if (index !== -1) {
                 updated[index] = { ...updated[index], currentPrice: quote.price, lastPriceUpdate: now };
               }
@@ -193,7 +202,7 @@ export default function DashboardPage() {
     } finally {
       setIsRefreshing(false);
     }
-  }, []);
+  }, [holdings]);
 
   useEffect(() => {
     function handleRefresh() {
