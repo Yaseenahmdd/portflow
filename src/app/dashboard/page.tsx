@@ -250,8 +250,8 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+    <div className="space-y-4 sm:space-y-6">
+      <section className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         <SummaryCard
           label="Total Portfolio Value"
           value={isAmountsVisible ? formatMoney(summary.totalValue, "AED") : `${summary.totalGainLossPct.toFixed(2)}%`}
@@ -316,12 +316,12 @@ function SummaryCard({
   positive?: boolean;
 }) {
   return (
-    <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+    <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200 sm:p-5">
       <p className="text-sm text-slate-500">{label}</p>
-      <p className={`mt-2 text-2xl font-semibold ${positive === undefined ? "text-slate-900" : positive ? "text-green-600" : "text-red-600"}`}>
+      <p className={`mt-2 text-xl font-semibold leading-tight sm:text-2xl ${positive === undefined ? "text-slate-900" : positive ? "text-green-600" : "text-red-600"}`}>
         {value}
       </p>
-      {subValue ? <p className="mt-1 text-sm text-slate-500">{subValue}</p> : null}
+      {subValue ? <p className="mt-1 text-xs text-slate-500 sm:text-sm">{subValue}</p> : null}
     </div>
   );
 }
