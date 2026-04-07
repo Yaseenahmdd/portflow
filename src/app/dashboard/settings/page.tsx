@@ -39,7 +39,7 @@ export default function SettingsPage() {
     getUser();
   }, []);
 
-  const storageKey = `assetviz-holdings-${userId}`;
+  const storageKey = `portflow-holdings-${userId}`;
 
   const testEndpoint = async (path: string) => {
     try {
@@ -128,7 +128,7 @@ export default function SettingsPage() {
                 const url = URL.createObjectURL(blob);
                 const anchor = document.createElement("a");
                 anchor.href = url;
-                anchor.download = `assetviz-holdings-${new Date().toISOString().slice(0, 10)}.json`;
+                anchor.download = `portflow-holdings-${new Date().toISOString().slice(0, 10)}.json`;
                 anchor.click();
                 URL.revokeObjectURL(url);
               }}

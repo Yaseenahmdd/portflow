@@ -15,7 +15,7 @@ export function createClient() {
           data: {
             user: {
               id: 'demo-user',
-              email: 'demo@assetviz.app',
+              email: 'demo@portflow.app',
               app_metadata: {},
               user_metadata: {},
               aud: 'authenticated',

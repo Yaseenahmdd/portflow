@@ -48,7 +48,7 @@ export default function DashboardShell({
         <div className="mx-auto max-w-[1180px]">
           <div className="flex items-center gap-2 overflow-visible rounded-[1.7rem] border border-black/8 bg-white px-3 py-2.5 shadow-[0_10px_30px_rgba(150,80,66,0.08)] sm:gap-3 sm:px-4 sm:py-3">
             <a href="/dashboard" className="shrink-0 text-xl font-extrabold tracking-tight text-accent-violet sm:text-2xl">
-              asset<span className="text-text-primary">viz</span>
+              port<span className="text-text-primary">flow</span>
             </a>
 
             <nav className="ml-1 flex items-center gap-1 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] sm:ml-2 sm:gap-2 [&::-webkit-scrollbar]:hidden">

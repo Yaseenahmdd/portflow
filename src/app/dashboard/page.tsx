@@ -10,11 +10,11 @@ import HoldingsTable from "@/components/HoldingsTable";
 import HoldingModal from "@/components/HoldingModal";
 
 function getStorageKey(userId: string) {
-  return `assetviz-holdings-${userId}`;
+  return `portflow-holdings-${userId}`;
 }
 
 function getRateStorageKey(userId: string) {
-  return `assetviz-inr-aed-rate-${userId}`;
+  return `portflow-inr-aed-rate-${userId}`;
 }
 
 export default function DashboardPage() {

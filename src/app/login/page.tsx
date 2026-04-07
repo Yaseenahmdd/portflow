@@ -44,7 +44,7 @@ export default function LoginPage() {
       <div className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-md items-center">
         <section className="glass-card glow w-full p-6 sm:p-8">
           <div>
-            <div className="text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-text-muted">AssetViz</div>
+            <div className="text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-text-muted">Portflow</div>
             <h2 className="mt-3 text-3xl font-semibold tracking-tight text-text-primary">
               {mode === "login" ? "Sign in" : "Create account"}
             </h2>
