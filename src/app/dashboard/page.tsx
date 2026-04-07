@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { DEFAULT_HOLDINGS, type Holding } from "@/lib/constants";
 import { computeHolding, formatMoney, generateId, timeAgo } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
+import { fetchRemoteHoldings, replaceRemoteHoldings } from "@/lib/holdings-store";
 import AllocationCharts from "@/components/AllocationCharts";
 import HoldingsTable from "@/components/HoldingsTable";
 import HoldingModal from "@/components/HoldingModal";
@@ -42,14 +43,34 @@ export default function DashboardPage() {
       const saved = localStorage.getItem(storageKey);
       const savedRate = localStorage.getItem(rateKey);
 
-      if (saved) {
-        try {
-          setHoldings(JSON.parse(saved));
-        } catch {
+      try {
+        const remoteHoldings = await fetchRemoteHoldings(supabase, uid);
+
+        if (remoteHoldings && remoteHoldings.length > 0) {
+          setHoldings(remoteHoldings);
+          localStorage.setItem(storageKey, JSON.stringify(remoteHoldings));
+        } else if (saved) {
+          try {
+            const parsed = JSON.parse(saved) as Holding[];
+            setHoldings(parsed);
+            await replaceRemoteHoldings(supabase, uid, parsed);
+          } catch {
+            setHoldings(DEFAULT_HOLDINGS);
+          }
+        } else {
           setHoldings(DEFAULT_HOLDINGS);
         }
-      } else {
-        setHoldings(DEFAULT_HOLDINGS);
+      } catch (error) {
+        console.error("Failed to load holdings from Supabase:", error);
+        if (saved) {
+          try {
+            setHoldings(JSON.parse(saved));
+          } catch {
+            setHoldings(DEFAULT_HOLDINGS);
+          }
+        } else {
+          setHoldings(DEFAULT_HOLDINGS);
+        }
       }
 
       if (savedRate) {
@@ -65,6 +86,17 @@ export default function DashboardPage() {
   useEffect(() => {
     if (mounted) {
       localStorage.setItem(getStorageKey(userId), JSON.stringify(holdings));
+
+      const timeoutId = window.setTimeout(async () => {
+        try {
+          const supabase = createClient();
+          await replaceRemoteHoldings(supabase, userId, holdings);
+        } catch (error) {
+          console.error("Failed to sync holdings to Supabase:", error);
+        }
+      }, 400);
+
+      return () => window.clearTimeout(timeoutId);
     }
   }, [holdings, mounted, userId]);
 

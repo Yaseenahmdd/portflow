@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { type Holding } from "@/lib/constants";
+import { replaceRemoteHoldings } from "@/lib/holdings-store";
 import { createClient } from "@/lib/supabase/client";
 
 interface ApiStatus {
@@ -144,7 +146,9 @@ export default function SettingsPage() {
 
                   const text = await file.text();
                   try {
-                    JSON.parse(text);
+                    const parsed = JSON.parse(text) as Holding[];
+                    const supabase = createClient();
+                    await replaceRemoteHoldings(supabase, userId, parsed);
                     localStorage.setItem(storageKey, text);
                     window.location.reload();
                   } catch {
@@ -158,8 +162,10 @@ export default function SettingsPage() {
             <ActionButton
               label="Reset storage"
               destructive
-              onClick={() => {
+              onClick={async () => {
                 if (confirm("Reset all holdings to defaults? This cannot be undone.")) {
+                  const supabase = createClient();
+                  await replaceRemoteHoldings(supabase, userId, []);
                   localStorage.removeItem(storageKey);
                   window.location.reload();
                 }
@@ -173,7 +179,7 @@ export default function SettingsPage() {
           <div className="mt-5 space-y-5 text-sm leading-6 text-text-secondary">
             <SetupStep
               title="Supabase"
-              body="Add the project URL and anon key to .env.local."
+              body="Add the project URL and anon key to .env.local, then run the holdings migration."
             />
             <SetupStep
               title="Twelve Data"
