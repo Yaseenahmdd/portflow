@@ -1,9 +1,9 @@
-const CACHE_NAME = "portflow-v1";
-const APP_SHELL = ["/", "/dashboard", "/dashboard/settings", "/login", "/manifest.webmanifest"];
+const CACHE_NAME = "portflow-v2";
+const OFFLINE_FALLBACKS = ["/dashboard", "/manifest.webmanifest", "/apple-icon", "/icon"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL)).catch(() => undefined)
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(OFFLINE_FALLBACKS)).catch(() => undefined)
   );
   self.skipWaiting();
 });
@@ -24,6 +24,20 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
+  const url = new URL(request.url);
+
+  if (url.origin !== self.location.origin) {
+    return;
+  }
+
+  if (
+    url.pathname.startsWith("/api/") ||
+    url.pathname.startsWith("/_next/") ||
+    url.pathname.startsWith("/auth/")
+  ) {
+    return;
+  }
+
   if (request.mode === "navigate") {
     event.respondWith(
       fetch(request)
@@ -40,22 +54,19 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  const url = new URL(request.url);
-  if (url.origin !== self.location.origin) {
-    return;
+  if (["/manifest.webmanifest", "/apple-icon", "/icon"].includes(url.pathname)) {
+    event.respondWith(
+      caches.match(request).then((cached) => {
+        if (cached) {
+          return cached;
+        }
+
+        return fetch(request).then((response) => {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(request, copy)).catch(() => undefined);
+          return response;
+        });
+      })
+    );
   }
-
-  event.respondWith(
-    caches.match(request).then((cached) => {
-      if (cached) {
-        return cached;
-      }
-
-      return fetch(request).then((response) => {
-        const copy = response.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(request, copy)).catch(() => undefined);
-        return response;
-      });
-    })
-  );
 });

@@ -23,14 +23,14 @@ export default function DashboardShell({
   const profileMenuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
+    function handlePointerDown(event: PointerEvent) {
       if (!profileMenuRef.current?.contains(event.target as Node)) {
         setProfileMenuOpen(false);
       }
     }
 
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => document.removeEventListener("pointerdown", handlePointerDown);
   }, []);
 
   const handleSignOut = async () => {
@@ -41,26 +41,25 @@ export default function DashboardShell({
   };
 
   const userInitial = user.email?.[0]?.toUpperCase() || "U";
+  const isDashboardHome = pathname === "/dashboard";
 
   return (
-    <div className="min-h-screen bg-transparent">
-      <header className="sticky top-0 z-40 bg-[#fffaf8]/80 px-4 py-4 backdrop-blur sm:px-6 lg:px-10">
-        <div className="mx-auto max-w-[1180px]">
-          <div className="flex items-center gap-2 overflow-visible rounded-[1.7rem] border border-black/8 bg-white px-3 py-2.5 shadow-[0_10px_30px_rgba(150,80,66,0.08)] sm:gap-3 sm:px-4 sm:py-3">
-            <a href="/dashboard" className="shrink-0 text-xl font-extrabold tracking-tight text-accent-violet sm:text-2xl">
-              port<span className="text-text-primary">flow</span>
+    <div className="min-h-screen bg-slate-50 p-4 sm:p-6">
+      <div className="mx-auto max-w-7xl space-y-6">
+        <header className="flex flex-col gap-4 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+          <div className="flex items-center gap-3">
+            <a href="/dashboard" className="text-2xl font-bold tracking-tight text-slate-900">
+              Portflow
             </a>
-
-            <nav className="ml-1 flex items-center gap-1 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] sm:ml-2 sm:gap-2 [&::-webkit-scrollbar]:hidden">
+            <nav className="flex items-center gap-2">
               {navItems.map((item) => {
                 const active = pathname === item.href;
-
                 return (
                   <a
                     key={item.href}
                     href={item.href}
-                    className={`shrink-0 rounded-full px-3 py-1.5 text-sm font-semibold transition sm:px-4 sm:py-2 ${
-                      active ? "bg-[#fff1ef] text-accent-violet" : "text-text-primary hover:bg-[#faf3f1]"
+                    className={`rounded-xl px-3 py-2 text-sm font-medium ${
+                      active ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-100"
                     }`}
                   >
                     {item.label}
@@ -68,24 +67,35 @@ export default function DashboardShell({
                 );
               })}
             </nav>
+          </div>
 
-            <div ref={profileMenuRef} className="relative ml-auto shrink-0">
+          <div className="flex items-center gap-2 self-start sm:self-auto">
+            {isDashboardHome ? (
+              <button
+                onClick={() => window.dispatchEvent(new CustomEvent("portflow:refresh-prices"))}
+                className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              >
+                Refresh
+              </button>
+            ) : null}
+
+            <div ref={profileMenuRef} className="relative">
               <button
                 onClick={() => setProfileMenuOpen((current) => !current)}
-                className="flex h-8 w-8 items-center justify-center rounded-full border border-black/8 bg-[#fff1ef] text-xs font-semibold text-accent-violet transition hover:bg-[#ffe7e2] sm:h-9 sm:w-9"
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-sm font-semibold text-slate-700"
                 aria-label="Open profile menu"
               >
                 {userInitial}
               </button>
 
               {profileMenuOpen && (
-                <div className="absolute right-0 top-12 z-50 min-w-52 overflow-hidden rounded-[1.2rem] border border-black/8 bg-white shadow-xl">
-                  <div className="border-b border-black/8 px-4 py-3">
-                    <div className="truncate text-sm font-semibold text-text-primary">{user.email}</div>
+                <div className="absolute right-0 top-12 z-50 min-w-56 overflow-hidden rounded-2xl bg-white shadow-lg ring-1 ring-slate-200">
+                  <div className="border-b border-slate-200 px-4 py-3">
+                    <div className="truncate text-sm font-semibold text-slate-900">{user.email}</div>
                   </div>
                   <button
                     onClick={handleSignOut}
-                    className="block w-full px-4 py-3 text-left text-sm font-medium text-text-secondary transition hover:bg-[#fff1ef] hover:text-text-primary"
+                    className="block w-full px-4 py-3 text-left text-sm font-medium text-slate-700 hover:bg-slate-50"
                   >
                     Sign Out
                   </button>
@@ -93,12 +103,10 @@ export default function DashboardShell({
               )}
             </div>
           </div>
-        </div>
-      </header>
+        </header>
 
-      <main className="min-w-0">
-        <div className="mx-auto max-w-[1440px] px-4 py-5 sm:px-6 lg:px-10 lg:py-8">{children}</div>
-      </main>
+        <main>{children}</main>
+      </div>
     </div>
   );
 }

@@ -39,7 +39,6 @@ export default function DashboardPage() {
 
       const storageKey = getStorageKey(uid);
       const rateKey = getRateStorageKey(uid);
-
       const saved = localStorage.getItem(storageKey);
       const savedRate = localStorage.getItem(rateKey);
 
@@ -60,8 +59,7 @@ export default function DashboardPage() {
         } else {
           setHoldings(DEFAULT_HOLDINGS);
         }
-      } catch (error) {
-        console.error("Failed to load holdings from Supabase:", error);
+      } catch {
         if (saved) {
           try {
             setHoldings(JSON.parse(saved));
@@ -137,9 +135,7 @@ export default function DashboardPage() {
         const updated = [...previous];
 
         for (const result of data.results) {
-          if (!result.success || !result.data) {
-            continue;
-          }
+          if (!result.success || !result.data) continue;
 
           if (result.source === "currency") {
             const rates = result.data;
@@ -199,11 +195,20 @@ export default function DashboardPage() {
     }
   }, []);
 
+  useEffect(() => {
+    function handleRefresh() {
+      refreshPrices();
+    }
+
+    window.addEventListener("portflow:refresh-prices", handleRefresh);
+    return () => window.removeEventListener("portflow:refresh-prices", handleRefresh);
+  }, [refreshPrices]);
+
   const handleSaveHolding = (holding: Holding) => {
     if (editingHolding) {
-      setHoldings((previous) => previous.map((item) => (item.id === holding.id ? holding : item)));
+      setHoldings((current) => current.map((item) => (item.id === holding.id ? holding : item)));
     } else {
-      setHoldings((previous) => [{ ...holding, id: generateId() }, ...previous]);
+      setHoldings((current) => [{ ...holding, id: generateId() }, ...current]);
     }
 
     setModalOpen(false);
@@ -216,12 +221,12 @@ export default function DashboardPage() {
   };
 
   const handleDelete = (id: string) => {
-    setHoldings((previous) => previous.filter((holding) => holding.id !== id));
+    setHoldings((current) => current.filter((holding) => holding.id !== id));
   };
 
   const handlePriceUpdate = (id: string, price: number) => {
-    setHoldings((previous) =>
-      previous.map((holding) => (holding.id === id ? { ...holding, currentPrice: price } : holding))
+    setHoldings((current) =>
+      current.map((holding) => (holding.id === id ? { ...holding, currentPrice: price } : holding))
     );
   };
 
@@ -229,91 +234,44 @@ export default function DashboardPage() {
     return (
       <div className="space-y-6">
         <div className="skeleton h-10 w-56" />
-        <div className="grid gap-4 lg:grid-cols-12">
-          <div className="skeleton h-44 rounded-[1.75rem] lg:col-span-7" />
-          <div className="skeleton h-44 rounded-[1.75rem] lg:col-span-5" />
-        </div>
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {[1, 2, 3, 4].map((item) => (
-            <div key={item} className="skeleton h-36 rounded-[1.5rem]" />
+            <div key={item} className="skeleton h-32 rounded-2xl" />
           ))}
         </div>
-        <div className="skeleton h-[28rem] rounded-[1.75rem]" />
+        <div className="grid gap-4 xl:grid-cols-3">
+          {[1, 2, 3].map((item) => (
+            <div key={item} className="skeleton h-72 rounded-2xl" />
+          ))}
+        </div>
+        <div className="skeleton h-[28rem] rounded-2xl" />
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <section className="glass-card p-5 sm:p-6">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <h1 className="text-3xl font-semibold tracking-tight text-text-primary">Portfolio</h1>
-            <p className="mt-2 text-sm text-text-secondary">
-              {lastRefresh ? `Last refresh ${timeAgo(lastRefresh)}` : "No market refresh yet"}
-            </p>
-          </div>
-
-          <div className="flex flex-wrap gap-3">
-            <button
-              onClick={refreshPrices}
-              disabled={isRefreshing}
-              className="inline-flex items-center gap-2 rounded-full bg-accent-violet px-5 py-3 text-sm font-semibold text-white transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-55"
-            >
-              <svg className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182M2.985 19.644l3.181-3.183" />
-              </svg>
-              {isRefreshing ? "Refreshing" : "Refresh"}
-            </button>
-
-            <button
-              onClick={() => {
-                setEditingHolding(null);
-                setModalOpen(true);
-              }}
-              className="inline-flex items-center gap-2 rounded-full border border-black/8 bg-white px-5 py-3 text-sm font-medium text-text-primary transition hover:bg-[#fff1ef]"
-            >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-              </svg>
-              Add holding
-            </button>
-
-            <button
-              onClick={() => setIsAmountsVisible((current) => !current)}
-              className="inline-flex items-center gap-2 rounded-full border border-black/8 bg-white px-5 py-3 text-sm font-medium text-text-secondary transition hover:bg-[#fff1ef] hover:text-text-primary"
-              title={isAmountsVisible ? "Hide amounts" : "Show amounts"}
-            >
-              {isAmountsVisible ? "Hide amounts" : "Show amounts"}
-            </button>
-          </div>
-        </div>
-      </section>
-
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <SummaryCard
-          eyebrow="Portfolio value"
-          value={isAmountsVisible ? formatMoney(summary.totalValue, "AED") : "••••••"}
-          subValue="AED"
-          tone="accent"
+          label="Total Portfolio Value"
+          value={isAmountsVisible ? formatMoney(summary.totalValue, "AED") : `${summary.totalGainLossPct.toFixed(2)}%`}
+          subValue={isAmountsVisible ? "Base currency: AED" : "Overall portfolio return"}
         />
         <SummaryCard
-          eyebrow="Invested capital"
-          value={isAmountsVisible ? formatMoney(summary.totalInvested, "AED") : "••••••"}
-          subValue={`${holdings.length} holdings`}
-          tone="neutral"
+          label="Total Invested"
+          value={isAmountsVisible ? formatMoney(summary.totalInvested, "AED") : `${summary.totalGainLossPct.toFixed(2)}%`}
+          subValue={isAmountsVisible ? `${holdings.length} holdings` : "Overall return"}
         />
         <SummaryCard
-          eyebrow="Unrealised return"
+          label="Total Gain / Loss"
           value={isAmountsVisible ? formatMoney(summary.totalGainLoss, "AED") : `${summary.totalGainLossPct.toFixed(2)}%`}
-          subValue={`${summary.totalGainLossPct >= 0 ? "+" : ""}${summary.totalGainLossPct.toFixed(2)}% overall`}
-          tone={summary.totalGainLoss >= 0 ? "gain" : "loss"}
+          subValue={`${summary.totalGainLossPct.toFixed(2)}% overall`}
+          positive={summary.totalGainLoss >= 0}
         />
         <SummaryCard
-          eyebrow="INR to AED"
+          label="INR to AED"
           value={inrToAedRate.toFixed(5)}
-          subValue="FX"
-          tone="amber"
+          subValue="FX rate in use"
         />
       </section>
 
@@ -325,6 +283,10 @@ export default function DashboardPage() {
         onEdit={handleEdit}
         onDelete={handleDelete}
         onPriceUpdate={handlePriceUpdate}
+        onAddHolding={() => {
+          setEditingHolding(null);
+          setModalOpen(true);
+        }}
       />
 
       {modalOpen && (
@@ -343,37 +305,23 @@ export default function DashboardPage() {
 }
 
 function SummaryCard({
-  eyebrow,
+  label,
   value,
   subValue,
-  tone,
+  positive,
 }: {
-  eyebrow: string;
+  label: string;
   value: string;
-  subValue: string;
-  tone: "accent" | "neutral" | "gain" | "loss" | "amber";
+  subValue?: string;
+  positive?: boolean;
 }) {
-  const toneClasses = {
-    accent: "border-black/8 bg-white",
-    neutral: "border-black/8 bg-white",
-    gain: "border-black/8 bg-white",
-    loss: "border-black/8 bg-white",
-    amber: "border-black/8 bg-white",
-  }[tone];
-
-  const valueTone = {
-    accent: "text-text-primary",
-    neutral: "text-text-primary",
-    gain: "text-accent-gain",
-    loss: "text-accent-loss",
-    amber: "text-text-primary",
-  }[tone];
-
   return (
-    <div className={`glass-card border ${toneClasses} p-5`}>
-      <div className="text-[0.72rem] font-semibold uppercase tracking-[0.2em] text-text-muted">{eyebrow}</div>
-      <div className={`mt-4 text-[1.9rem] font-semibold tracking-tight ${valueTone}`}>{value}</div>
-      <div className="mt-2 text-sm text-text-secondary">{subValue}</div>
+    <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+      <p className="text-sm text-slate-500">{label}</p>
+      <p className={`mt-2 text-2xl font-semibold ${positive === undefined ? "text-slate-900" : positive ? "text-green-600" : "text-red-600"}`}>
+        {value}
+      </p>
+      {subValue ? <p className="mt-1 text-sm text-slate-500">{subValue}</p> : null}
     </div>
   );
 }

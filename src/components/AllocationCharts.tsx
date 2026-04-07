@@ -16,37 +16,29 @@ export default function AllocationCharts({ holdings, totalValue }: Props) {
 
   return (
     <section className="grid gap-4 xl:grid-cols-3">
-      <PieCard title="By platform" items={byPlatform} />
-      <PieCard title="By asset class" items={byAssetClass} />
-      <PieCard title="By geography" items={byGeography} />
+      <PieAllocationCard title="By platform" items={byPlatform} />
+      <PieAllocationCard title="By asset class" items={byAssetClass} />
+      <PieAllocationCard title="By geography" items={byGeography} />
     </section>
   );
 }
 
-function PieCard({
+function PieAllocationCard({
   title,
   items,
 }: {
   title: string;
   items: { label: string; value: number; weight: number }[];
 }) {
-  const hasData = items.length > 0 && items.some((item) => item.value > 0);
-
   return (
-    <div className="glass-card p-6">
-      <div className="flex items-start justify-between gap-4">
-        <h2 className="text-base font-semibold text-text-primary">{title}</h2>
-        <div className="rounded-full border border-black/8 bg-[#fff6f4] px-3 py-1.5 text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-text-muted">
-          {items.length || 0} slices
-        </div>
-      </div>
-
-      {hasData ? (
+    <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
+      <h2 className="text-base font-semibold text-slate-900">{title}</h2>
+      {items.length ? (
         <>
-          <div className="mt-6 h-56">
+          <div className="mt-3 h-44 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
-                <Pie data={items} dataKey="value" nameKey="label" innerRadius={56} outerRadius={82} paddingAngle={2} stroke="none">
+                <Pie data={items} dataKey="value" nameKey="label" innerRadius={34} outerRadius={56} paddingAngle={2}>
                   {items.map((item, index) => (
                     <Cell key={item.label} fill={PIE_COLORS[index % PIE_COLORS.length]} />
                   ))}
@@ -54,40 +46,31 @@ function PieCard({
                 <Tooltip
                   contentStyle={{
                     background: "#ffffff",
-                    border: "1px solid rgba(23,23,23,0.08)",
-                    borderRadius: "1rem",
-                    color: "#171717",
+                    border: "1px solid #e2e8f0",
+                    borderRadius: "0.75rem",
+                    color: "#0f172a",
                     fontSize: "12px",
-                    boxShadow: "0 18px 36px rgba(150,80,66,0.12)",
+                    boxShadow: "0 8px 24px rgba(15,23,42,0.08)",
                   }}
                   formatter={(value) => formatMoney(Number(value), "AED")}
                 />
               </PieChart>
             </ResponsiveContainer>
           </div>
-
-          <div className="mt-2 space-y-2">
+          <div className="mt-2 space-y-1.5">
             {items.map((item, index) => (
-              <div
-                key={item.label}
-                className="flex items-center justify-between gap-3 rounded-[1.1rem] border border-black/8 bg-[#fffaf8] px-3.5 py-3"
-              >
-                <div className="flex min-w-0 items-center gap-3">
+              <div key={item.label} className="flex items-center justify-between gap-2 rounded-xl bg-slate-50 px-2.5 py-2 text-xs">
+                <div className="flex min-w-0 items-center gap-2">
                   <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: PIE_COLORS[index % PIE_COLORS.length] }} />
-                  <div className="min-w-0">
-                    <div className="truncate text-sm font-medium text-text-primary">{item.label}</div>
-                    <div className="mt-0.5 text-xs text-text-muted">{formatMoney(item.value, "AED")}</div>
-                  </div>
+                  <span className="truncate text-slate-700">{item.label}</span>
                 </div>
-                <div className="text-sm font-medium text-text-secondary">{item.weight.toFixed(1)}%</div>
+                <span className="shrink-0 text-slate-500">{item.weight.toFixed(1)}%</span>
               </div>
             ))}
           </div>
         </>
       ) : (
-        <div className="mt-6 rounded-[1.35rem] border border-dashed border-black/10 bg-[#fffaf8] px-5 py-10 text-sm text-text-muted">
-          No data
-        </div>
+        <div className="mt-4 rounded-xl bg-slate-100 p-4 text-center text-sm text-slate-500">No data yet</div>
       )}
     </div>
   );
