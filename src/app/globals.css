@@ -29,6 +29,7 @@
 
 html {
   color-scheme: light;
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
@@ -125,6 +126,23 @@ select,
 textarea,
 button {
   font: inherit;
+}
+
+button,
+a,
+input,
+select,
+textarea,
+label {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button,
+a {
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 input:focus-visible,
