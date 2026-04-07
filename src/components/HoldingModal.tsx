@@ -41,9 +41,12 @@ export default function HoldingModal({ holding, inrToAedRate, onSave, onClose }:
   const update = (patch: Partial<Holding>) => setForm((current) => ({ ...current, ...patch }));
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4 sm:items-center" onClick={onClose}>
       <div className="absolute inset-0 bg-slate-900/20 backdrop-blur-sm" />
-      <div className="w-full max-w-5xl overflow-y-auto rounded-2xl bg-white p-4 shadow-xl ring-1 ring-slate-200 sm:p-6" onClick={(event) => event.stopPropagation()}>
+      <div
+        className="relative my-6 w-full max-w-5xl rounded-2xl bg-white p-4 shadow-xl ring-1 ring-slate-200 sm:max-h-[90vh] sm:overflow-y-auto sm:p-6"
+        onClick={(event) => event.stopPropagation()}
+      >
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
             <div>
