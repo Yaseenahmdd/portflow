@@ -198,8 +198,10 @@ export default function SettingsPage() {
               <span className="font-mono"> quantity</span>,
               <span className="font-mono"> avgBuyPrice</span>,
               <span className="font-mono"> currentPrice</span>,
-              <span className="font-mono"> currency</span>, and
-              <span className="font-mono"> priceSource</span>.
+              <span className="font-mono"> currency</span>.
+              <span className="ml-1">The app will infer</span>
+              <span className="font-mono"> priceSource</span>
+              <span className="ml-1">from fields like ticker, geography, asset class, and schemeCode.</span>
             </p>
             <pre className="mt-3 overflow-x-auto rounded-xl bg-white p-3 text-xs text-slate-700 ring-1 ring-slate-200">
 {`[
@@ -216,8 +218,7 @@ export default function SettingsPage() {
     "avgBuyPrice": 40.66,
     "currentPrice": 39.53,
     "currency": "USD",
-    "notes": "",
-    "priceSource": "twelvedata"
+    "notes": ""
   }
 ]`}
             </pre>

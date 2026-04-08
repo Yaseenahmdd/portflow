@@ -13,9 +13,12 @@ function inferSchemeCode(assetName: string) {
 }
 
 export function normalizeHolding(holding: Holding): Holding {
-  const normalized = { ...holding };
+  const normalized = {
+    ...holding,
+    priceSource: holding.priceSource || "manual",
+  };
 
-  if (normalized.assetClass === "Mutual Funds") {
+  if (normalized.assetClass === "Mutual Funds" || normalized.schemeCode) {
     normalized.priceSource = "mfapi";
     const inferredSchemeCode = inferSchemeCode(normalized.assetName);
     if (inferredSchemeCode) {
