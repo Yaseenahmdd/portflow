@@ -14,14 +14,22 @@ export async function fetchExchangeRates(
   targets: string[] = ['USD', 'INR']
 ): Promise<ExchangeRates | null> {
   try {
-    const symbols = targets.join(',');
+    const quotes = targets.join(',');
     const res = await fetch(
-      `https://api.frankfurter.dev/v1/latest?base=${base}&symbols=${symbols}`,
+      `https://api.frankfurter.dev/v2/rates?base=${base}&quotes=${quotes}`,
       { next: { revalidate: 3600 } } // Cache 1 hour
     );
     if (!res.ok) throw new Error(`Frankfurter error: ${res.status}`);
-    const data: ExchangeRates = await res.json();
-    return data;
+    const rows = (await res.json()) as Array<{ date: string; base: string; quote: string; rate: number }>;
+
+    return {
+      base,
+      date: rows[0]?.date || new Date().toISOString().slice(0, 10),
+      rates: rows.reduce<Record<string, number>>((acc, row) => {
+        acc[row.quote] = row.rate;
+        return acc;
+      }, {}),
+    };
   } catch (err) {
     console.error('Frankfurter: failed to fetch exchange rates:', err);
     return null;
