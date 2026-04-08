@@ -114,7 +114,7 @@ export default function SettingsPage() {
         </div>
       </section>
 
-      <section className="grid gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
+      <section>
         <div className="glass-card p-6">
           <h2 className="text-xl font-semibold text-text-primary">Data management</h2>
 
@@ -223,24 +223,6 @@ export default function SettingsPage() {
             </pre>
           </div>
         </div>
-
-        <div className="glass-card p-6">
-          <h2 className="text-xl font-semibold text-text-primary">Setup</h2>
-          <div className="mt-5 space-y-5 text-sm leading-6 text-text-secondary">
-            <SetupStep
-              title="Supabase"
-              body="Add the project URL and anon key to .env.local, then run the holdings migration."
-            />
-            <SetupStep
-              title="Twelve Data"
-              body="Add TWELVE_DATA_API_KEY for US ETFs and UAE equities."
-            />
-            <SetupStep
-              title="Deploy"
-              body="Mirror the same environment variables in Vercel."
-            />
-          </div>
-        </div>
       </section>
     </div>
   );
@@ -274,14 +256,5 @@ function ActionButton({
     >
       {label}
     </button>
-  );
-}
-
-function SetupStep({ title, body }: { title: string; body: string }) {
-  return (
-    <div className="rounded-[1.2rem] border border-black/8 bg-[#fffaf8] p-4">
-      <h3 className="font-semibold text-text-primary">{title}</h3>
-      <p className="mt-1.5 text-text-secondary">{body}</p>
-    </div>
   );
 }
