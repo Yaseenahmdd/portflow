@@ -184,6 +184,44 @@ export default function SettingsPage() {
               }}
             />
           </div>
+
+          <div className="mt-5 rounded-[1.2rem] border border-black/8 bg-[#fffaf8] p-4">
+            <h3 className="text-sm font-semibold text-text-primary">Import format</h3>
+            <p className="mt-2 text-sm leading-6 text-text-secondary">
+              Upload a JSON array of holdings. Each item should include at least:
+              <span className="font-mono"> id</span>,
+              <span className="font-mono"> platform</span>,
+              <span className="font-mono"> assetName</span>,
+              <span className="font-mono"> assetClass</span>,
+              <span className="font-mono"> geography</span>,
+              <span className="font-mono"> risk</span>,
+              <span className="font-mono"> quantity</span>,
+              <span className="font-mono"> avgBuyPrice</span>,
+              <span className="font-mono"> currentPrice</span>,
+              <span className="font-mono"> currency</span>, and
+              <span className="font-mono"> priceSource</span>.
+            </p>
+            <pre className="mt-3 overflow-x-auto rounded-xl bg-white p-3 text-xs text-slate-700 ring-1 ring-slate-200">
+{`[
+  {
+    "id": "h-001",
+    "platform": "IG",
+    "assetName": "iShares Bitcoin Trust ETF",
+    "ticker": "IBIT",
+    "assetClass": "ETFs",
+    "sector": "Crypto Exposure",
+    "geography": "US",
+    "risk": "High",
+    "quantity": 7,
+    "avgBuyPrice": 40.66,
+    "currentPrice": 39.53,
+    "currency": "USD",
+    "notes": "",
+    "priceSource": "twelvedata"
+  }
+]`}
+            </pre>
+          </div>
         </div>
 
         <div className="glass-card p-6">
