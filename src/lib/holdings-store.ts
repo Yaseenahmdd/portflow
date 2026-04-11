@@ -159,3 +159,38 @@ export async function replaceRemoteHoldings(client: unknown, userId: string, hol
 
   return true;
 }
+
+export async function upsertRemoteHoldings(client: unknown, userId: string, holdings: Holding[]): Promise<boolean> {
+  if (!hasDatabaseClient(client)) {
+    return false;
+  }
+
+  const sanitizedHoldings = sanitizeHoldingIds(holdings);
+  if (!sanitizedHoldings.length) {
+    return true;
+  }
+
+  const rows = sanitizedHoldings.map((holding) => mapHoldingToRow(userId, holding));
+  const upsertResult = await client.from("holdings").upsert(rows, {
+    onConflict: "user_id,id",
+  });
+  
+  if (upsertResult.error) {
+    throw new Error(upsertResult.error.message);
+  }
+
+  return true;
+}
+
+export async function deleteRemoteHolding(client: unknown, userId: string, holdingId: string): Promise<boolean> {
+  if (!hasDatabaseClient(client)) {
+    return false;
+  }
+
+  const deleteResult = await client.from("holdings").delete().eq("user_id", userId).eq("id", holdingId);
+  if (deleteResult.error) {
+    throw new Error(deleteResult.error.message);
+  }
+
+  return true;
+}
