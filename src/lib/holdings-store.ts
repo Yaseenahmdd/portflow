@@ -21,6 +21,10 @@ interface HoldingRow {
   purchases: string | null;
 }
 
+type DeleteBuilder = Promise<{ error: { message: string } | null }> & {
+  eq: (column: string, value: string) => DeleteBuilder;
+};
+
 type SupabaseLikeClient = {
   from?: (table: string) => {
     select: (query: string) => {
@@ -28,9 +32,7 @@ type SupabaseLikeClient = {
         order: (column: string, options?: { ascending?: boolean }) => Promise<{ data: HoldingRow[] | null; error: { message: string } | null }>;
       };
     };
-    delete: () => {
-      eq: (column: string, value: string) => Promise<{ error: { message: string } | null }>;
-    };
+    delete: () => DeleteBuilder;
     insert: (values: HoldingRow[]) => Promise<{ error: { message: string } | null }>;
     upsert: (
       values: HoldingRow[],
