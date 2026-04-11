@@ -51,6 +51,11 @@ export function useDashboardHoldings() {
         return;
       }
 
+      if (remoteHoldings.length === 0 && holdingsRef.current.length > 0) {
+        await upsertRemoteHoldingsState(userId, holdingsRef.current);
+        return;
+      }
+
       if (getHoldingsSignature(remoteHoldings) !== getHoldingsSignature(holdingsRef.current)) {
         setHoldings(remoteHoldings);
       }
