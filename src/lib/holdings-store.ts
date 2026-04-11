@@ -18,7 +18,6 @@ interface HoldingRow {
   price_source: string;
   scheme_code: string | null;
   last_price_update: string | null;
-  purchases: string | null;
 }
 
 type DeleteBuilder = Promise<{ error: { message: string } | null }> & {
@@ -63,7 +62,6 @@ function mapRowToHolding(row: HoldingRow): Holding {
     priceSource: row.price_source as Holding["priceSource"],
     schemeCode: row.scheme_code || undefined,
     lastPriceUpdate: row.last_price_update || undefined,
-    purchases: row.purchases ? JSON.parse(row.purchases) : undefined,
   };
 }
 
@@ -86,7 +84,6 @@ function mapHoldingToRow(userId: string, holding: Holding): HoldingRow {
     price_source: holding.priceSource,
     scheme_code: holding.schemeCode || null,
     last_price_update: holding.lastPriceUpdate || null,
-    purchases: holding.purchases ? JSON.stringify(holding.purchases) : null,
   };
 }
 
