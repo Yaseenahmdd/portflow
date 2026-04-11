@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import type { Holding } from "@/lib/constants";
-import { refreshDashboardPrices } from "@/lib/dashboard/refresh";
+import { refreshDashboardPrices, type RefreshFailure } from "@/lib/dashboard/refresh";
 
 const AUTO_REFRESH_INTERVAL_MS = 15 * 60 * 1000;
 const MAX_PULL_DISTANCE = 96;
@@ -22,6 +22,8 @@ export function useDashboardRefresh({
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isPullRefreshing, setIsPullRefreshing] = useState(false);
   const [pullDistance, setPullDistance] = useState(0);
+  const [refreshFailures, setRefreshFailures] = useState<RefreshFailure[]>([]);
+  const [refreshError, setRefreshError] = useState<string | null>(null);
 
   const holdingsRef = useRef(holdings);
   const isRefreshingRef = useRef(false);
@@ -52,11 +54,14 @@ export function useDashboardRefresh({
     try {
       const refreshedState = await refreshDashboardPrices(holdingsRef.current);
       setHoldings(refreshedState.holdings);
+      setRefreshFailures(refreshedState.failures);
+      setRefreshError(null);
 
       if (refreshedState.inrToAedRate) {
         setInrToAedRate(refreshedState.inrToAedRate);
       }
     } catch (error) {
+      setRefreshError(error instanceof Error ? error.message : "Refresh failed");
       console.error("Price refresh error:", error);
     } finally {
       isRefreshingRef.current = false;
@@ -184,6 +189,8 @@ export function useDashboardRefresh({
     isRefreshing,
     isPullRefreshing,
     pullDistance,
+    refreshFailures,
+    refreshError,
     refreshPrices,
   };
 }

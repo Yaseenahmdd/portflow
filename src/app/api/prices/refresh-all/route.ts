@@ -14,6 +14,20 @@ interface PriceResult {
   error?: string;
 }
 
+function createPriceTask(source: string, loader: () => Promise<unknown>): Promise<PriceResult> {
+  return loader()
+    .then((data) => ({
+      source,
+      success: true,
+      data,
+    }))
+    .catch((error: unknown) => ({
+      source,
+      success: false,
+      error: error instanceof Error ? error.message : `Failed to fetch ${source}`,
+    }));
+}
+
 function unique(values: string[]) {
   return [...new Set(values.filter(Boolean))];
 }
@@ -77,32 +91,18 @@ export async function POST(request: Request) {
     );
 
     const tasks: Promise<PriceResult>[] = [
-      Promise.resolve({ source: "currency", success: true, data: await fetchExchangeRates() }),
-      Promise.resolve({
-        source: "indian-mf",
-        success: true,
-        data: mfSchemeCodes.length ? await fetchMutualFundNav(mfSchemeCodes) : [],
-      }),
-      Promise.resolve({
-        source: "indian-stocks",
-        success: true,
-        data: indianSymbols.length ? await fetchAlphaVantageMultiple(indianSymbols) : {},
-      }),
-      Promise.resolve({
-        source: "us-etfs",
-        success: true,
-        data: usEtfSymbols.length ? await fetchAlphaVantageMultiple(usEtfSymbols) : {},
-      }),
-      Promise.resolve({
-        source: "uae-stocks",
-        success: true,
-        data: uaeStockSymbols.length ? await fetchDfmQuotes(uaeStockSymbols) : {},
-      }),
-      Promise.resolve({
-        source: "crypto",
-        success: true,
-        data: cryptoIds.length ? await fetchCryptoPrices(cryptoIds) : {},
-      }),
+      createPriceTask("currency", () => fetchExchangeRates()),
+      createPriceTask("indian-mf", () => (mfSchemeCodes.length ? fetchMutualFundNav(mfSchemeCodes) : Promise.resolve([]))),
+      createPriceTask("indian-stocks", () =>
+        indianSymbols.length ? fetchAlphaVantageMultiple(indianSymbols) : Promise.resolve({})
+      ),
+      createPriceTask("us-etfs", () =>
+        usEtfSymbols.length ? fetchAlphaVantageMultiple(usEtfSymbols) : Promise.resolve({})
+      ),
+      createPriceTask("uae-stocks", () =>
+        uaeStockSymbols.length ? fetchDfmQuotes(uaeStockSymbols) : Promise.resolve({})
+      ),
+      createPriceTask("crypto", () => (cryptoIds.length ? fetchCryptoPrices(cryptoIds) : Promise.resolve({}))),
     ];
 
     const results = await Promise.all(tasks);
