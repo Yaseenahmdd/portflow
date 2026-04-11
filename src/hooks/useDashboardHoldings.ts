@@ -7,7 +7,8 @@ import {
   loadDashboardPersistenceState,
   persistDashboardRate,
   persistLocalHoldings,
-  syncRemoteHoldings,
+  upsertRemoteHoldingsState,
+  deleteRemoteHoldingState,
 } from "@/lib/dashboard/persistence";
 import { normalizeHoldings } from "@/lib/holdings-normalize";
 import { generateId } from "@/lib/utils";
@@ -54,7 +55,7 @@ export function useDashboardHoldings() {
 
     const timeoutId = window.setTimeout(async () => {
       try {
-        await syncRemoteHoldings(userId, holdings);
+        await upsertRemoteHoldingsState(userId, holdings);
       } catch (error) {
         console.error("Failed to sync holdings to Supabase:", error);
       }
@@ -84,7 +85,13 @@ export function useDashboardHoldings() {
 
   const deleteHolding = useCallback((id: string) => {
     setHoldings((current) => current.filter((holding) => holding.id !== id));
-  }, []);
+    
+    if (userId !== "default") {
+      void deleteRemoteHoldingState(userId, id).catch((error) => {
+        console.error("Failed to delete holding from Supabase:", error);
+      });
+    }
+  }, [userId]);
 
   const updatePrice = useCallback((id: string, price: number) => {
     setHoldings((current) =>
