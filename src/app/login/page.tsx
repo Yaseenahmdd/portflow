@@ -45,7 +45,7 @@ export default function LoginPage() {
         <section className="glass-card glow w-full p-6 sm:p-8">
           <div>
             <div className="text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-text-muted">Portflow</div>
-            <h2 className="mt-3 text-3xl font-semibold tracking-tight text-text-primary">
+            <h2 className="font-display mt-3 text-3xl font-semibold tracking-[-0.04em] text-text-primary">
               {mode === "login" ? "Sign in" : "Create account"}
             </h2>
           </div>

@@ -24,19 +24,6 @@ interface Props {
   isAmountsVisible: boolean;
 }
 
-interface RenderPoint extends ChartPoint {
-  label: string;
-}
-
-function addDays(dateKey: string, days: number) {
-  const date = new Date(`${dateKey}T00:00:00`);
-  date.setDate(date.getDate() + days);
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
 function formatSnapshotLabel(snapshotDate: string) {
   return new Date(`${snapshotDate}T00:00:00`).toLocaleDateString("en-US", {
     month: "short",
@@ -116,9 +103,9 @@ function CustomTooltip({
     <div
       className="min-w-44 rounded-xl px-3 py-2.5 text-xs shadow-lg"
       style={{
-        background: isDarkMode ? "#02091f" : "#ffffff",
-        border: isDarkMode ? "1px solid #334155" : "1px solid #e2e8f0",
-        color: isDarkMode ? "#f8fafc" : "#0f172a",
+        background: isDarkMode ? "var(--color-bg-elevated)" : "#ffffff",
+        border: isDarkMode ? "1px solid var(--color-border-default)" : "1px solid #e2e8f0",
+        color: isDarkMode ? "var(--color-text-primary)" : "#0f172a",
       }}
     >
       <div className="font-semibold">{formatSnapshotTooltipLabel(pointDate)}</div>
@@ -170,70 +157,59 @@ export default function PortfolioTrendChart({ chartData, isAmountsVisible }: Pro
     };
   }, []);
 
-  const paddedChartData = useMemo<RenderPoint[]>(() => {
+  const formattedChartData = useMemo(() => {
     if (!chartData.length) {
       return [];
     }
 
-    const firstDate = chartData[0].date;
-    const lastDate = chartData[chartData.length - 1].date;
-
-    return [
-      {
-        date: addDays(firstDate, -1),
-        invested: null,
-        value: null,
-        label: formatSnapshotLabel(addDays(firstDate, -1)),
-      },
-      ...chartData.map((point) => ({
-        ...point,
-        label: formatSnapshotLabel(point.date),
-      })),
-      {
-        date: addDays(lastDate, 1),
-        invested: null,
-        value: null,
-        label: formatSnapshotLabel(addDays(lastDate, 1)),
-      },
-    ];
+    return chartData.map((point) => ({
+      ...point,
+      label: formatSnapshotLabel(point.date),
+    }));
   }, [chartData]);
 
   const xTicks = useMemo(() => {
-    if (!chartData.length || !paddedChartData.length) {
+    if (!chartData.length) {
       return undefined;
     }
 
-    const leftLabel = paddedChartData[0].label;
-    const rightLabel = paddedChartData[paddedChartData.length - 1].label;
-    const realLabels = chartData.map((point) => formatSnapshotLabel(point.date));
-
     if (chartData.length <= 2) {
-      return [leftLabel, ...realLabels, rightLabel];
+      return chartData.map((point) => formatSnapshotLabel(point.date));
     }
 
+    const leftLabel = formatSnapshotLabel(chartData[0].date);
     const middleLabel = formatSnapshotLabel(chartData[Math.floor((chartData.length - 1) / 2)].date);
+    const rightLabel = formatSnapshotLabel(chartData[chartData.length - 1].date);
 
     return [leftLabel, middleLabel, rightLabel];
-  }, [chartData, paddedChartData]);
+  }, [chartData]);
 
   const yAxisDomain = useMemo<[number, number]>(() => getChartDomain(chartData), [chartData]);
   const investedLineColor = "rgba(115,114,108,0.35)";
-  const valueLineColor = "#3266ad";
+  const valueLineColor = isDarkMode ? "var(--color-accent-violet)" : "#3266ad";
   const chartGridColor = isDarkMode ? "rgba(203, 213, 225, 0.08)" : "rgba(15, 23, 42, 0.05)";
 
   return (
     <section className="dashboard-card rounded-2xl border border-border-default bg-bg-card p-5 shadow-sm sm:p-6">
       <div>
         <div>
-          <h2 className="text-xl font-semibold text-text-primary">Portfolio Trend</h2>
+          <h2 className="font-display text-[1.05rem] font-semibold tracking-[-0.04em] text-text-primary sm:text-xl">
+            Portfolio Balance
+          </h2>
         </div>
       </div>
 
       <div className="mt-5 h-[230px] w-full min-h-0 min-w-0">
-        {paddedChartData.length ? (
+        {formattedChartData.length ? (
           <MeasuredChart className="h-full w-full min-h-0 min-w-0">
             {({ width, height }) => (
-            <ComposedChart width={width} height={height} data={paddedChartData} margin={{ top: 8, right: 6, left: 0, bottom: 0 }}>
+            <ComposedChart
+              width={width}
+              height={height}
+              data={formattedChartData}
+              accessibilityLayer={false}
+              margin={{ top: 8, right: 6, left: 0, bottom: 0 }}
+            >
               <defs>
                 <linearGradient id="portfolio-value-fill" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor={valueLineColor} stopOpacity={0.18} />
@@ -244,7 +220,7 @@ export default function PortfolioTrendChart({ chartData, isAmountsVisible }: Pro
               <XAxis
                 dataKey="label"
                 ticks={xTicks}
-                tick={{ fill: isDarkMode ? "#94a3b8" : "#64748b", fontSize: 12 }}
+                tick={{ fill: isDarkMode ? "var(--color-text-muted)" : "#64748b", fontSize: 12 }}
                 axisLine={false}
                 tickLine={false}
                 tickMargin={10}
@@ -253,13 +229,15 @@ export default function PortfolioTrendChart({ chartData, isAmountsVisible }: Pro
               <YAxis
                 domain={yAxisDomain}
                 tickFormatter={(value) => compactNumber(Number(value))}
-                tick={{ fill: isDarkMode ? "#94a3b8" : "#64748b", fontSize: 12 }}
+                tick={{ fill: isDarkMode ? "var(--color-text-muted)" : "#64748b", fontSize: 12 }}
                 axisLine={false}
                 tickLine={false}
                 width={60}
                 tickCount={4}
               />
               <Tooltip
+                trigger="hover"
+                cursor={{ stroke: "transparent", fill: "transparent" }}
                 content={<CustomTooltip isAmountsVisible={isAmountsVisible} isDarkMode={isDarkMode} />}
               />
               <Area
@@ -277,7 +255,7 @@ export default function PortfolioTrendChart({ chartData, isAmountsVisible }: Pro
                 stroke={investedLineColor}
                 strokeWidth={1.5}
                 strokeDasharray="4 4"
-                dot={{ r: 4, strokeWidth: 2, fill: "#ffffff", stroke: investedLineColor }}
+                dot={false}
                 activeDot={{ r: 5 }}
                 connectNulls={false}
                 isAnimationActive={false}
@@ -288,7 +266,7 @@ export default function PortfolioTrendChart({ chartData, isAmountsVisible }: Pro
                 name="Portfolio Value"
                 stroke={valueLineColor}
                 strokeWidth={2}
-                dot={{ r: 4, strokeWidth: 2, fill: "#ffffff", stroke: valueLineColor }}
+                dot={false}
                 activeDot={{ r: 5 }}
                 connectNulls={false}
                 isAnimationActive={false}

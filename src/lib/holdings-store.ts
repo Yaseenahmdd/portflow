@@ -7,6 +7,7 @@ interface HoldingRow {
   asset_name: string;
   ticker: string;
   asset_class: string;
+  allocation_class?: string | null;
   sector: string;
   geography: string;
   risk: string;
@@ -51,6 +52,7 @@ function mapRowToHolding(row: HoldingRow): Holding {
     assetName: row.asset_name,
     ticker: row.ticker,
     assetClass: row.asset_class as Holding["assetClass"],
+    allocationClass: (row.allocation_class || row.asset_class) as Holding["allocationClass"],
     sector: row.sector,
     geography: row.geography as Holding["geography"],
     risk: row.risk as Holding["risk"],
@@ -73,6 +75,7 @@ function mapHoldingToRow(userId: string, holding: Holding): HoldingRow {
     asset_name: holding.assetName,
     ticker: holding.ticker,
     asset_class: holding.assetClass,
+    allocation_class: holding.allocationClass || holding.assetClass,
     sector: holding.sector,
     geography: holding.geography,
     risk: holding.risk,

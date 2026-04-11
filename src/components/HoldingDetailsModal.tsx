@@ -33,6 +33,7 @@ export default function HoldingDetailsModal({ holding, inrToAedRate, onClose }: 
             <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500">
               {holding.ticker ? <span className="rounded-md bg-slate-100 px-2 py-1 font-mono text-slate-700">{holding.ticker}</span> : null}
               <span>{holding.assetClass}</span>
+              {holding.allocationClass && holding.allocationClass !== holding.assetClass ? <span>{holding.allocationClass}</span> : null}
               <span>{holding.geography}</span>
               <span>{holding.platform}</span>
               <span>Risk {holding.risk}</span>
@@ -73,7 +74,8 @@ export default function HoldingDetailsModal({ holding, inrToAedRate, onClose }: 
             <div className="mt-4 grid gap-3">
               <InfoRow label="Platform" value={holding.platform} />
               <InfoRow label="Currency" value={holding.currency} />
-              <InfoRow label="Asset Class" value={holding.assetClass} />
+              <InfoRow label="Instrument Type" value={holding.assetClass} />
+              <InfoRow label="Allocation Group" value={holding.allocationClass || holding.assetClass} />
               {holding.assetClass === "Mutual Funds" ? (
                 <InfoRow label="Scheme Code" value={holding.schemeCode || "Not added"} />
               ) : (
@@ -146,7 +148,8 @@ export default function HoldingDetailsModal({ holding, inrToAedRate, onClose }: 
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 <InfoRow label="Platform" value={holding.platform} />
                 <InfoRow label="Currency" value={holding.currency} />
-                <InfoRow label="Asset Class" value={holding.assetClass} />
+                <InfoRow label="Instrument Type" value={holding.assetClass} />
+                <InfoRow label="Allocation Group" value={holding.allocationClass || holding.assetClass} />
                 <InfoRow label="Geography" value={holding.geography} />
                 <InfoRow label="Sector / Theme" value={holding.sector || "Not added"} />
                 <InfoRow label="Price Source" value={holding.priceSource} />

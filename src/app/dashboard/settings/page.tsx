@@ -113,13 +113,13 @@ export default function SettingsPage() {
   return (
     <div className="space-y-6">
       <section className="glass-card p-6 sm:p-7">
-        <h1 className="text-3xl font-semibold tracking-tight text-text-primary">Settings</h1>
+        <h1 className="font-display text-3xl font-semibold tracking-[-0.04em] text-text-primary">Settings</h1>
       </section>
 
       <section className="glass-card overflow-hidden">
         <div className="flex flex-col gap-4 border-b border-border-default px-6 py-5 md:flex-row md:items-end md:justify-between">
           <div>
-            <h2 className="text-xl font-semibold text-text-primary">Service health</h2>
+            <h2 className="font-display text-xl font-semibold tracking-[-0.03em] text-text-primary">Service health</h2>
           </div>
           <button
             onClick={runTests}
@@ -151,7 +151,7 @@ export default function SettingsPage() {
 
       <section className="grid gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
         <div className="glass-card p-6">
-          <h2 className="text-xl font-semibold text-text-primary">Data management</h2>
+          <h2 className="font-display text-xl font-semibold tracking-[-0.03em] text-text-primary">Data management</h2>
 
           <div className="mt-5 grid gap-3 sm:grid-cols-3">
             <ActionButton
@@ -240,7 +240,7 @@ export default function SettingsPage() {
         </div>
 
         <div className="glass-card p-6">
-          <h2 className="text-xl font-semibold text-text-primary">Setup</h2>
+          <h2 className="font-display text-xl font-semibold tracking-[-0.03em] text-text-primary">Setup</h2>
           <div className="mt-5 space-y-5 text-sm leading-6 text-slate-600">
             <SetupStep
               title="Supabase"

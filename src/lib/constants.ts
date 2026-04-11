@@ -3,6 +3,7 @@
 // ──────────────────────────────────────────────
 
 export type AssetClass = 'Stocks' | 'ETFs' | 'Crypto' | 'Mutual Funds' | 'Cash' | 'Gold' | 'Bonds' | 'Others';
+export type AllocationClass = AssetClass;
 export type Geography = 'India' | 'US' | 'UAE' | 'Global' | 'Others';
 export type Risk = 'Low' | 'Medium' | 'High';
 export type Currency = 'AED' | 'USD' | 'INR';
@@ -11,6 +12,7 @@ export type PriceSource = 'mfapi' | 'twelvedata' | 'coingecko' | 'alphavantage' 
 
 export const PLATFORM_OPTIONS: string[] = ['IG', 'iVestor', 'Binance', 'Groww', 'Custom'];
 export const ASSET_CLASS_OPTIONS: AssetClass[] = ['Stocks', 'ETFs', 'Crypto', 'Mutual Funds', 'Cash', 'Gold', 'Bonds', 'Others'];
+export const ALLOCATION_CLASS_OPTIONS: AllocationClass[] = ['Stocks', 'ETFs', 'Crypto', 'Mutual Funds', 'Cash', 'Gold', 'Bonds', 'Others'];
 export const GEOGRAPHY_OPTIONS: Geography[] = ['India', 'US', 'UAE', 'Global', 'Others'];
 export const RISK_OPTIONS: Risk[] = ['Low', 'Medium', 'High'];
 export const CURRENCY_OPTIONS: Currency[] = ['AED', 'USD', 'INR'];
@@ -75,6 +77,7 @@ export interface Holding {
   assetName: string;
   ticker: string;
   assetClass: AssetClass;
+  allocationClass?: AllocationClass;
   sector: string;
   geography: Geography;
   risk: Risk;
@@ -118,11 +121,11 @@ export const PIE_COLORS = [
 ];
 
 export const DARK_PIE_COLORS = [
-  '#7C8DA6',
-  '#93A4BD',
-  '#A8B5C7',
-  '#BBC5D3',
-  '#D3DAE4',
+  '#4A4DFF',
+  '#F24B8A',
+  '#6F2DBD',
+  '#8896FF',
+  '#C15CFF',
 ];
 
 export const LIGHT_PLATFORM_COLORS = {

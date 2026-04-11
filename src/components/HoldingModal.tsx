@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ASSET_CLASS_OPTIONS, CURRENCY_OPTIONS, GEOGRAPHY_OPTIONS, PLATFORM_OPTIONS, RISK_OPTIONS, type Currency, type Holding } from "@/lib/constants";
+import { ALLOCATION_CLASS_OPTIONS, ASSET_CLASS_OPTIONS, CURRENCY_OPTIONS, GEOGRAPHY_OPTIONS, PLATFORM_OPTIONS, RISK_OPTIONS, type Currency, type Holding } from "@/lib/constants";
 import { computeHolding, formatMoney, toNumber } from "@/lib/utils";
 
 interface Props {
@@ -17,6 +17,7 @@ const emptyForm: Holding = {
   assetName: "",
   ticker: "",
   assetClass: "Stocks",
+  allocationClass: "Stocks",
   sector: "",
   geography: "India",
   risk: "Medium",
@@ -42,7 +43,13 @@ export default function HoldingModal({ holding, inrToAedRate, onSave, onClose }:
     return { ...emptyForm, purchases: [] };
   });
   const [expandedPurchaseIndex, setExpandedPurchaseIndex] = useState<number | null>(0);
+  const [showAllocationGroup, setShowAllocationGroup] = useState(
+    () => Boolean(holding?.allocationClass && holding.allocationClass !== holding.assetClass)
+  );
   const preview = useMemo(() => computeHolding(form, inrToAedRate), [form, inrToAedRate]);
+
+  const showsTickerField = form.assetClass !== "Mutual Funds" && form.assetClass !== "Cash";
+  const showsSchemeCodeField = form.assetClass === "Mutual Funds";
 
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
@@ -94,14 +101,56 @@ export default function HoldingModal({ holding, inrToAedRate, onSave, onClose }:
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             <FormSelect label="Platform" value={form.platform} options={PLATFORM_OPTIONS} onChange={(value) => update({ platform: value })} />
             <FormInput label="Asset Name" value={form.assetName} onChange={(value) => update({ assetName: value })} placeholder="Apple, Bitcoin, Nifty ETF" required />
-            <FormInput label="Ticker" value={form.ticker} onChange={(value) => update({ ticker: value })} placeholder="AAPL, BTC" />
-            <FormSelect label="Asset Class" value={form.assetClass} options={ASSET_CLASS_OPTIONS} onChange={(value) => update({ assetClass: value as Holding["assetClass"] })} />
+            {showsTickerField ? (
+              <FormInput label="Ticker" value={form.ticker} onChange={(value) => update({ ticker: value })} placeholder="AAPL, BTC" />
+            ) : null}
+            <FormSelect
+              label="Instrument Type"
+              value={form.assetClass}
+              options={ASSET_CLASS_OPTIONS}
+              onChange={(value) =>
+                setForm((current) => {
+                  const nextAssetClass = value as Holding["assetClass"];
+                  const shouldSyncAllocationClass = !current.allocationClass || current.allocationClass === current.assetClass;
+                  const nextShowsTickerField = nextAssetClass !== "Mutual Funds" && nextAssetClass !== "Cash";
+                  const nextShowsSchemeCodeField = nextAssetClass === "Mutual Funds";
+
+                  return {
+                    ...current,
+                    assetClass: nextAssetClass,
+                    allocationClass: shouldSyncAllocationClass ? nextAssetClass : current.allocationClass,
+                    ticker: nextShowsTickerField ? current.ticker : "",
+                    schemeCode: nextShowsSchemeCodeField ? current.schemeCode : undefined,
+                  };
+                })
+              }
+            />
+            <div className="text-sm">
+              {!showAllocationGroup ? (
+                <button
+                  type="button"
+                  onClick={() => setShowAllocationGroup(true)}
+                  className="mt-1 text-sm font-medium text-slate-600 underline-offset-2 transition hover:text-slate-900 hover:underline"
+                >
+                  Customize allocation group
+                </button>
+              ) : (
+                <FormSelect
+                  label="Allocation Group"
+                  value={form.allocationClass || form.assetClass}
+                  options={ALLOCATION_CLASS_OPTIONS}
+                  onChange={(value) => update({ allocationClass: value as Holding["allocationClass"] })}
+                />
+              )}
+            </div>
             <FormInput label="Sector / Theme" value={form.sector} onChange={(value) => update({ sector: value })} placeholder="Technology, Banking" />
             <FormSelect label="Geography" value={form.geography} options={GEOGRAPHY_OPTIONS} onChange={(value) => update({ geography: value as Holding["geography"] })} />
             <FormSelect label="Risk" value={form.risk} options={RISK_OPTIONS} onChange={(value) => update({ risk: value as Holding["risk"] })} />
             <FormNumber label="Current Market Price" value={form.currentPrice} onChange={(value) => update({ currentPrice: value })} />
             <FormSelect label="Currency" value={form.currency} options={CURRENCY_OPTIONS} onChange={(value) => update({ currency: value as Currency })} />
-            <FormInput label="Scheme Code" value={form.schemeCode || ""} onChange={(value) => update({ schemeCode: value })} placeholder="AMFI code" />
+            {showsSchemeCodeField ? (
+              <FormInput label="Scheme Code" value={form.schemeCode || ""} onChange={(value) => update({ schemeCode: value })} placeholder="AMFI code" />
+            ) : null}
           </div>
 
           <label className="block text-sm">

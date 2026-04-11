@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { PieChart, Pie, Cell, Tooltip } from "recharts";
 import { type ComputedHolding, DARK_PIE_COLORS, LIGHT_ASSET_CLASS_COLORS, LIGHT_GEOGRAPHY_COLORS, LIGHT_PLATFORM_COLORS } from "@/lib/constants";
 import MeasuredChart from "@/components/MeasuredChart";
@@ -13,9 +13,11 @@ interface Props {
 
 export default function AllocationCharts({ holdings, totalValue }: Props) {
   const [isDarkMode, setIsDarkMode] = useState(false);
-  const [mobileChartIndex, setMobileChartIndex] = useState(0);
+  const [mobileChartIndex, setMobileChartIndex] = useState(1);
+  const mobileTrackRef = useRef<HTMLDivElement | null>(null);
+  const mobileCardRefs = useRef<Array<HTMLDivElement | null>>([]);
   const byPlatform = getAllocation(holdings, "platform", totalValue);
-  const byAssetClass = getAllocation(holdings, "assetClass", totalValue);
+  const byAssetClass = getAllocation(holdings, "allocationClass", totalValue);
   const byGeography = getAllocation(holdings, "geography", totalValue);
 
   useEffect(() => {
@@ -72,22 +74,122 @@ export default function AllocationCharts({ holdings, totalValue }: Props) {
 
   const chartCards = [
     { title: "By platform", items: byPlatform, colorMap: platformColorMap },
-    { title: "By asset class", items: byAssetClass, colorMap: assetClassColorMap },
+    { title: "By category", items: byAssetClass, colorMap: assetClassColorMap },
     { title: "By geography", items: byGeography, colorMap: geographyColorMap },
   ];
 
-  const mobileChart = chartCards[mobileChartIndex] ?? chartCards[0];
+  const activeMobileChart = chartCards[mobileChartIndex] ?? chartCards[0];
+
+  function scrollToMobileChart(index: number) {
+    const nextIndex = (index + chartCards.length) % chartCards.length;
+    const nextCard = mobileCardRefs.current[nextIndex];
+
+    if (!nextCard) {
+      setMobileChartIndex(nextIndex);
+      return;
+    }
+
+    nextCard.scrollIntoView({
+      behavior: "smooth",
+      block: "nearest",
+      inline: "nearest",
+    });
+    setMobileChartIndex(nextIndex);
+  }
+
+  useEffect(() => {
+    const track = mobileTrackRef.current;
+
+    if (!track) {
+      return;
+    }
+
+    let frameId = 0;
+
+    const syncChartIndex = () => {
+      frameId = 0;
+
+      const nearestIndex = mobileCardRefs.current.reduce((bestIndex, card, index) => {
+        if (!card) {
+          return bestIndex;
+        }
+
+        const distance = Math.abs(card.offsetLeft - track.scrollLeft);
+        const bestCard = mobileCardRefs.current[bestIndex];
+        const bestDistance = bestCard ? Math.abs(bestCard.offsetLeft - track.scrollLeft) : Number.POSITIVE_INFINITY;
+
+        return distance < bestDistance ? index : bestIndex;
+      }, 0);
+
+      setMobileChartIndex((current) => (current === nearestIndex ? current : nearestIndex));
+    };
+
+    const handleScroll = () => {
+      if (frameId) {
+        cancelAnimationFrame(frameId);
+      }
+
+      frameId = requestAnimationFrame(syncChartIndex);
+    };
+
+    track.addEventListener("scroll", handleScroll, { passive: true });
+
+    return () => {
+      track.removeEventListener("scroll", handleScroll);
+      if (frameId) {
+        cancelAnimationFrame(frameId);
+      }
+    };
+  }, [chartCards.length]);
+
+  useEffect(() => {
+    const defaultCard = mobileCardRefs.current[1];
+
+    if (!defaultCard) {
+      return;
+    }
+
+    defaultCard.scrollIntoView({
+      behavior: "auto",
+      block: "nearest",
+      inline: "nearest",
+    });
+  }, []);
 
   return (
     <section>
       <div className="sm:hidden">
         <div className="relative">
-          <PieAllocationCard title={mobileChart.title} items={mobileChart.items} colorMap={mobileChart.colorMap} isDarkMode={isDarkMode} />
+          <div
+            ref={mobileTrackRef}
+            className="flex items-stretch snap-x snap-mandatory overflow-x-auto scroll-smooth"
+            style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+            aria-label={`${activeMobileChart.title} chart`}
+          >
+            {chartCards.map((chart, index) => (
+              <div
+                key={chart.title}
+                ref={(node) => {
+                  mobileCardRefs.current[index] = node;
+                }}
+                className="w-full shrink-0 snap-center"
+              >
+                <div className="h-full px-1">
+                  <PieAllocationCard title={chart.title} items={chart.items} colorMap={chart.colorMap} isDarkMode={isDarkMode} />
+                </div>
+              </div>
+            ))}
+          </div>
 
           <button
             type="button"
-            onClick={() => setMobileChartIndex((current) => (current === 0 ? chartCards.length - 1 : current - 1))}
-            className="absolute left-2 top-1/2 z-10 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full border border-slate-200 bg-white/95 text-slate-600 shadow-sm active:bg-slate-50"
+            onClick={() => scrollToMobileChart(mobileChartIndex - 1)}
+            className="absolute left-2 top-1/2 z-10 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full border shadow-sm"
+            style={{
+              borderColor: isDarkMode ? "var(--color-border-default)" : "#e2e8f0",
+              backgroundColor: isDarkMode ? "rgba(15, 17, 23, 0.95)" : "rgba(255, 255, 255, 0.95)",
+              color: isDarkMode ? "var(--color-text-secondary)" : "#475569",
+            }}
             aria-label="Show previous chart"
           >
             <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -97,8 +199,13 @@ export default function AllocationCharts({ holdings, totalValue }: Props) {
 
           <button
             type="button"
-            onClick={() => setMobileChartIndex((current) => (current === chartCards.length - 1 ? 0 : current + 1))}
-            className="absolute right-2 top-1/2 z-10 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full border border-slate-200 bg-white/95 text-slate-600 shadow-sm active:bg-slate-50"
+            onClick={() => scrollToMobileChart(mobileChartIndex + 1)}
+            className="absolute right-2 top-1/2 z-10 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full border shadow-sm"
+            style={{
+              borderColor: isDarkMode ? "var(--color-border-default)" : "#e2e8f0",
+              backgroundColor: isDarkMode ? "rgba(15, 17, 23, 0.95)" : "rgba(255, 255, 255, 0.95)",
+              color: isDarkMode ? "var(--color-text-secondary)" : "#475569",
+            }}
             aria-label="Show next chart"
           >
             <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -113,7 +220,7 @@ export default function AllocationCharts({ holdings, totalValue }: Props) {
               <button
                 key={chart.title}
                 type="button"
-                onClick={() => setMobileChartIndex(index)}
+                onClick={() => scrollToMobileChart(index)}
                 className={`h-2 rounded-full transition-all ${index === mobileChartIndex ? "w-5 bg-slate-700" : "w-2 bg-slate-300"}`}
                 aria-label={`Show ${chart.title} chart`}
               />
@@ -150,13 +257,13 @@ function PieAllocationCard({
 }) {
   return (
     <div
-      className="dashboard-card overflow-hidden rounded-2xl border p-4 shadow-sm"
+      className="dashboard-card flex h-full flex-col overflow-hidden rounded-2xl border p-4 shadow-sm"
       style={{
-        backgroundColor: isDarkMode ? "#02091f" : "#ffffff",
-        borderColor: isDarkMode ? "#334155" : "#e2e8f0",
+        backgroundColor: isDarkMode ? "var(--color-bg-card)" : "#ffffff",
+        borderColor: isDarkMode ? "var(--color-border-default)" : "#e2e8f0",
       }}
     >
-      <h2 style={{ color: isDarkMode ? "#f8fafc" : "#0f172a" }} className="text-base font-semibold">
+      <h2 style={{ color: isDarkMode ? "var(--color-text-primary)" : "#0f172a" }} className="font-display text-base font-semibold tracking-[-0.02em]">
         {title}
       </h2>
       {items.length ? (
@@ -172,10 +279,10 @@ function PieAllocationCard({
                 </Pie>
                 <Tooltip
                   contentStyle={{
-                    background: isDarkMode ? "#02091f" : "#ffffff",
-                    border: isDarkMode ? "1px solid #334155" : "1px solid #e2e8f0",
+                    background: isDarkMode ? "var(--color-bg-elevated)" : "#ffffff",
+                    border: isDarkMode ? "1px solid var(--color-border-default)" : "1px solid #e2e8f0",
                     borderRadius: "0.75rem",
-                    color: isDarkMode ? "#f8fafc" : "#0f172a",
+                    color: isDarkMode ? "var(--color-text-primary)" : "#0f172a",
                     fontSize: "12px",
                     boxShadow: isDarkMode ? "0 8px 24px rgba(15,23,42,0.4)" : "0 8px 24px rgba(15,23,42,0.08)",
                   }}
@@ -191,7 +298,7 @@ function PieAllocationCard({
                 key={item.label}
                 className="flex items-center justify-between gap-2 rounded-xl px-2.5 py-2 text-xs"
                 style={{
-                  backgroundColor: isDarkMode ? "#071329" : "#f8fafc",
+                  backgroundColor: isDarkMode ? "var(--color-bg-elevated)" : "#f8fafc",
                 }}
               >
                 <div className="flex min-w-0 items-center gap-2">
@@ -199,14 +306,14 @@ function PieAllocationCard({
                     className="h-2.5 w-2.5 shrink-0 rounded-full border"
                     style={{
                       backgroundColor: colorMap.get(item.label) ?? (isDarkMode ? "#7C8DA6" : "#0f172a"),
-                      borderColor: isDarkMode ? "#334155" : "#cbd5e1",
+                      borderColor: isDarkMode ? "var(--color-border-default)" : "#cbd5e1",
                     }}
                   />
-                  <span style={{ color: isDarkMode ? "#f8fafc" : "#0f172a" }} className="truncate">
+                  <span style={{ color: isDarkMode ? "var(--color-text-primary)" : "#0f172a" }} className="truncate">
                     {item.label}
                   </span>
                 </div>
-                <span style={{ color: isDarkMode ? "#94a3b8" : "#64748b" }} className="shrink-0">
+                <span style={{ color: isDarkMode ? "var(--color-text-muted)" : "#64748b" }} className="shrink-0">
                   {item.weight.toFixed(1)}%
                 </span>
               </div>
@@ -217,8 +324,8 @@ function PieAllocationCard({
         <div
           className="mt-4 rounded-xl p-4 text-center text-sm"
           style={{
-            backgroundColor: isDarkMode ? "#071329" : "#f1f5f9",
-            color: isDarkMode ? "#94a3b8" : "#64748b",
+            backgroundColor: isDarkMode ? "var(--color-bg-elevated)" : "#f1f5f9",
+            color: isDarkMode ? "var(--color-text-muted)" : "#64748b",
           }}
         >
           No data yet

@@ -24,12 +24,20 @@ function looksLikeEtf(holding: Holding) {
   );
 }
 
+function getDefaultAllocationClass(holding: Holding) {
+  return holding.allocationClass ?? holding.assetClass;
+}
+
 export function normalizeHolding(holding: Holding): Holding {
   const normalized = { ...holding };
+  const defaultAllocationClass = getDefaultAllocationClass(normalized);
+
+  normalized.allocationClass = defaultAllocationClass;
 
   if (normalized.assetClass === "Mutual Funds" && looksLikeEtf(normalized)) {
     normalized.assetClass = "ETFs";
     normalized.schemeCode = undefined;
+    normalized.allocationClass = defaultAllocationClass;
   }
 
   if (normalized.assetClass === "Mutual Funds") {
