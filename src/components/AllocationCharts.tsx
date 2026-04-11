@@ -13,6 +13,7 @@ interface Props {
 
 export default function AllocationCharts({ holdings, totalValue }: Props) {
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const [mobileChartIndex, setMobileChartIndex] = useState(0);
   const byPlatform = getAllocation(holdings, "platform", totalValue);
   const byAssetClass = getAllocation(holdings, "assetClass", totalValue);
   const byGeography = getAllocation(holdings, "geography", totalValue);
@@ -69,12 +70,68 @@ export default function AllocationCharts({ holdings, totalValue }: Props) {
     return new Map(Object.entries(LIGHT_GEOGRAPHY_COLORS));
   }, [byGeography, isDarkMode]);
 
+  const chartCards = [
+    { title: "By platform", items: byPlatform, colorMap: platformColorMap },
+    { title: "By asset class", items: byAssetClass, colorMap: assetClassColorMap },
+    { title: "By geography", items: byGeography, colorMap: geographyColorMap },
+  ];
+
+  const mobileChart = chartCards[mobileChartIndex] ?? chartCards[0];
+
   return (
-    <section className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
-      <div className="grid auto-cols-[85%] grid-flow-col gap-3 sm:auto-cols-auto sm:grid-flow-row sm:grid-cols-2 sm:gap-4 xl:grid-cols-3">
-        <PieAllocationCard title="By platform" items={byPlatform} colorMap={platformColorMap} isDarkMode={isDarkMode} />
-        <PieAllocationCard title="By asset class" items={byAssetClass} colorMap={assetClassColorMap} isDarkMode={isDarkMode} />
-        <PieAllocationCard title="By geography" items={byGeography} colorMap={geographyColorMap} isDarkMode={isDarkMode} />
+    <section>
+      <div className="sm:hidden">
+        <div className="relative">
+          <PieAllocationCard title={mobileChart.title} items={mobileChart.items} colorMap={mobileChart.colorMap} isDarkMode={isDarkMode} />
+
+          <button
+            type="button"
+            onClick={() => setMobileChartIndex((current) => (current === 0 ? chartCards.length - 1 : current - 1))}
+            className="absolute left-2 top-1/2 z-10 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full border border-slate-200 bg-white/95 text-slate-600 shadow-sm active:bg-slate-50"
+            aria-label="Show previous chart"
+          >
+            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setMobileChartIndex((current) => (current === chartCards.length - 1 ? 0 : current + 1))}
+            className="absolute right-2 top-1/2 z-10 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full border border-slate-200 bg-white/95 text-slate-600 shadow-sm active:bg-slate-50"
+            aria-label="Show next chart"
+          >
+            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="mt-3 flex justify-center">
+          <div className="flex items-center gap-1.5">
+            {chartCards.map((chart, index) => (
+              <button
+                key={chart.title}
+                type="button"
+                onClick={() => setMobileChartIndex(index)}
+                className={`h-2 rounded-full transition-all ${index === mobileChartIndex ? "w-5 bg-slate-700" : "w-2 bg-slate-300"}`}
+                aria-label={`Show ${chart.title} chart`}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="hidden gap-4 sm:grid sm:grid-cols-2 xl:grid-cols-3">
+        {chartCards.map((chart) => (
+          <PieAllocationCard
+            key={chart.title}
+            title={chart.title}
+            items={chart.items}
+            colorMap={chart.colorMap}
+            isDarkMode={isDarkMode}
+          />
+        ))}
       </div>
     </section>
   );

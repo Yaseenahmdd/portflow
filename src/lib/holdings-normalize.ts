@@ -12,8 +12,25 @@ function inferSchemeCode(assetName: string) {
   return match?.schemeCode;
 }
 
+function looksLikeEtf(holding: Holding) {
+  const assetName = holding.assetName.trim();
+  const ticker = holding.ticker.trim().toUpperCase();
+
+  return (
+    /\betf\b/i.test(assetName) ||
+    /\bbees\b/i.test(assetName) ||
+    /\bETF\b/.test(ticker) ||
+    /\bBEES\b/.test(ticker)
+  );
+}
+
 export function normalizeHolding(holding: Holding): Holding {
   const normalized = { ...holding };
+
+  if (normalized.assetClass === "Mutual Funds" && looksLikeEtf(normalized)) {
+    normalized.assetClass = "ETFs";
+    normalized.schemeCode = undefined;
+  }
 
   if (normalized.assetClass === "Mutual Funds") {
     normalized.priceSource = "mfapi";

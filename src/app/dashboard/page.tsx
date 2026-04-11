@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import AllocationCharts from "@/components/AllocationCharts";
 import HoldingDetailsModal from "@/components/HoldingDetailsModal";
 import HoldingModal from "@/components/HoldingModal";
@@ -9,35 +9,7 @@ import PortfolioSummaryStrip from "@/components/PortfolioSummaryStrip";
 import PortfolioTrendChart from "@/components/PortfolioTrendChart";
 import { useDashboardState } from "@/hooks/useDashboardState";
 import type { Holding } from "@/lib/constants";
-import { getAedRate, toNumber } from "@/lib/utils";
-
-function getInvestedAmountAedOnDate(holding: Holding, snapshotDate: string, inrToAedRate: number) {
-  const snapshotTime = new Date(`${snapshotDate}T23:59:59`).getTime();
-
-  if (holding.purchases?.length) {
-    return holding.purchases.reduce((sum, purchase) => {
-      const purchaseTime = new Date(`${purchase.date}T23:59:59`).getTime();
-
-      if (Number.isNaN(purchaseTime) || purchaseTime > snapshotTime) {
-        return sum;
-      }
-
-      const quantity = toNumber(purchase.quantity);
-      const price = toNumber(purchase.price);
-      const rateToAed =
-        holding.currency === "INR"
-          ? toNumber(purchase.fxRate) || inrToAedRate
-          : getAedRate(holding.currency, inrToAedRate);
-
-      return sum + quantity * price * rateToAed;
-    }, 0);
-  }
-
-  const quantity = toNumber(holding.quantity);
-  const avgBuyPrice = toNumber(holding.avgBuyPrice);
-  const rateToAed = getAedRate(holding.currency, inrToAedRate);
-  return quantity * avgBuyPrice * rateToAed;
-}
+import { timeAgo } from "@/lib/utils";
 
 export default function DashboardPage() {
   const [modalOpen, setModalOpen] = useState(false);
@@ -45,7 +17,6 @@ export default function DashboardPage() {
   const [viewingHolding, setViewingHolding] = useState<Holding | null>(null);
   const {
     mounted,
-    holdings,
     inrToAedRate,
     isAmountsVisible,
     isRefreshing,
@@ -77,28 +48,51 @@ export default function DashboardPage() {
   const handlePriceUpdate = (id: string, price: number) => {
     updatePrice(id, price);
   };
+
   const trendChartData = useMemo(
     () =>
       snapshots.map((snapshot) => ({
         date: snapshot.snapshotDate,
-        invested: holdings.reduce(
-          (sum, holding) => sum + getInvestedAmountAedOnDate(holding, snapshot.snapshotDate, inrToAedRate),
-          0
-        ),
+        invested: snapshot.totalInvestedAed,
         value: snapshot.totalValueAed,
       })),
-    [holdings, inrToAedRate, snapshots]
+    [snapshots]
   );
+
   const previousTrendPoint = trendChartData.length > 1 ? trendChartData[trendChartData.length - 2] : null;
   const latestTrendPoint = trendChartData[trendChartData.length - 1] ?? null;
+  const latestRefreshAt = useMemo(() => {
+    const timestamps = computedHoldings
+      .map((holding) => holding.lastPriceUpdate)
+      .filter((value): value is string => Boolean(value))
+      .map((value) => new Date(value).getTime())
+      .filter((value) => Number.isFinite(value));
+
+    if (!timestamps.length) {
+      return null;
+    }
+
+    return new Date(Math.max(...timestamps)).toISOString();
+  }, [computedHoldings]);
   const latestGainLoss = latestTrendPoint ? latestTrendPoint.value - latestTrendPoint.invested : 0;
   const previousGainLoss = previousTrendPoint ? previousTrendPoint.value - previousTrendPoint.invested : 0;
-  const dailyChange = latestTrendPoint && previousTrendPoint
-    ? latestGainLoss - previousGainLoss
-    : 0;
-  const dailyChangePercent = previousTrendPoint?.value
-    ? (dailyChange / previousTrendPoint.value) * 100
-    : 0;
+  const dailyChange = latestTrendPoint && previousTrendPoint ? latestGainLoss - previousGainLoss : 0;
+  const dailyChangePercent = previousTrendPoint?.value ? (dailyChange / previousTrendPoint.value) * 100 : 0;
+
+  useEffect(() => {
+    window.dispatchEvent(
+      new CustomEvent("portflow:status-meta", {
+        detail: {
+          lastRefresh: isRefreshing ? "Refreshing..." : `Last refresh ${latestRefreshAt ? timeAgo(latestRefreshAt) : "not yet available"}`,
+          fxRate: (inrToAedRate ? 1 / inrToAedRate : 0).toFixed(2),
+        },
+      })
+    );
+
+    return () => {
+      window.dispatchEvent(new CustomEvent("portflow:status-meta", { detail: null }));
+    };
+  }, [inrToAedRate, isRefreshing, latestRefreshAt]);
 
   if (!mounted) {
     return (
@@ -149,13 +143,13 @@ export default function DashboardPage() {
       </div>
 
       <PortfolioSummaryStrip
+        holdingsCount={computedHoldings.length}
         portfolioValue={summary.totalValue}
         investedAmount={summary.totalInvested}
         totalGainLoss={summary.totalGainLoss}
         totalGainLossPercent={summary.totalGainLossPct}
         dailyChange={dailyChange}
         dailyChangePercent={dailyChangePercent}
-        fxRate={inrToAedRate ? 1 / inrToAedRate : 0}
         isAmountsVisible={isAmountsVisible}
       />
 

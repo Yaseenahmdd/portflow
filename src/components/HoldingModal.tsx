@@ -41,6 +41,7 @@ export default function HoldingModal({ holding, inrToAedRate, onSave, onClose }:
     }
     return { ...emptyForm, purchases: [] };
   });
+  const [expandedPurchaseIndex, setExpandedPurchaseIndex] = useState<number | null>(0);
   const preview = useMemo(() => computeHolding(form, inrToAedRate), [form, inrToAedRate]);
 
   const handleSubmit = (event: React.FormEvent) => {
@@ -114,19 +115,163 @@ export default function HoldingModal({ holding, inrToAedRate, onSave, onClose }:
               <h3 className="text-sm font-semibold text-slate-900">Purchase History</h3>
               <button
                 type="button"
-                onClick={() => updatePurchases([...(form.purchases || []), { 
-                  quantity: 0, 
-                  price: 0, 
-                  date: new Date().toISOString().split("T")[0],
-                  ...(form.currency === "INR" ? { fxRate: Number(inrToAedRate.toFixed(4)) } : {})
-                }])}
+                onClick={() => {
+                  updatePurchases([...(form.purchases || []), {
+                    quantity: 0,
+                    price: 0,
+                    date: new Date().toISOString().split("T")[0],
+                    ...(form.currency === "INR" ? { fxRate: Number(inrToAedRate.toFixed(4)) } : {}),
+                  }]);
+                  setExpandedPurchaseIndex((form.purchases || []).length);
+                }}
                 className="text-xs font-medium text-emerald-600 hover:text-emerald-700"
               >
                 + Add Purchase
               </button>
             </div>
-            
-            <div className="overflow-x-auto">
+
+            <div className="space-y-3 sm:hidden">
+              {(form.purchases || []).map((purchase, index) => {
+                const quantity = toNumber(purchase.quantity);
+                const price = toNumber(purchase.price);
+                const invested = quantity * price;
+
+                return (
+                  <div key={index} className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                    <button
+                      type="button"
+                      onClick={() => setExpandedPurchaseIndex((current) => (current === index ? null : index))}
+                      className="flex w-full items-center justify-between gap-3 text-left"
+                      aria-expanded={expandedPurchaseIndex === index}
+                    >
+                      <div className="min-w-0">
+                        <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                          Purchase {index + 1}
+                        </div>
+                        <div className="mt-1 text-sm font-medium text-slate-900">{purchase.date || "No date"}</div>
+                        <div className="mt-1 text-xs text-slate-500">
+                          Qty {quantity < 1 ? quantity.toFixed(7) : quantity.toLocaleString()} • {formatMoney(price, form.currency)}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="text-right">
+                          <div className="text-xs uppercase tracking-[0.12em] text-slate-500">Invested</div>
+                          <div className="mt-1 text-sm font-semibold text-slate-900">{formatMoney(invested, form.currency)}</div>
+                        </div>
+                        <span className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500">
+                          <svg className={`h-4 w-4 transition-transform ${expandedPurchaseIndex === index ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </span>
+                      </div>
+                    </button>
+
+                    {expandedPurchaseIndex === index ? (
+                      <div className="mt-4 grid gap-3 border-t border-slate-200 pt-4">
+                        <div className="flex items-center justify-end">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const newPurchases = [...(form.purchases || [])];
+                              newPurchases.splice(index, 1);
+                              updatePurchases(newPurchases);
+                              setExpandedPurchaseIndex((current) => {
+                                if (current === index) return null;
+                                if (current !== null && current > index) return current - 1;
+                                return current;
+                              });
+                            }}
+                            className="inline-flex h-8 items-center justify-center rounded-full border border-slate-200 bg-white px-3 text-xs font-medium text-slate-500 hover:text-red-500"
+                            title="Remove purchase"
+                            aria-label={`Remove purchase ${index + 1}`}
+                          >
+                            Remove
+                          </button>
+                        </div>
+
+                        <label className="text-sm">
+                          <span className="mb-1 block text-slate-600">Date</span>
+                          <input
+                            type="date"
+                            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                            value={purchase.date}
+                            onChange={(e) => {
+                              const newPurchases = [...(form.purchases || [])];
+                              newPurchases[index] = { ...purchase, date: e.target.value };
+                              updatePurchases(newPurchases);
+                            }}
+                            required
+                          />
+                        </label>
+
+                        <div className="grid grid-cols-2 gap-3">
+                          <label className="text-sm">
+                            <span className="mb-1 block text-slate-600">Qty</span>
+                            <input
+                              type="number"
+                              step="any"
+                              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                              placeholder="Qty"
+                              value={purchase.quantity || ""}
+                              onChange={(e) => {
+                                const newPurchases = [...(form.purchases || [])];
+                                newPurchases[index] = { ...purchase, quantity: toNumber(e.target.value) };
+                                updatePurchases(newPurchases);
+                              }}
+                              required
+                            />
+                          </label>
+
+                          <label className="text-sm">
+                            <span className="mb-1 block text-slate-600">Price</span>
+                            <input
+                              type="number"
+                              step="any"
+                              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                              placeholder="Price"
+                              value={purchase.price || ""}
+                              onChange={(e) => {
+                                const newPurchases = [...(form.purchases || [])];
+                                newPurchases[index] = { ...purchase, price: toNumber(e.target.value) };
+                                updatePurchases(newPurchases);
+                              }}
+                              required
+                            />
+                          </label>
+                        </div>
+
+                        {form.currency === "INR" ? (
+                          <label className="text-sm">
+                            <span className="mb-1 block text-slate-600">FX Rate</span>
+                            <input
+                              type="number"
+                              step="any"
+                              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                              placeholder="FX Rate"
+                              value={purchase.fxRate || ""}
+                              onChange={(e) => {
+                                const newPurchases = [...(form.purchases || [])];
+                                newPurchases[index] = { ...purchase, fxRate: toNumber(e.target.value) };
+                                updatePurchases(newPurchases);
+                              }}
+                              title="INR to AED rate at time of purchase"
+                            />
+                          </label>
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })}
+
+              {(!form.purchases || form.purchases.length === 0) && (
+                <p className="rounded-xl border border-dashed border-slate-200 px-4 py-6 text-center text-xs text-slate-500">
+                  No purchases recorded. Tap `+ Add Purchase` to start tracking.
+                </p>
+              )}
+            </div>
+
+            <div className="hidden overflow-x-auto sm:block">
               <table className="min-w-full border-collapse border border-slate-200 text-sm">
                 <thead>
                   <tr className="bg-slate-50 text-xs uppercase tracking-wider text-slate-500">
@@ -235,13 +380,6 @@ export default function HoldingModal({ holding, inrToAedRate, onSave, onClose }:
             </div>
           </div>
 
-          <div className="grid gap-3 md:grid-cols-4">
-            <AutoStat title="Auto Invested Amount" value={formatMoney(preview.investedAmount, form.currency || "AED")} sub={formatMoney(preview.investedAmountAed, "AED")} />
-            <AutoStat title="Auto Current Value" value={formatMoney(preview.currentValue, form.currency || "AED")} sub={formatMoney(preview.currentValueAed, "AED")} />
-            <AutoStat title="Local Return" value={`${formatMoney(preview.gainLoss, form.currency || "AED")} (${preview.localGainLossPct.toFixed(2)}%)`} sub={preview.currency === "INR" ? "Pure stock return in INR" : `Pure return in ${preview.currency}`} />
-            <AutoStat title="Investor Return (AED)" value={`${formatMoney(preview.gainLossAed, "AED")} (${preview.gainLossPct.toFixed(2)}%)`} sub="Current AED return using today’s FX rate" />
-          </div>
-
           <div className="flex items-center justify-end gap-3">
             <button type="button" onClick={onClose} className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700">
               Cancel
@@ -261,16 +399,6 @@ function PreviewRow({ label, value }: { label: string; value: string }) {
     <div className="flex items-center justify-between gap-4 text-sm">
       <span className="text-slate-500">{label}</span>
       <span className="font-medium text-slate-900">{value}</span>
-    </div>
-  );
-}
-
-function AutoStat({ title, value, sub }: { title: string; value: string; sub: string }) {
-  return (
-    <div className="rounded-xl bg-slate-50 px-4 py-3 text-sm ring-1 ring-slate-200">
-      <div className="text-slate-500">{title}</div>
-      <div className="mt-1 font-semibold text-slate-900">{value}</div>
-      <div className="mt-1 text-xs text-slate-500">{sub}</div>
     </div>
   );
 }

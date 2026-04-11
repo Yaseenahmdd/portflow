@@ -23,11 +23,25 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
     search: "",
   });
   const [actionMenuId, setActionMenuId] = useState<string | null>(null);
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [mobileColumn3Mode, setMobileColumn3Mode] = useState<"value" | "return">("value");
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
   const platforms = useMemo(() => ["All", ...new Set(holdings.map((holding) => holding.platform))], [holdings]);
+  const activeFilterCount = [
+    filters.platform !== "All",
+    filters.assetClass !== "All",
+    filters.geography !== "All",
+    filters.risk !== "All",
+    filters.search.trim().length > 0,
+  ].filter(Boolean).length;
+  const activeFilterChips = [
+    filters.platform !== "All" ? { key: "platform", label: filters.platform } : null,
+    filters.assetClass !== "All" ? { key: "assetClass", label: filters.assetClass } : null,
+    filters.geography !== "All" ? { key: "geography", label: filters.geography } : null,
+    filters.risk !== "All" ? { key: "risk", label: filters.risk } : null,
+  ].filter((chip): chip is { key: "platform" | "assetClass" | "geography" | "risk"; label: string } => chip !== null);
 
   const filteredHoldings = useMemo(() => {
     return holdings.filter((holding) => {
@@ -119,6 +133,20 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
     return trimmedName;
   }
 
+  function clearFilters() {
+    setFilters({
+      platform: "All",
+      assetClass: "All",
+      geography: "All",
+      risk: "All",
+      search: "",
+    });
+  }
+
+  function clearSingleFilter(key: "platform" | "assetClass" | "geography" | "risk") {
+    setFilters((current) => ({ ...current, [key]: "All" }));
+  }
+
   return (
     <section className="dashboard-card rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
       <div className="border-b border-slate-200 p-4 sm:p-5">
@@ -130,14 +158,77 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
             </div>
             <button
               onClick={onAddHolding}
-              className="rounded-xl bg-accent-violet px-3 py-2 text-sm font-medium text-bg-primary shadow-sm transition hover:brightness-105"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-accent-violet text-bg-primary shadow-sm transition hover:brightness-105 sm:h-auto sm:w-auto sm:px-3 sm:py-2"
+              aria-label="Add holding"
             >
-              Add Holding
+              <svg className="h-4.5 w-4.5 sm:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14M5 12h14" />
+              </svg>
+              <span className="hidden sm:inline">Add Holding</span>
             </button>
           </div>
         </div>
 
-        <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+        <div className="mt-4 space-y-3 sm:hidden">
+          <FilterInput
+            label="Search"
+            value={filters.search}
+            onChange={(value) => setFilters({ ...filters, search: value })}
+            placeholder="Asset, ticker, sector"
+          />
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setMobileFiltersOpen((current) => !current)}
+              className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
+              aria-expanded={mobileFiltersOpen}
+              aria-label="Toggle filters"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 5h18M6 12h12M10 19h4" />
+              </svg>
+              <span>Filters{activeFilterCount ? ` (${activeFilterCount})` : ""}</span>
+            </button>
+
+            {activeFilterCount ? (
+              <button
+                type="button"
+                onClick={clearFilters}
+                className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50"
+              >
+                Clear
+              </button>
+            ) : null}
+          </div>
+
+          {activeFilterChips.length ? (
+            <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+              {activeFilterChips.map((chip) => (
+                <button
+                  key={chip.key}
+                  type="button"
+                  onClick={() => clearSingleFilter(chip.key)}
+                  className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-700"
+                >
+                  <span>{chip.label}</span>
+                  <span className="text-slate-400">x</span>
+                </button>
+              ))}
+            </div>
+          ) : null}
+
+          {mobileFiltersOpen ? (
+            <div className="grid gap-3 rounded-2xl border border-slate-200 bg-slate-50/70 p-3">
+              <FilterSelect label="Platform" value={filters.platform} options={platforms} onChange={(value) => setFilters({ ...filters, platform: value })} />
+              <FilterSelect label="Class" value={filters.assetClass} options={["All", ...ASSET_CLASS_OPTIONS]} onChange={(value) => setFilters({ ...filters, assetClass: value })} />
+              <FilterSelect label="Geography" value={filters.geography} options={["All", ...GEOGRAPHY_OPTIONS]} onChange={(value) => setFilters({ ...filters, geography: value })} />
+              <FilterSelect label="Risk" value={filters.risk} options={["All", ...RISK_OPTIONS]} onChange={(value) => setFilters({ ...filters, risk: value })} />
+            </div>
+          ) : null}
+        </div>
+
+        <div className="mt-4 hidden gap-3 md:grid-cols-2 xl:grid-cols-5 sm:grid">
           <FilterInput label="Search" value={filters.search} onChange={(value) => setFilters({ ...filters, search: value })} placeholder="Asset, ticker, sector" />
           <FilterSelect label="Platform" value={filters.platform} options={platforms} onChange={(value) => setFilters({ ...filters, platform: value })} />
           <FilterSelect label="Class" value={filters.assetClass} options={["All", ...ASSET_CLASS_OPTIONS]} onChange={(value) => setFilters({ ...filters, assetClass: value })} />
@@ -146,17 +237,35 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
         </div>
       </div>
 
-      <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/50 px-4 py-2 sm:hidden">
+      <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/50 px-4 py-2 pr-6 sm:hidden">
         <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Asset</span>
-        <button
-          onClick={() => setMobileColumn3Mode((mode) => (mode === "value" ? "return" : "value"))}
-          className="flex items-center gap-1.5 rounded bg-slate-100 px-2 py-1 text-xs font-semibold uppercase tracking-wider text-slate-600 active:bg-slate-200"
-        >
-          {mobileColumn3Mode === "value" ? "Current" : "Investor"}
-          <svg className="h-3 w-3 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-          </svg>
-        </button>
+        <div className="flex shrink-0 items-center gap-1.5">
+          <span className="max-w-[3.9rem] text-center text-[8px] font-semibold uppercase leading-[1.05] tracking-[0.05em] text-slate-500">
+            {mobileColumn3Mode === "value" ? (
+              <>
+                Current
+                <br />
+                (Invested)
+              </>
+            ) : (
+              <>
+                Gain/Loss
+                <br />
+                (%)
+              </>
+            )}
+          </span>
+          <button
+            type="button"
+            onClick={() => setMobileColumn3Mode((mode) => (mode === "value" ? "return" : "value"))}
+            className="flex h-5 w-5 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 active:bg-slate-100"
+            aria-label="Toggle current and gain/loss view"
+          >
+            <svg className="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+            </svg>
+          </button>
+        </div>
       </div>
 
       <div className="divide-y divide-slate-100 sm:hidden">
@@ -204,17 +313,6 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
 
               {actionMenuId === holding.id && (
                 <div className="border-t border-slate-50 bg-slate-50/50 px-4 py-3">
-                  <div className="mb-3">
-                    <label className="mb-1 block text-xs font-medium text-slate-500">Update Market Price ({holding.currency})</label>
-                    <input
-                      type="number"
-                      step="any"
-                      value={holding.currentPrice || ""}
-                      onChange={(event) => onPriceUpdate(holding.id, Number(event.target.value))}
-                      className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-sm"
-                      placeholder="0"
-                    />
-                  </div>
                   <div className="grid grid-cols-2 gap-2">
                     <button
                       onClick={() => {

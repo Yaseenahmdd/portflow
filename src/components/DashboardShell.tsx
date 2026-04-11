@@ -19,6 +19,7 @@ export default function DashboardShell({
   const [isAmountsVisible, setIsAmountsVisible] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const [statusMeta, setStatusMeta] = useState<{ lastRefresh: string; fxRate: string } | null>(null);
   const profileMenuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -76,6 +77,21 @@ export default function DashboardShell({
     return () => window.removeEventListener("portflow:refresh-state", handleRefreshState as EventListener);
   }, []);
 
+  useEffect(() => {
+    function handleStatusMeta(event: Event) {
+      const detail = (event as CustomEvent<{ lastRefresh: string; fxRate: string } | null>).detail;
+      if (detail && typeof detail.lastRefresh === "string" && typeof detail.fxRate === "string") {
+        setStatusMeta(detail);
+        return;
+      }
+
+      setStatusMeta(null);
+    }
+
+    window.addEventListener("portflow:status-meta", handleStatusMeta as EventListener);
+    return () => window.removeEventListener("portflow:status-meta", handleStatusMeta as EventListener);
+  }, []);
+
   const handleSignOut = async () => {
     const supabase = createClient();
     await supabase.auth.signOut();
@@ -94,9 +110,18 @@ export default function DashboardShell({
               Portflow
             </a>
             <div className="flex items-center gap-2">
+              {statusMeta ? (
+                <div className="hidden items-center gap-2 pr-1 text-xs text-slate-500 md:flex">
+                  <span className="font-medium text-slate-600">{statusMeta.lastRefresh}</span>
+                  <span>•</span>
+                  <span>
+                    AED/INR <span className="font-mono text-slate-600">{statusMeta.fxRate}</span>
+                  </span>
+                </div>
+              ) : null}
               <button
                 onClick={() => window.dispatchEvent(new CustomEvent("portflow:refresh-prices"))}
-                className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
+                className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-slate-50 p-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
                 aria-label={isRefreshing ? "Refreshing prices" : "Refresh prices"}
               >
                 <svg
@@ -108,7 +133,6 @@ export default function DashboardShell({
                 >
                   <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182M2.985 19.644l3.181-3.183" />
                 </svg>
-                <span>{isRefreshing ? "Refreshing..." : "Refresh"}</span>
               </button>
 
               <button
@@ -119,7 +143,7 @@ export default function DashboardShell({
                     })
                   )
                 }
-                className="rounded-full border border-slate-200 bg-slate-50 p-2.5 text-slate-700 hover:bg-slate-100"
+                className="hidden rounded-full border border-slate-200 bg-slate-50 p-2.5 text-slate-700 hover:bg-slate-100 sm:block"
                 title={isAmountsVisible ? "Hide values" : "Show values"}
                 aria-label={isAmountsVisible ? "Hide values" : "Show values"}
               >
