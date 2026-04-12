@@ -1,7 +1,9 @@
 "use client";
-
-import { useState } from "react";
 import { formatMoney, formatOrMask } from "@/lib/utils";
+
+interface SparklinePoint {
+  value: number;
+}
 
 interface Props {
   holdingsCount: number;
@@ -12,6 +14,7 @@ interface Props {
   dailyChange: number;
   dailyChangePercent: number;
   isAmountsVisible: boolean;
+  portfolioHistory?: SparklinePoint[];
 }
 
 function formatSignedMoney(value: number, currency: string, isVisible: boolean) {
@@ -41,16 +44,79 @@ function splitPortfolioValue(value: number, isVisible: boolean) {
   };
 }
 
+function PortfolioValueSparkline({
+  points,
+  isAmountsVisible,
+}: {
+  points: SparklinePoint[];
+  isAmountsVisible: boolean;
+}) {
+  if (!isAmountsVisible || points.length < 2) {
+    return null;
+  }
+
+  const width = 132;
+  const height = 48;
+  const values = points.map((point) => point.value);
+  const minValue = Math.min(...values);
+  const maxValue = Math.max(...values);
+  const range = maxValue - minValue || Math.max(maxValue * 0.03, 1);
+
+  const coordinates = points.map((point, index) => {
+    const x = (index / Math.max(points.length - 1, 1)) * width;
+    const normalized = (point.value - minValue) / range;
+    const y = height - normalized * (height - 12) - 6;
+    return { x, y };
+  });
+
+  const path = coordinates.map((point, index) => `${index === 0 ? "M" : "L"} ${point.x} ${point.y}`).join(" ");
+  const lastPoint = coordinates[coordinates.length - 1];
+
+  return (
+    <div className="pointer-events-none absolute inset-y-0 right-9 hidden items-center sm:flex">
+      <svg
+        viewBox={`0 0 ${width} ${height}`}
+        className="h-12 w-32 overflow-visible"
+        preserveAspectRatio="none"
+        aria-hidden="true"
+      >
+        <defs>
+          <filter id="portfolio-summary-spark-shadow" x="-20%" y="-40%" width="160%" height="200%">
+            <feDropShadow dx="0" dy="2" stdDeviation="2" floodColor="rgba(148, 163, 184, 0.28)" />
+          </filter>
+        </defs>
+        <path
+          d={path}
+          fill="none"
+          stroke="rgba(148, 163, 184, 0.72)"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          filter="url(#portfolio-summary-spark-shadow)"
+        />
+        <circle cx={lastPoint.x} cy={lastPoint.y} r="5.5" fill="rgba(148, 163, 184, 0.12)" filter="url(#portfolio-summary-spark-shadow)" />
+        <circle cx={lastPoint.x} cy={lastPoint.y} r="3" fill="rgba(100, 116, 139, 0.9)" />
+      </svg>
+    </div>
+  );
+}
+
 function SummaryCard({
   label,
   value,
   subtext,
   tone = "default",
+  isPrimary = false,
+  portfolioHistory = [],
+  isAmountsVisible = true,
 }: {
   label: string;
   value: string;
   subtext: string;
   tone?: "default" | "positive" | "negative";
+  isPrimary?: boolean;
+  portfolioHistory?: SparklinePoint[];
+  isAmountsVisible?: boolean;
 }) {
   const toneClass =
     tone === "positive"
@@ -60,56 +126,13 @@ function SummaryCard({
         : "text-text-primary";
 
   return (
-    <div className="dashboard-card rounded-xl border border-border-default bg-bg-card p-5 shadow-sm sm:p-6">
-      <div className="text-sm text-text-secondary">{label}</div>
-      <div className={`mt-3 text-xl font-semibold leading-tight sm:text-2xl ${toneClass}`}>{value}</div>
-      <div className="mt-1.5 text-sm text-text-muted">{subtext}</div>
-    </div>
-  );
-}
-
-function PerformanceToggleCard({
-  totalGainLoss,
-  totalGainLossPercent,
-  dailyChange,
-  dailyChangePercent,
-  isAmountsVisible,
-}: {
-  totalGainLoss: number;
-  totalGainLossPercent: number;
-  dailyChange: number;
-  dailyChangePercent: number;
-  isAmountsVisible: boolean;
-}) {
-  const [mode, setMode] = useState<"overall" | "today">("overall");
-  const isOverall = mode === "overall";
-  const value = isOverall ? totalGainLoss : dailyChange;
-  const percent = isOverall ? totalGainLossPercent : dailyChangePercent;
-  const toneClass = value >= 0 ? "text-accent-gain" : "text-accent-loss";
-
-  return (
-    <div className="dashboard-card rounded-xl border border-border-default bg-bg-card p-5 shadow-sm sm:p-6">
-      <div className="flex items-center justify-between gap-3">
-        <div className="whitespace-nowrap text-xs text-text-secondary sm:text-sm">
-          {isOverall ? "Total G/L" : "Today"}
-        </div>
-        <button
-          type="button"
-          onClick={() => setMode((current) => (current === "overall" ? "today" : "overall"))}
-          className="inline-flex items-center gap-1.5 px-1 py-0.5 text-[11px] font-medium text-text-muted transition hover:text-text-secondary"
-          aria-label={isOverall ? "Show today's change" : "Show total gain or loss"}
-        >
-          <span aria-hidden="true">&lt;</span>
-          <span>{isOverall ? "Overall" : "Today"}</span>
-          <span aria-hidden="true">&gt;</span>
-        </button>
+    <div className={`dashboard-card relative overflow-hidden rounded-xl border border-border-default bg-bg-card shadow-sm ${isPrimary ? "p-6 sm:p-7" : "p-5 sm:p-6"}`}>
+      <div className={`text-sm ${isPrimary ? "font-medium text-text-secondary" : "text-text-secondary"}`}>{label}</div>
+      <div className={`relative z-10 mt-3 font-semibold leading-tight ${isPrimary ? `text-3xl sm:text-[2.15rem] ${toneClass}` : `text-2xl sm:text-[2rem] ${toneClass}`}`}>
+        {value}
       </div>
-      <div className={`mt-3 text-xl font-semibold leading-tight sm:text-2xl ${toneClass}`}>
-        {formatSignedMoney(value, "AED", isAmountsVisible)}
-      </div>
-      <div className="mt-1.5 text-sm text-text-muted">
-        {isOverall ? `${formatSignedPercent(percent)} overall` : `${formatSignedPercent(percent)} vs previous day`}
-      </div>
+      <div className={`relative z-10 ${isPrimary ? "mt-2 text-sm text-text-muted" : "mt-1.5 text-sm text-text-muted"}`}>{subtext}</div>
+      {isPrimary ? <PortfolioValueSparkline points={portfolioHistory} isAmountsVisible={isAmountsVisible} /> : null}
     </div>
   );
 }
@@ -123,8 +146,13 @@ export default function PortfolioSummaryStrip({
   dailyChange,
   dailyChangePercent,
   isAmountsVisible,
+  portfolioHistory = [],
 }: Props) {
   const mobilePortfolioValue = splitPortfolioValue(portfolioValue, isAmountsVisible);
+  const desktopInvested = formatOrMask(investedAmount, "AED", isAmountsVisible);
+  const desktopPortfolioValue = formatOrMask(portfolioValue, "AED", isAmountsVisible);
+  const desktopDailyChange = formatSignedMoney(dailyChange, "AED", isAmountsVisible);
+  const desktopTotalGainLoss = formatSignedMoney(totalGainLoss, "AED", isAmountsVisible);
 
   return (
     <>
@@ -197,23 +225,26 @@ export default function PortfolioSummaryStrip({
         </div>
       </section>
 
-      <section className="hidden grid-cols-2 gap-3 sm:grid sm:gap-4 xl:grid-cols-3">
+      <section className="hidden gap-3 sm:grid sm:grid-cols-2 sm:gap-4 xl:grid-cols-[1.3fr_1fr_1fr]">
         <SummaryCard
           label="Portfolio Value"
-          value={formatOrMask(portfolioValue, "AED", isAmountsVisible)}
-          subtext="Current market value"
+          value={desktopPortfolioValue}
+          subtext={`Invested ${desktopInvested}`}
+          isPrimary
+          portfolioHistory={portfolioHistory}
+          isAmountsVisible={isAmountsVisible}
         />
         <SummaryCard
-          label="Invested"
-          value={formatOrMask(investedAmount, "AED", isAmountsVisible)}
-          subtext="Total capital invested"
+          label="Today's P/L"
+          value={desktopDailyChange}
+          subtext={`${formatSignedPercent(dailyChangePercent)} daily change`}
+          tone={dailyChange >= 0 ? "positive" : "negative"}
         />
-        <PerformanceToggleCard
-          totalGainLoss={totalGainLoss}
-          totalGainLossPercent={totalGainLossPercent}
-          dailyChange={dailyChange}
-          dailyChangePercent={dailyChangePercent}
-          isAmountsVisible={isAmountsVisible}
+        <SummaryCard
+          label="Overall P/L"
+          value={desktopTotalGainLoss}
+          subtext={`${formatSignedPercent(totalGainLossPercent)} since inception`}
+          tone={totalGainLoss >= 0 ? "positive" : "negative"}
         />
       </section>
     </>

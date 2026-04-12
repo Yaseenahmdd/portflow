@@ -9,6 +9,11 @@ interface PriceResult {
   error?: string;
 }
 
+export interface RefreshFailure {
+  source: string;
+  error: string;
+}
+
 interface RefreshResponse {
   success: boolean;
   results?: PriceResult[];
@@ -118,5 +123,16 @@ export async function refreshDashboardPrices(holdings: Holding[]) {
     throw new Error(data.error || "Refresh failed");
   }
 
-  return applyRefreshResults(holdings, data.results || []);
+  const results = data.results || [];
+  const failures: RefreshFailure[] = results
+    .filter((result) => !result.success)
+    .map((result) => ({
+      source: result.source,
+      error: result.error || "Refresh source failed",
+    }));
+
+  return {
+    ...applyRefreshResults(holdings, results),
+    failures,
+  };
 }
