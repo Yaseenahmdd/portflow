@@ -16,6 +16,20 @@ import { generateId } from "@/lib/utils";
 
 const REMOTE_SYNC_INTERVAL_MS = 30 * 1000;
 const REMOTE_SYNC_COOLDOWN_MS = 2500;
+const REMOTE_WRITE_DEBOUNCE_MS = 2500;
+
+const PRICE_ONLY_FIELDS = new Set(["currentPrice", "lastPriceUpdate"]);
+
+/** Signature of fields that warrant a remote write when changed.
+ *  Excludes currentPrice and lastPriceUpdate so price refreshes
+ *  don't trigger unnecessary Supabase writes. */
+function getHoldingsStructureSignature(holdings: Holding[]) {
+  return JSON.stringify(
+    holdings.map((h) =>
+      Object.fromEntries(Object.entries(h).filter(([k]) => !PRICE_ONLY_FIELDS.has(k)))
+    )
+  );
+}
 
 function getHoldingsSignature(holdings: Holding[]) {
   return JSON.stringify(holdings);
@@ -29,6 +43,7 @@ export function useDashboardHoldings() {
   const holdingsRef = useRef<Holding[]>([]);
   const lastLocalMutationAtRef = useRef(0);
   const remoteSyncInFlightRef = useRef(false);
+  const lastWrittenStructureRef = useRef<string>("");
 
   useEffect(() => {
     holdingsRef.current = holdings;
@@ -99,16 +114,26 @@ export function useDashboardHoldings() {
       return;
     }
 
-    lastLocalMutationAtRef.current = Date.now();
     persistLocalHoldings(userId, holdings);
+
+    // Skip remote write if only prices changed — price refreshes update
+    // currentPrice/lastPriceUpdate frequently and don't need to be persisted
+    // on every tick. Structure changes (adds, deletes, edits) always write.
+    const structureSignature = getHoldingsStructureSignature(holdings);
+    if (structureSignature === lastWrittenStructureRef.current) {
+      return;
+    }
+
+    lastLocalMutationAtRef.current = Date.now();
 
     const timeoutId = window.setTimeout(async () => {
       try {
         await upsertRemoteHoldingsState(userId, holdings);
+        lastWrittenStructureRef.current = structureSignature;
       } catch (error) {
         console.error("Failed to sync holdings to Supabase:", error);
       }
-    }, 400);
+    }, REMOTE_WRITE_DEBOUNCE_MS);
 
     return () => window.clearTimeout(timeoutId);
   }, [holdings, mounted, userId]);

@@ -2,6 +2,21 @@
 
 import { useEffect, useState } from "react";
 import { type Holding } from "@/lib/constants";
+
+const REQUIRED_HOLDING_FIELDS: (keyof Holding)[] = [
+  "id", "assetName", "ticker", "assetClass", "geography",
+  "currency", "quantity", "avgBuyPrice", "currentPrice", "priceSource",
+];
+
+function validateHoldings(data: unknown): data is Holding[] {
+  if (!Array.isArray(data)) return false;
+  return data.every(
+    (item) =>
+      item !== null &&
+      typeof item === "object" &&
+      REQUIRED_HOLDING_FIELDS.every((field) => field in item)
+  );
+}
 import { DEFAULT_INR_TO_AED_RATE, getRateStorageKey } from "@/lib/dashboard/persistence";
 import { buildBackfilledSnapshots } from "@/lib/history-backfill";
 import { normalizeHoldings } from "@/lib/holdings-normalize";
@@ -74,15 +89,13 @@ export default function SettingsPage() {
       { name: "Frankfurter", path: "/api/prices/currency" },
     ];
 
-    const results: Record<string, string> = {};
+    setTestResults(Object.fromEntries(endpoints.map((e) => [e.name, "Checking"])));
 
-    for (const endpoint of endpoints) {
-      results[endpoint.name] = "Checking";
-      setTestResults({ ...results });
-      results[endpoint.name] = await testEndpoint(endpoint.path);
-      setTestResults({ ...results });
-    }
+    const settled = await Promise.all(
+      endpoints.map(async (endpoint) => [endpoint.name, await testEndpoint(endpoint.path)] as const)
+    );
 
+    setTestResults(Object.fromEntries(settled));
     setTesting(false);
   };
 
@@ -183,11 +196,11 @@ export default function SettingsPage() {
                   const text = await file.text();
                   try {
                     const parsed = JSON.parse(text);
-                    if (!Array.isArray(parsed)) {
-                      throw new Error("Expected an array of holdings");
+                    if (!validateHoldings(parsed)) {
+                      throw new Error("Invalid holdings file: each entry must include id, assetName, ticker, assetClass, geography, currency, quantity, avgBuyPrice, currentPrice, and priceSource");
                     }
 
-                    const { normalized } = normalizeHoldings(parsed as Holding[]);
+                    const { normalized } = normalizeHoldings(parsed);
                     const supabase = createClient();
                     await replaceRemoteHoldings(supabase, userId, normalized);
                     localStorage.setItem(storageKey, JSON.stringify(normalized));
