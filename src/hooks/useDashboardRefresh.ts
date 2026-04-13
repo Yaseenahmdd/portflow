@@ -12,12 +12,14 @@ interface UseDashboardRefreshOptions {
   holdings: Holding[];
   setHoldings: Dispatch<SetStateAction<Holding[]>>;
   setInrToAedRate: Dispatch<SetStateAction<number>>;
+  setFxUpdatedAt: Dispatch<SetStateAction<string | null>>;
 }
 
 export function useDashboardRefresh({
   holdings,
   setHoldings,
   setInrToAedRate,
+  setFxUpdatedAt,
 }: UseDashboardRefreshOptions) {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isPullRefreshing, setIsPullRefreshing] = useState(false);
@@ -60,6 +62,10 @@ export function useDashboardRefresh({
       if (refreshedState.inrToAedRate) {
         setInrToAedRate(refreshedState.inrToAedRate);
       }
+
+      if (refreshedState.fxUpdatedAt) {
+        setFxUpdatedAt(refreshedState.fxUpdatedAt);
+      }
     } catch (error) {
       setRefreshError(error instanceof Error ? error.message : "Refresh failed");
       console.error("Price refresh error:", error);
@@ -68,7 +74,7 @@ export function useDashboardRefresh({
       setIsRefreshing(false);
       setIsPullRefreshing(false);
     }
-  }, [setHoldings, setInrToAedRate]);
+  }, [setFxUpdatedAt, setHoldings, setInrToAedRate]);
 
   useEffect(() => {
     function handleRefresh() {

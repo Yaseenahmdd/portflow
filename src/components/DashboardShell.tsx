@@ -19,7 +19,7 @@ export default function DashboardShell({
   const [isAmountsVisible, setIsAmountsVisible] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
-  const [statusMeta, setStatusMeta] = useState<{ lastRefresh: string; fxRate: string } | null>(null);
+  const [statusMeta, setStatusMeta] = useState<{ lastRefresh: string; fxRate: string; fxUpdatedAt: string } | null>(null);
   const profileMenuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -79,8 +79,13 @@ export default function DashboardShell({
 
   useEffect(() => {
     function handleStatusMeta(event: Event) {
-      const detail = (event as CustomEvent<{ lastRefresh: string; fxRate: string } | null>).detail;
-      if (detail && typeof detail.lastRefresh === "string" && typeof detail.fxRate === "string") {
+      const detail = (event as CustomEvent<{ lastRefresh: string; fxRate: string; fxUpdatedAt: string } | null>).detail;
+      if (
+        detail &&
+        typeof detail.lastRefresh === "string" &&
+        typeof detail.fxRate === "string" &&
+        typeof detail.fxUpdatedAt === "string"
+      ) {
         setStatusMeta(detail);
         return;
       }
@@ -119,6 +124,8 @@ export default function DashboardShell({
                   <span>
                     AED/INR <span className="font-mono text-slate-600">{statusMeta.fxRate}</span>
                   </span>
+                  <span className="mx-2 h-3.5 w-px bg-slate-200" aria-hidden="true" />
+                  <span>{statusMeta.fxUpdatedAt}</span>
                 </div>
               ) : null}
 

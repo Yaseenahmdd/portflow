@@ -41,6 +41,7 @@ export default function DashboardPage() {
   const {
     mounted,
     inrToAedRate,
+    fxUpdatedAt,
     isAmountsVisible,
     isRefreshing,
     isPullRefreshing,
@@ -112,6 +113,7 @@ export default function DashboardPage() {
         detail: {
           lastRefresh: isRefreshing ? "Refreshing..." : `Last refresh ${latestRefreshAt ? timeAgo(latestRefreshAt) : "not yet available"}`,
           fxRate: (inrToAedRate ? 1 / inrToAedRate : 0).toFixed(2),
+          fxUpdatedAt: `FX ${fxUpdatedAt ? timeAgo(fxUpdatedAt) : "not yet available"}`,
         },
       })
     );
@@ -119,7 +121,7 @@ export default function DashboardPage() {
     return () => {
       window.dispatchEvent(new CustomEvent("portflow:status-meta", { detail: null }));
     };
-  }, [inrToAedRate, isRefreshing, latestRefreshAt]);
+  }, [fxUpdatedAt, inrToAedRate, isRefreshing, latestRefreshAt]);
 
   if (!mounted) {
     return (

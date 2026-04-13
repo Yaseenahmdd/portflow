@@ -12,6 +12,7 @@ export function useDashboardState() {
     holdings: holdingsState.holdings,
     setHoldings: holdingsState.setHoldings,
     setInrToAedRate: holdingsState.setInrToAedRate,
+    setFxUpdatedAt: holdingsState.setFxUpdatedAt,
   });
   const visibilityState = useDashboardVisibility();
   const summaryState = usePortfolioSummary(holdingsState.holdings, holdingsState.inrToAedRate);

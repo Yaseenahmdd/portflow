@@ -3,9 +3,11 @@
 import { useCallback, useEffect, useState } from "react";
 import type { Holding } from "@/lib/constants";
 import {
+  DEFAULT_FX_UPDATED_AT,
   DEFAULT_INR_TO_AED_RATE,
   loadDashboardPersistenceState,
   persistDashboardRate,
+  persistFxUpdatedAt,
   persistLocalHoldings,
   syncRemoteHoldings,
 } from "@/lib/dashboard/persistence";
@@ -15,6 +17,7 @@ import { generateId } from "@/lib/utils";
 export function useDashboardHoldings() {
   const [holdings, setHoldings] = useState<Holding[]>([]);
   const [inrToAedRate, setInrToAedRate] = useState(DEFAULT_INR_TO_AED_RATE);
+  const [fxUpdatedAt, setFxUpdatedAt] = useState<string | null>(DEFAULT_FX_UPDATED_AT);
   const [mounted, setMounted] = useState(false);
   const [userId, setUserId] = useState("default");
 
@@ -31,6 +34,7 @@ export function useDashboardHoldings() {
         setUserId(state.userId);
         setHoldings(state.holdings);
         setInrToAedRate(state.inrToAedRate);
+        setFxUpdatedAt(state.fxUpdatedAt);
       } catch (error) {
         console.error("Failed to load dashboard holdings:", error);
       } finally {
@@ -69,6 +73,12 @@ export function useDashboardHoldings() {
     }
   }, [inrToAedRate, mounted, userId]);
 
+  useEffect(() => {
+    if (mounted) {
+      persistFxUpdatedAt(userId, fxUpdatedAt);
+    }
+  }, [fxUpdatedAt, mounted, userId]);
+
   const saveHolding = useCallback((holding: Holding) => {
     const normalizedHolding = normalizeHoldings([holding]).normalized[0];
 
@@ -99,6 +109,8 @@ export function useDashboardHoldings() {
     setHoldings,
     inrToAedRate,
     setInrToAedRate,
+    fxUpdatedAt,
+    setFxUpdatedAt,
     saveHolding,
     deleteHolding,
     updatePrice,

@@ -24,6 +24,7 @@ function applyRefreshResults(holdings: Holding[], results: PriceResult[]) {
   const now = new Date().toISOString();
   const updated = [...holdings];
   let inrToAedRate: number | undefined;
+  let fxUpdatedAt: string | undefined;
 
   for (const result of results) {
     if (!result.success || !result.data) {
@@ -32,7 +33,9 @@ function applyRefreshResults(holdings: Holding[], results: PriceResult[]) {
 
     switch (result.source) {
       case "currency": {
-        inrToAedRate = computeInrToAed(result.data as ExchangeRates | null);
+        const exchangeRates = result.data as ExchangeRates | null;
+        inrToAedRate = computeInrToAed(exchangeRates);
+        fxUpdatedAt = exchangeRates?.fetchedAt || now;
         break;
       }
 
@@ -100,7 +103,7 @@ function applyRefreshResults(holdings: Holding[], results: PriceResult[]) {
     }
   }
 
-  return { holdings: updated, inrToAedRate };
+  return { holdings: updated, inrToAedRate, fxUpdatedAt };
 }
 
 export async function refreshDashboardPrices(holdings: Holding[]) {
