@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Holding } from "@/lib/constants";
 import {
   DEFAULT_FX_UPDATED_AT,
@@ -14,8 +14,11 @@ import {
 import { normalizeHoldings } from "@/lib/holdings-normalize";
 import { generateId } from "@/lib/utils";
 
+type LivePriceOverride = Pick<Holding, "currentPrice" | "lastPriceUpdate">;
+
 export function useDashboardHoldings() {
   const [holdings, setHoldings] = useState<Holding[]>([]);
+  const [livePriceOverrides, setLivePriceOverrides] = useState<Record<string, LivePriceOverride>>({});
   const [inrToAedRate, setInrToAedRate] = useState(DEFAULT_INR_TO_AED_RATE);
   const [fxUpdatedAt, setFxUpdatedAt] = useState<string | null>(DEFAULT_FX_UPDATED_AT);
   const [mounted, setMounted] = useState(false);
@@ -79,8 +82,27 @@ export function useDashboardHoldings() {
     }
   }, [fxUpdatedAt, mounted, userId]);
 
+  const displayHoldings = useMemo(
+    () =>
+      holdings.map((holding) => {
+        const override = livePriceOverrides[holding.id];
+        return override ? { ...holding, ...override } : holding;
+      }),
+    [holdings, livePriceOverrides]
+  );
+
   const saveHolding = useCallback((holding: Holding) => {
     const normalizedHolding = normalizeHoldings([holding]).normalized[0];
+
+    setLivePriceOverrides((current) => {
+      if (!current[normalizedHolding.id]) {
+        return current;
+      }
+
+      const next = { ...current };
+      delete next[normalizedHolding.id];
+      return next;
+    });
 
     setHoldings((current) => {
       const exists = current.some((item) => item.id === normalizedHolding.id);
@@ -93,19 +115,73 @@ export function useDashboardHoldings() {
   }, []);
 
   const deleteHolding = useCallback((id: string) => {
+    setLivePriceOverrides((current) => {
+      if (!current[id]) {
+        return current;
+      }
+
+      const next = { ...current };
+      delete next[id];
+      return next;
+    });
     setHoldings((current) => current.filter((holding) => holding.id !== id));
   }, []);
 
   const updatePrice = useCallback((id: string, price: number) => {
+    setLivePriceOverrides((current) => {
+      if (!current[id]) {
+        return current;
+      }
+
+      const next = { ...current };
+      delete next[id];
+      return next;
+    });
     setHoldings((current) =>
-      current.map((holding) => (holding.id === id ? { ...holding, currentPrice: price } : holding))
+      current.map((holding) =>
+        holding.id === id
+          ? { ...holding, currentPrice: price, lastPriceUpdate: new Date().toISOString() }
+          : holding
+      )
     );
+  }, []);
+
+  const applyLivePrices = useCallback((updates: Record<string, LivePriceOverride>) => {
+    if (!Object.keys(updates).length) {
+      return;
+    }
+
+    setLivePriceOverrides((current) => ({
+      ...current,
+      ...updates,
+    }));
+  }, []);
+
+  const clearLivePrices = useCallback((ids?: string[]) => {
+    setLivePriceOverrides((current) => {
+      if (!ids?.length) {
+        return {};
+      }
+
+      let changed = false;
+      const next = { ...current };
+
+      for (const id of ids) {
+        if (id in next) {
+          delete next[id];
+          changed = true;
+        }
+      }
+
+      return changed ? next : current;
+    });
   }, []);
 
   return {
     mounted,
     userId,
     holdings,
+    displayHoldings,
     setHoldings,
     inrToAedRate,
     setInrToAedRate,
@@ -114,5 +190,7 @@ export function useDashboardHoldings() {
     saveHolding,
     deleteHolding,
     updatePrice,
+    applyLivePrices,
+    clearLivePrices,
   };
 }

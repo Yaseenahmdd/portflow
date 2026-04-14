@@ -74,6 +74,11 @@ export const CRYPTO_IDS: Record<string, string> = {
   ETH: "ethereum",
 };
 
+export const LIVE_CRYPTO_STREAMS: Record<string, string> = {
+  BTC: "btcusdt@ticker",
+  ETH: "ethusdt@ticker",
+};
+
 export interface Purchase {
   quantity: number;
   price: number;

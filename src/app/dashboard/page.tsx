@@ -42,6 +42,7 @@ export default function DashboardPage() {
     mounted,
     inrToAedRate,
     fxUpdatedAt,
+    liveCryptoState,
     isAmountsVisible,
     isRefreshing,
     isPullRefreshing,
@@ -196,6 +197,20 @@ export default function DashboardPage() {
       {!refreshError && refreshFailures.length > 0 ? (
         <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
           Prices updated, but {failureSummary} {refreshFailures.length === 1 ? "was" : "were"} unavailable.
+        </div>
+      ) : null}
+
+      {liveCryptoState.message ? (
+        <div
+          className={`rounded-2xl px-4 py-3 text-sm ${
+            liveCryptoState.state === "connected"
+              ? "border border-emerald-200 bg-emerald-50 text-emerald-800"
+              : liveCryptoState.state === "error"
+                ? "border border-amber-200 bg-amber-50 text-amber-800"
+                : "border border-slate-200 bg-slate-50 text-slate-700"
+          }`}
+        >
+          {liveCryptoState.message}
         </div>
       ) : null}
 

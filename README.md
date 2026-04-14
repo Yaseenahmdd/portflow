@@ -70,9 +70,16 @@ Optional/market-data specific:
 ```bash
 TWELVE_DATA_API_KEY=...
 ALPHA_VANTAGE_API_KEY=...
+NEXT_PUBLIC_ENABLE_LIVE_PRICES=false
 ```
 
 Note: the app now uses Yahoo Finance for Indian equity pricing, so `ALPHA_VANTAGE_API_KEY` is no longer required for the current dashboard flow.
+Set `NEXT_PUBLIC_ENABLE_LIVE_PRICES=true` only in local or preview environments when you want to test live crypto websocket updates without changing the default dashboard behavior elsewhere.
+If your local dev server does not pick up the env flag, you can also enable the experiment in your browser only with:
+
+```js
+localStorage.setItem("portflow-enable-live-prices", "true")
+```
 
 ## Local Development
 
