@@ -1,11 +1,32 @@
 import { createBrowserClient } from '@supabase/ssr';
+import { canUseSupabaseDemoMode, isSupabaseConfigured } from '@/lib/supabase/config';
 
 export function createClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   // If Supabase is not configured, return a mock client
-  if (!url || !key || url === 'your_supabase_project_url') {
+  if (!isSupabaseConfigured()) {
+    if (!canUseSupabaseDemoMode()) {
+      return {
+        auth: {
+          signInWithPassword: async () => ({
+            data: { user: null, session: null },
+            error: new Error('Supabase is not configured'),
+          }),
+          signUp: async () => ({
+            data: { user: null, session: null },
+            error: new Error('Supabase is not configured'),
+          }),
+          signOut: async () => ({ error: new Error('Supabase is not configured') }),
+          getUser: async () => ({
+            data: { user: null },
+            error: new Error('Supabase is not configured'),
+          }),
+        },
+      } as ReturnType<typeof createBrowserClient>;
+    }
+
     return {
       auth: {
         signInWithPassword: async () => ({ data: { user: null, session: null }, error: null }),
