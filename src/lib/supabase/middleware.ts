@@ -34,6 +34,13 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
+  if (!user && request.nextUrl.pathname.startsWith('/api/')) {
+    return NextResponse.json(
+      { success: false, error: 'Authentication required' },
+      { status: 401 }
+    );
+  }
+
   // Redirect unauthenticated users to login (except for /login and /auth paths)
   if (
     !user &&

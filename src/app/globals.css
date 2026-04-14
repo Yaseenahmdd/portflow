@@ -35,10 +35,10 @@ html {
 
 html.dark {
   color-scheme: dark;
-  --color-bg-primary: #0A0B0F;
-  --color-bg-secondary: #0D1016;
-  --color-bg-card: #12141B;
-  --color-bg-card-hover: #151515;
+  --color-bg-primary: #000000;
+  --color-bg-secondary: #090b10;
+  --color-bg-card: #10131a;
+  --color-bg-card-hover: #151922;
   --color-bg-input: #0F1117;
   --color-bg-elevated: #0F1117;
   --color-border-default: #1B1F2A;

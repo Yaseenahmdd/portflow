@@ -1,9 +1,15 @@
 import { fetchAlphaVantageMultiple } from '@/lib/api/alphavantage';
 import { US_ETF_TICKERS } from '@/lib/constants';
+import { requireAuthenticatedRouteUser } from '@/lib/supabase/route-auth';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
+  const auth = await requireAuthenticatedRouteUser();
+  if (auth.response) {
+    return auth.response;
+  }
+
   try {
     const results = await fetchAlphaVantageMultiple(US_ETF_TICKERS);
     return Response.json({ success: true, data: results, timestamp: new Date().toISOString() });

@@ -1,9 +1,15 @@
 import { fetchMutualFundNav } from '@/lib/api/mfapi';
 import { MF_SCHEMES } from '@/lib/constants';
+import { requireAuthenticatedRouteUser } from '@/lib/supabase/route-auth';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
+  const auth = await requireAuthenticatedRouteUser();
+  if (auth.response) {
+    return auth.response;
+  }
+
   try {
     const schemeCodes = Object.values(MF_SCHEMES).map((s) => s.schemeCode);
     const results = await fetchMutualFundNav(schemeCodes);
