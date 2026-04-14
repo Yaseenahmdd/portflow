@@ -1,12 +1,31 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
+import { canUseSupabaseDemoMode, isSupabaseConfigured } from '@/lib/supabase/config';
 
 export async function updateSession(request: NextRequest) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   // If Supabase is not configured, allow all requests (demo mode)
-  if (!supabaseUrl || !supabaseKey || supabaseUrl === 'your_supabase_project_url') {
+  if (!isSupabaseConfigured()) {
+    if (!canUseSupabaseDemoMode()) {
+      if (request.nextUrl.pathname.startsWith('/api/')) {
+        return NextResponse.json(
+          { success: false, error: 'Authentication is unavailable' },
+          { status: 503 }
+        );
+      }
+
+      if (
+        request.nextUrl.pathname.startsWith('/login') ||
+        request.nextUrl.pathname.startsWith('/auth')
+      ) {
+        return NextResponse.next({ request });
+      }
+
+      return NextResponse.redirect(new URL('/login', request.url));
+    }
+
     return NextResponse.next({ request });
   }
 

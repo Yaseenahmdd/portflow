@@ -1,12 +1,29 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import { canUseSupabaseDemoMode, isSupabaseConfigured } from '@/lib/supabase/config';
 
 export async function createClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   // If Supabase is not configured, return a mock client stub
-  if (!supabaseUrl || !supabaseKey || supabaseUrl === 'your_supabase_project_url') {
+  if (!isSupabaseConfigured()) {
+    if (!canUseSupabaseDemoMode()) {
+      return {
+        auth: {
+          getUser: async () => ({
+            data: { user: null },
+            error: new Error('Supabase is not configured'),
+          }),
+          signOut: async () => ({ error: new Error('Supabase is not configured') }),
+          exchangeCodeForSession: async () => ({
+            data: { session: null, user: null },
+            error: new Error('Supabase is not configured'),
+          }),
+        },
+      } as ReturnType<typeof createServerClient>;
+    }
+
     return {
       auth: {
         getUser: async () => ({
