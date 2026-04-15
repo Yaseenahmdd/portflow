@@ -31,8 +31,7 @@ type SupabaseLikeClient = {
       };
     };
     delete: () => {
-      eq: (column: string, value: string) => {
-        eq: (column: string, value: string) => Promise<{ error: { message: string } | null }>;
+      eq: (column: string, value: string) => Promise<{ error: { message: string } | null }> & {
         in: (column: string, values: string[]) => Promise<{ error: { message: string } | null }>;
       };
     };
@@ -177,12 +176,13 @@ export async function replacePortfolioSnapshots(userId: string, snapshots: Portf
   persistLocalPortfolioSnapshots(userId, sortedSnapshots);
 
   if (!sortedSnapshots.length) {
-    const deleteResult = await (supabase
+    const { error: deleteError } = await supabase
       .from("portfolio_snapshots")
       .delete()
-      .eq("user_id", userId) as Promise<{ error: { message: string } | null }>);
-    if (deleteResult.error) {
-      throw new Error(deleteResult.error.message);
+      .eq("user_id", userId);
+
+    if (deleteError) {
+      throw new Error(deleteError.message);
     }
     return true;
   }
@@ -211,14 +211,14 @@ export async function replacePortfolioSnapshots(userId: string, snapshots: Portf
     .filter((snapshotDate) => !nextDates.has(snapshotDate));
 
   if (staleDates.length) {
-    const deleteResult = await supabase
+    const { error: deleteError } = await supabase
       .from("portfolio_snapshots")
       .delete()
       .eq("user_id", userId)
       .in("snapshot_date", staleDates);
 
-    if (deleteResult.error) {
-      throw new Error(deleteResult.error.message);
+    if (deleteError) {
+      throw new Error(deleteError.message);
     }
   }
 

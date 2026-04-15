@@ -49,5 +49,9 @@ export function createClient() {
     } as ReturnType<typeof createBrowserClient>;
   }
 
+  if (!url || !key) {
+    throw new Error('Supabase environment variables are missing');
+  }
+
   return createBrowserClient(url, key);
 }

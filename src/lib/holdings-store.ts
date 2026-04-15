@@ -30,8 +30,7 @@ type SupabaseLikeClient = {
       };
     };
     delete: () => {
-      eq: (column: string, value: string) => {
-        eq: (column: string, value: string) => Promise<{ error: { message: string } | null }>;
+      eq: (column: string, value: string) => Promise<{ error: { message: string } | null }> & {
         in: (column: string, values: string[]) => Promise<{ error: { message: string } | null }>;
       };
     };
@@ -160,11 +159,13 @@ export async function replaceRemoteHoldings(client: unknown, userId: string, hol
   const sanitizedHoldings = sanitizeHoldingIds(holdings);
 
   if (!sanitizedHoldings.length) {
-    const deleteResult = await (client.from("holdings").delete().eq("user_id", userId) as Promise<{
-      error: { message: string } | null;
-    }>);
-    if (deleteResult.error) {
-      throw new Error(deleteResult.error.message);
+    const { error: deleteError } = await client
+      .from("holdings")
+      .delete()
+      .eq("user_id", userId);
+
+    if (deleteError) {
+      throw new Error(deleteError.message);
     }
     return true;
   }
@@ -192,9 +193,14 @@ export async function replaceRemoteHoldings(client: unknown, userId: string, hol
     .filter((id) => !nextIds.has(id));
 
   if (staleIds.length) {
-    const deleteResult = await client.from("holdings").delete().eq("user_id", userId).in("id", staleIds);
-    if (deleteResult.error) {
-      throw new Error(deleteResult.error.message);
+    const { error: deleteError } = await client
+      .from("holdings")
+      .delete()
+      .eq("user_id", userId)
+      .in("id", staleIds);
+
+    if (deleteError) {
+      throw new Error(deleteError.message);
     }
   }
 

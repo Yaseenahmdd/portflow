@@ -1,6 +1,12 @@
-import { createServerClient } from '@supabase/ssr';
+import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import { canUseSupabaseDemoMode, isSupabaseConfigured } from '@/lib/supabase/config';
+
+type SupabaseCookie = {
+  name: string;
+  value: string;
+  options?: CookieOptions;
+};
 
 export async function updateSession(request: NextRequest) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -31,17 +37,21 @@ export async function updateSession(request: NextRequest) {
 
   let supabaseResponse = NextResponse.next({ request });
 
+  if (!supabaseUrl || !supabaseKey) {
+    throw new Error('Supabase environment variables are missing');
+  }
+
   const supabase = createServerClient(supabaseUrl, supabaseKey, {
     cookies: {
       getAll() {
         return request.cookies.getAll();
       },
-      setAll(cookiesToSet) {
-        cookiesToSet.forEach(({ name, value }) =>
+      setAll(cookiesToSet: SupabaseCookie[]) {
+        cookiesToSet.forEach(({ name, value }: SupabaseCookie) =>
           request.cookies.set(name, value)
         );
         supabaseResponse = NextResponse.next({ request });
-        cookiesToSet.forEach(({ name, value, options }) =>
+        cookiesToSet.forEach(({ name, value, options }: SupabaseCookie) =>
           supabaseResponse.cookies.set(name, value, options)
         );
       },
