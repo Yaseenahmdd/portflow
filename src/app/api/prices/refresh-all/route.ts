@@ -4,7 +4,6 @@ import { fetchDfmQuotes } from "@/lib/api/dfm";
 import { fetchExchangeRates } from "@/lib/api/frankfurter";
 import { fetchMutualFundNav } from "@/lib/api/mfapi";
 import type { Holding } from "@/lib/constants";
-import { requireAuthenticatedRouteUser } from "@/lib/supabase/route-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -39,11 +38,6 @@ function normalizeIndianSymbol(holding: Holding) {
 }
 
 export async function POST(request: Request) {
-  const auth = await requireAuthenticatedRouteUser();
-  if (auth.response) {
-    return auth.response;
-  }
-
   try {
     const body = await request.json();
     const holdings = (body?.holdings || []) as Holding[];
