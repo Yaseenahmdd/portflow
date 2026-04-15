@@ -84,10 +84,6 @@ function PortfolioValueSparkline({
           <filter id="portfolio-summary-spark-shadow" x="-20%" y="-40%" width="160%" height="200%">
             <feDropShadow dx="0" dy="2" stdDeviation="2" floodColor="rgba(148, 163, 184, 0.28)" />
           </filter>
-          <filter id="portfolio-summary-spark-dot-glow" x="-240%" y="-240%" width="580%" height="580%">
-            <feDropShadow dx="0" dy="0" stdDeviation="2.6" floodColor="var(--color-accent-loss)" floodOpacity="0.92" />
-            <feDropShadow dx="0" dy="0" stdDeviation="5.8" floodColor="var(--color-accent-loss)" floodOpacity="0.42" />
-          </filter>
         </defs>
         <path
           d={path}
@@ -98,15 +94,8 @@ function PortfolioValueSparkline({
           strokeLinejoin="round"
           filter="url(#portfolio-summary-spark-shadow)"
         />
-        <circle cx={lastPoint.x} cy={lastPoint.y} r="5.8" fill="var(--color-accent-loss)" filter="url(#portfolio-summary-spark-dot-glow)" opacity="0.28">
-          <animate attributeName="r" values="5.1;9.6;5.1" dur="1.75s" repeatCount="indefinite" />
-          <animate attributeName="opacity" values="0.3;0.05;0.3" dur="1.75s" repeatCount="indefinite" />
-        </circle>
-        <circle cx={lastPoint.x} cy={lastPoint.y} r="4.2" fill="var(--color-accent-loss)" filter="url(#portfolio-summary-spark-dot-glow)" opacity="0.18" />
-        <circle cx={lastPoint.x} cy={lastPoint.y} r="3.4" fill="var(--color-accent-loss)" filter="url(#portfolio-summary-spark-dot-glow)">
-          <animate attributeName="opacity" values="1;0.92;1" dur="1.75s" repeatCount="indefinite" />
-        </circle>
-        <circle cx={lastPoint.x} cy={lastPoint.y} r="1.35" fill="#fff5f5" opacity="0.9" />
+        <circle cx={lastPoint.x} cy={lastPoint.y} r="5.5" fill="rgba(148, 163, 184, 0.12)" filter="url(#portfolio-summary-spark-shadow)" />
+        <circle cx={lastPoint.x} cy={lastPoint.y} r="3" fill="rgba(100, 116, 139, 0.9)" />
       </svg>
     </div>
   );
