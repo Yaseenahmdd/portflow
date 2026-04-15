@@ -13,7 +13,13 @@ export async function GET() {
   try {
     const ids = Object.values(CRYPTO_IDS);
     const results = await fetchCryptoPrices(ids);
-    return Response.json({ success: true, data: results, timestamp: new Date().toISOString() });
+    return Response.json({
+      success: true,
+      data: results.data,
+      source: results.source,
+      stale: results.stale,
+      timestamp: results.lastUpdated,
+    });
   } catch (error) {
     console.error('Crypto API error:', error);
     return Response.json({ success: false, error: 'Failed to fetch crypto prices' }, { status: 500 });

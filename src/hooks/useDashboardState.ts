@@ -13,6 +13,7 @@ export function useDashboardState() {
     mounted: holdingsState.mounted,
     holdings: holdingsState.holdings,
     setHoldings: holdingsState.setHoldings,
+    inrToAedRate: holdingsState.inrToAedRate,
     setInrToAedRate: holdingsState.setInrToAedRate,
     setFxUpdatedAt: holdingsState.setFxUpdatedAt,
   });

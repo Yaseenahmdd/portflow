@@ -13,7 +13,13 @@ export async function GET() {
   try {
     const schemeCodes = Object.values(MF_SCHEMES).map((s) => s.schemeCode);
     const results = await fetchMutualFundNav(schemeCodes);
-    return Response.json({ success: true, data: results, timestamp: new Date().toISOString() });
+    return Response.json({
+      success: true,
+      data: results.data,
+      source: results.source,
+      stale: results.stale,
+      timestamp: results.lastUpdated,
+    });
   } catch (error) {
     console.error('Indian MF API error:', error);
     return Response.json({ success: false, error: 'Failed to fetch MF NAV' }, { status: 500 });

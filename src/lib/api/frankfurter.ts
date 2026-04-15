@@ -3,6 +3,9 @@
  * Used for currency exchange rates.
  */
 
+import { getCachedOrFetch, type CachedFetchResult } from "@/lib/api/cache";
+import { FX_CACHE_TTL_MS } from "@/lib/constants";
+
 export interface ExchangeRates {
   base: string;
   date: string;
@@ -11,30 +14,34 @@ export interface ExchangeRates {
 }
 
 export async function fetchExchangeRates(
-): Promise<ExchangeRates | null> {
-  try {
-    // AED is pegged to USD (1 USD = 3.6725 AED). We fetch USD to INR.
-    const res = await fetch(`https://api.frankfurter.app/latest?from=USD&to=INR`, {
-      cache: "no-store",
-    });
-    if (!res.ok) throw new Error(`Frankfurter error: ${res.status}`);
-    const data: ExchangeRates = await res.json();
-    
-    // Process Rates to simulate AED base
-    const inrPerUsd = data.rates.INR;
-    const inrPerAed = inrPerUsd / 3.6725;
-    
-    const convertedData: ExchangeRates = {
-      base: 'AED',
-      date: data.date,
-      rates: { INR: inrPerAed },
-      fetchedAt: new Date().toISOString(),
-    };
-    return convertedData;
-  } catch (err) {
-    console.error('Frankfurter: failed to fetch exchange rates:', err);
-    return null;
-  }
+  options?: { forceRefresh?: boolean }
+): Promise<CachedFetchResult<ExchangeRates>> {
+  return getCachedOrFetch({
+    key: "frankfurter:usd-inr",
+    ttlMs: FX_CACHE_TTL_MS,
+    source: "frankfurter",
+    forceRefresh: options?.forceRefresh,
+    loader: async () => {
+      const res = await fetch("https://api.frankfurter.app/latest?from=USD&to=INR", {
+        cache: "no-store",
+      });
+
+      if (!res.ok) {
+        throw new Error(`Frankfurter error: ${res.status}`);
+      }
+
+      const data: ExchangeRates = await res.json();
+      const inrPerUsd = data.rates.INR;
+      const inrPerAed = inrPerUsd / 3.6725;
+
+      return {
+        base: "AED",
+        date: data.date,
+        rates: { INR: inrPerAed },
+        fetchedAt: new Date().toISOString(),
+      };
+    },
+  });
 }
 
 /**

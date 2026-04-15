@@ -24,7 +24,7 @@ const apiStatuses: ApiStatus[] = [
   { name: "Binance WebSocket", description: "Real-time BTC price stream", status: "ok", keyRequired: false },
   { name: "Yahoo Finance (India)", description: "Indian stocks and ETFs on NSE", status: "ok", keyRequired: false },
   { name: "Yahoo Finance (US ETFs)", description: "US stocks and ETFs", status: "ok", keyRequired: false },
-  { name: "Twelve Data", description: "Optional fallback for UAE stocks on DFM", status: "unknown", keyRequired: true, envVar: "TWELVE_DATA_API_KEY" },
+  { name: "DFM Delayed Quotes", description: "UAE stocks with delayed quotes", status: "ok", keyRequired: false },
 ];
 
 export default function SettingsPage() {
@@ -247,8 +247,8 @@ export default function SettingsPage() {
               body="Add the project URL and anon key to .env.local, then run the holdings migration."
             />
             <SetupStep
-              title="Twelve Data"
-              body="Add TWELVE_DATA_API_KEY for US ETFs and UAE equities."
+              title="Market Data"
+              body="Yahoo Finance, CoinGecko, Frankfurter, MFAPI, Binance, and DFM are used without paid keys for local refreshes."
             />
             <SetupStep
               title="Deploy"

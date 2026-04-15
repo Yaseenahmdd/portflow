@@ -1,11 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
-import type { Holding } from "@/lib/constants";
 import { registerDashboardRefreshHandler } from "@/lib/dashboard/refresh-controller";
 import { refreshDashboardPrices, type RefreshFailure } from "@/lib/dashboard/refresh";
+import {
+  CRYPTO_POLL_INTERVAL_MS,
+  REFERENCE_DATA_POLL_INTERVAL_MS,
+  STOCK_POLL_INTERVAL_MS,
+  type Holding,
+  type RefreshScope,
+} from "@/lib/constants";
 
-const AUTO_REFRESH_INTERVAL_MS = 15 * 60 * 1000;
 const MAX_PULL_DISTANCE = 96;
 const PULL_THRESHOLD = 72;
 
@@ -13,14 +18,23 @@ interface UseDashboardRefreshOptions {
   mounted: boolean;
   holdings: Holding[];
   setHoldings: Dispatch<SetStateAction<Holding[]>>;
+  inrToAedRate: number;
   setInrToAedRate: Dispatch<SetStateAction<number>>;
   setFxUpdatedAt: Dispatch<SetStateAction<string | null>>;
+}
+
+interface RefreshCallOptions {
+  scopes?: RefreshScope[];
+  silent?: boolean;
+  excludeTickers?: string[];
+  forceRefresh?: boolean;
 }
 
 export function useDashboardRefresh({
   mounted,
   holdings,
   setHoldings,
+  inrToAedRate,
   setInrToAedRate,
   setFxUpdatedAt,
 }: UseDashboardRefreshOptions) {
@@ -31,53 +45,73 @@ export function useDashboardRefresh({
   const [refreshError, setRefreshError] = useState<string | null>(null);
 
   const holdingsRef = useRef(holdings);
+  const inrToAedRateRef = useRef(inrToAedRate);
   const isRefreshingRef = useRef(false);
   const pullDistanceRef = useRef(0);
   const touchStartYRef = useRef<number | null>(null);
   const pullingRef = useRef(false);
+  const initialRefreshCompletedRef = useRef(false);
 
   holdingsRef.current = holdings;
+  inrToAedRateRef.current = inrToAedRate;
   isRefreshingRef.current = isRefreshing;
   pullDistanceRef.current = pullDistance;
 
-  const refreshPrices = useCallback(async () => {
-    if (isRefreshingRef.current) {
-      return;
-    }
+  const refreshPrices = useCallback(
+    async (options?: RefreshCallOptions) => {
+      const silent = options?.silent ?? false;
 
-    isRefreshingRef.current = true;
-    setIsRefreshing(true);
-
-    try {
-      const refreshedState = await refreshDashboardPrices(holdingsRef.current);
-      setHoldings(refreshedState.holdings);
-      setRefreshFailures(refreshedState.failures);
-      setRefreshError(null);
-
-      if (refreshedState.inrToAedRate) {
-        setInrToAedRate(refreshedState.inrToAedRate);
+      if (!silent && isRefreshingRef.current) {
+        return;
       }
 
-      if (refreshedState.fxUpdatedAt) {
-        setFxUpdatedAt(refreshedState.fxUpdatedAt);
+      if (!silent) {
+        isRefreshingRef.current = true;
+        setIsRefreshing(true);
       }
-    } catch (error) {
-      setRefreshError(error instanceof Error ? error.message : "Refresh failed");
-      console.error("Price refresh error:", error);
-    } finally {
-      isRefreshingRef.current = false;
-      setIsRefreshing(false);
-      setIsPullRefreshing(false);
-    }
-  }, [setFxUpdatedAt, setHoldings, setInrToAedRate]);
+
+      try {
+        const refreshedState = await refreshDashboardPrices(holdingsRef.current, {
+          scopes: options?.scopes,
+          excludeTickers: options?.excludeTickers,
+          inrToAedRate: inrToAedRateRef.current,
+          forceRefresh: options?.forceRefresh,
+        });
+
+        setHoldings(refreshedState.holdings);
+        setRefreshFailures(refreshedState.failures);
+        setRefreshError(null);
+
+        if (refreshedState.inrToAedRate) {
+          setInrToAedRate(refreshedState.inrToAedRate);
+        }
+
+        if (refreshedState.fxUpdatedAt) {
+          setFxUpdatedAt(refreshedState.fxUpdatedAt);
+        }
+      } catch (error) {
+        setRefreshError(error instanceof Error ? error.message : "Refresh failed");
+        console.error("Price refresh error:", error);
+      } finally {
+        if (!silent) {
+          isRefreshingRef.current = false;
+          setIsRefreshing(false);
+          setIsPullRefreshing(false);
+        }
+      }
+    },
+    [setFxUpdatedAt, setHoldings, setInrToAedRate]
+  );
 
   useEffect(() => {
     if (!mounted) {
       return;
     }
 
-    return registerDashboardRefreshHandler(() => {
-      void refreshPrices();
+    return registerDashboardRefreshHandler((request) => {
+      void refreshPrices({
+        forceRefresh: request?.forceRefresh,
+      });
     });
   }, [mounted, refreshPrices]);
 
@@ -90,42 +124,59 @@ export function useDashboardRefresh({
   }, [isRefreshing]);
 
   useEffect(() => {
-    let intervalId: number | null = null;
-
-    function startInterval() {
-      if (intervalId) {
-        return;
-      }
-
-      intervalId = window.setInterval(() => {
-        if (!document.hidden) {
-          void refreshPrices();
-        }
-      }, AUTO_REFRESH_INTERVAL_MS);
+    if (!mounted || initialRefreshCompletedRef.current) {
+      return;
     }
 
-    function handleVisibility() {
-      if (document.hidden) {
-        if (intervalId) {
-          window.clearInterval(intervalId);
-          intervalId = null;
-        }
-        return;
-      }
+    initialRefreshCompletedRef.current = true;
+    void refreshPrices({
+      scopes: ["crypto", "stocks", "fx", "mutualFunds"],
+    });
+  }, [mounted, refreshPrices]);
 
-      startInterval();
+  useEffect(() => {
+    if (!mounted) {
+      return;
     }
 
-    startInterval();
-    document.addEventListener("visibilitychange", handleVisibility);
+    const intervalConfigs: Array<{ interval: number; run: () => void }> = [
+      {
+        interval: CRYPTO_POLL_INTERVAL_MS,
+        run: () =>
+          void refreshPrices({
+            scopes: ["crypto"],
+            silent: true,
+            excludeTickers: ["BTC"],
+          }),
+      },
+      {
+        interval: STOCK_POLL_INTERVAL_MS,
+        run: () =>
+          void refreshPrices({
+            scopes: ["stocks"],
+            silent: true,
+          }),
+      },
+      {
+        interval: REFERENCE_DATA_POLL_INTERVAL_MS,
+        run: () =>
+          void refreshPrices({
+            scopes: ["fx", "mutualFunds"],
+            silent: true,
+          }),
+      },
+    ];
+
+    const intervalIds = intervalConfigs.map(({ interval, run }) => window.setInterval(() => {
+      if (!document.hidden) {
+        run();
+      }
+    }, interval));
 
     return () => {
-      if (intervalId) {
-        window.clearInterval(intervalId);
-      }
-      document.removeEventListener("visibilitychange", handleVisibility);
+      intervalIds.forEach((id) => window.clearInterval(id));
     };
-  }, [refreshPrices]);
+  }, [mounted, refreshPrices]);
 
   useEffect(() => {
     function handleTouchStart(event: TouchEvent) {

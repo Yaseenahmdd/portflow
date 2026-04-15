@@ -47,6 +47,26 @@ export function getAedRate(currency: Currency, inrToAedRate: number): number {
   return 1;
 }
 
+export function convertPriceBetweenCurrencies(
+  value: number,
+  fromCurrency: Currency,
+  toCurrency: Currency,
+  inrToAedRate: number
+): number {
+  if (!Number.isFinite(value) || value <= 0 || fromCurrency === toCurrency) {
+    return value;
+  }
+
+  const valueInAed = value * getAedRate(fromCurrency, inrToAedRate);
+  const targetRate = getAedRate(toCurrency, inrToAedRate);
+
+  if (!Number.isFinite(targetRate) || targetRate <= 0) {
+    return value;
+  }
+
+  return valueInAed / targetRate;
+}
+
 /**
  * Compute derived values for a holding.
  */

@@ -133,7 +133,7 @@ export default function DashboardShell({
               <div className="flex items-center rounded-full border border-slate-200 bg-slate-50 p-1">
                 <button
                   onClick={() => {
-                    requestDashboardRefresh();
+                    requestDashboardRefresh({ forceRefresh: true });
                   }}
                   className={`inline-flex ${iconButtonClass}`}
                   aria-label={isRefreshing ? "Refreshing prices" : "Refresh prices"}

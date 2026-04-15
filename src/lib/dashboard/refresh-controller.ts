@@ -1,21 +1,26 @@
-let refreshHandler: (() => void) | null = null;
-let hasPendingRefreshRequest = false;
+interface DashboardRefreshRequest {
+  forceRefresh?: boolean;
+}
 
-export function requestDashboardRefresh() {
+let refreshHandler: ((request?: DashboardRefreshRequest) => void) | null = null;
+let pendingRefreshRequest: DashboardRefreshRequest | null = null;
+
+export function requestDashboardRefresh(request?: DashboardRefreshRequest) {
   if (refreshHandler) {
-    refreshHandler();
+    refreshHandler(request);
     return;
   }
 
-  hasPendingRefreshRequest = true;
+  pendingRefreshRequest = request || {};
 }
 
-export function registerDashboardRefreshHandler(handler: () => void) {
+export function registerDashboardRefreshHandler(handler: (request?: DashboardRefreshRequest) => void) {
   refreshHandler = handler;
 
-  if (hasPendingRefreshRequest) {
-    hasPendingRefreshRequest = false;
-    handler();
+  if (pendingRefreshRequest) {
+    const request = pendingRefreshRequest;
+    pendingRefreshRequest = null;
+    handler(request);
   }
 
   return () => {

@@ -41,6 +41,13 @@ export const CURRENCY_OPTIONS: Currency[] = ["AED", "USD", "INR"];
 
 // Fixed USD to AED peg
 export const USD_TO_AED = 3.6725;
+export const CRYPTO_CACHE_TTL_MS = 60 * 1000;
+export const STOCK_CACHE_TTL_MS = 105 * 1000;
+export const FX_CACHE_TTL_MS = 12 * 60 * 60 * 1000;
+export const MUTUAL_FUND_CACHE_TTL_MS = 12 * 60 * 60 * 1000;
+export const CRYPTO_POLL_INTERVAL_MS = 60 * 1000;
+export const STOCK_POLL_INTERVAL_MS = 120 * 1000;
+export const REFERENCE_DATA_POLL_INTERVAL_MS = 12 * 60 * 60 * 1000;
 
 // Mutual fund scheme codes
 export const MF_SCHEMES: Record<string, { name: string; schemeCode: string }> = {
@@ -76,8 +83,17 @@ export const CRYPTO_IDS: Record<string, string> = {
 
 export const LIVE_CRYPTO_STREAMS: Record<string, string> = {
   BTC: "btcusdt@ticker",
-  ETH: "ethusdt@ticker",
 };
+
+export type RefreshScope = "crypto" | "stocks" | "fx" | "mutualFunds";
+
+export interface NormalizedPrice {
+  symbol: string;
+  price: number;
+  currency: Currency;
+  source: string;
+  timestamp: string;
+}
 
 export interface Purchase {
   quantity: number;

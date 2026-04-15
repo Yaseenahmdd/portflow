@@ -1,12 +1,15 @@
 import { computeInrToAed, type ExchangeRates } from "@/lib/api/frankfurter";
-import { CRYPTO_IDS, type Holding } from "@/lib/constants";
+import { type Holding, type NormalizedPrice, type RefreshScope } from "@/lib/constants";
 import { normalizeHoldings } from "@/lib/holdings-normalize";
+import { convertPriceBetweenCurrencies } from "@/lib/utils";
 
 interface PriceResult {
   source: string;
   success: boolean;
   data?: unknown;
   error?: string;
+  lastUpdated?: string;
+  stale?: boolean;
 }
 
 export interface RefreshFailure {
@@ -20,10 +23,51 @@ interface RefreshResponse {
   error?: string;
 }
 
-function applyRefreshResults(holdings: Holding[], results: PriceResult[]) {
-  const now = new Date().toISOString();
-  const updated = [...holdings];
-  let inrToAedRate: number | undefined;
+interface RefreshOptions {
+  scopes?: RefreshScope[];
+  excludeTickers?: string[];
+  inrToAedRate: number;
+  forceRefresh?: boolean;
+}
+
+function normalizeHoldingTicker(ticker: string) {
+  return ticker.trim().toUpperCase().replace(/^NSE:/, "");
+}
+
+function applyNormalizedPrices(
+  holdings: Holding[],
+  prices: NormalizedPrice[],
+  source: PriceResult["source"],
+  inrToAedRate: number
+) {
+  if (!prices.length) {
+    return holdings;
+  }
+
+  return holdings.map((holding) => {
+    const match = prices.find((price) => {
+      if (source === "indian-mf") {
+        return holding.schemeCode === price.symbol;
+      }
+
+      return normalizeHoldingTicker(holding.ticker) === price.symbol;
+    });
+
+    if (!match) {
+      return holding;
+    }
+
+    return {
+      ...holding,
+      currentPrice: convertPriceBetweenCurrencies(match.price, match.currency, holding.currency, inrToAedRate),
+      lastPriceUpdate: match.timestamp,
+    };
+  });
+}
+
+function applyRefreshResults(holdings: Holding[], results: PriceResult[], initialInrToAedRate: number) {
+  let updated = [...holdings];
+  let inrToAedRate = initialInrToAedRate;
   let fxUpdatedAt: string | undefined;
 
   for (const result of results) {
@@ -31,96 +75,33 @@ function applyRefreshResults(holdings: Holding[], results: PriceResult[]) {
       continue;
     }
 
-    switch (result.source) {
-      case "currency": {
-        const exchangeRates = result.data as ExchangeRates | null;
-        inrToAedRate = computeInrToAed(exchangeRates);
-        fxUpdatedAt = exchangeRates?.fetchedAt || now;
-        break;
-      }
-
-      case "indian-mf": {
-        const navData = result.data as { schemeCode: string; nav: number }[];
-        for (const nav of navData) {
-          const index = updated.findIndex((holding) => holding.schemeCode === nav.schemeCode);
-          if (index !== -1) {
-            updated[index] = { ...updated[index], currentPrice: nav.nav, lastPriceUpdate: now };
-          }
-        }
-        break;
-      }
-
-      case "indian-stocks": {
-        const quotes = result.data as Record<string, { price: number }>;
-        for (const [ticker, quote] of Object.entries(quotes)) {
-          const index = updated.findIndex(
-            (holding) => holding.ticker === ticker || holding.ticker === `NSE:${ticker}`
-          );
-          if (index !== -1) {
-            updated[index] = { ...updated[index], currentPrice: quote.price, lastPriceUpdate: now };
-          }
-        }
-        break;
-      }
-
-      case "us-etfs": {
-        const quotes = result.data as Record<string, { price: number }>;
-        for (const [symbol, quote] of Object.entries(quotes)) {
-          const index = updated.findIndex((holding) => holding.ticker === symbol);
-          if (index !== -1 && quote.price !== undefined) {
-            updated[index] = { ...updated[index], currentPrice: quote.price, lastPriceUpdate: now };
-          }
-        }
-        break;
-      }
-
-      case "uae-stocks": {
-        const quotes = result.data as Record<string, { lastradeprice: number }>;
-        for (const [symbol, quote] of Object.entries(quotes)) {
-          const index = updated.findIndex((holding) => holding.ticker === symbol);
-          if (index !== -1 && quote.lastradeprice > 0) {
-            updated[index] = {
-              ...updated[index],
-              currentPrice: quote.lastradeprice,
-              lastPriceUpdate: now,
-            };
-          }
-        }
-        break;
-      }
-
-      case "crypto": {
-        const prices = result.data as Record<string, { usd: number; aed: number }>;
-        for (const [ticker, coinId] of Object.entries(CRYPTO_IDS)) {
-          const quote = prices[coinId];
-          if (!quote) {
-            continue;
-          }
-
-          const index = updated.findIndex(
-            (holding) => holding.ticker.trim().toUpperCase() === ticker
-          );
-          if (index !== -1) {
-            const nextPrice = updated[index].currency === "AED" ? quote.aed : quote.usd;
-            updated[index] = { ...updated[index], currentPrice: nextPrice, lastPriceUpdate: now };
-          }
-        }
-        break;
-      }
+    if (result.source === "currency") {
+      const exchangeRates = (result.data as { rates?: ExchangeRates }).rates || null;
+      inrToAedRate = computeInrToAed(exchangeRates);
+      fxUpdatedAt = exchangeRates?.fetchedAt || result.lastUpdated;
+      continue;
     }
+
+    const prices = (result.data as { prices?: NormalizedPrice[] }).prices || [];
+    updated = applyNormalizedPrices(updated, prices, result.source, inrToAedRate);
   }
 
   return { holdings: updated, inrToAedRate, fxUpdatedAt };
 }
 
-export async function refreshDashboardPrices(holdings: Holding[]) {
+export async function refreshDashboardPrices(holdings: Holding[], options: RefreshOptions) {
   const { normalized: normalizedHoldings } = normalizeHoldings(holdings);
   const response = await fetch("/api/prices/refresh-all", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ holdings: normalizedHoldings }),
+    body: JSON.stringify({
+      holdings: normalizedHoldings,
+      scopes: options.scopes,
+      excludeTickers: options.excludeTickers,
+      forceRefresh: options.forceRefresh,
+    }),
   });
 
   const contentType = response.headers.get("content-type") || "";
@@ -142,7 +123,7 @@ export async function refreshDashboardPrices(holdings: Holding[]) {
     }));
 
   return {
-    ...applyRefreshResults(normalizedHoldings, results),
+    ...applyRefreshResults(normalizedHoldings, results, options.inrToAedRate),
     failures,
   };
 }

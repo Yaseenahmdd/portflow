@@ -19,24 +19,32 @@ export default function LoginPage() {
 
     const supabase = createClient();
 
-    if (mode === "login") {
-      const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
-      if (signInError) {
-        setError(signInError.message);
-        setLoading(false);
-        return;
+    try {
+      if (mode === "login") {
+        const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+        if (signInError) {
+          setError(signInError.message);
+          return;
+        }
+      } else {
+        const { error: signUpError } = await supabase.auth.signUp({ email, password });
+        if (signUpError) {
+          setError(signUpError.message);
+          return;
+        }
       }
-    } else {
-      const { error: signUpError } = await supabase.auth.signUp({ email, password });
-      if (signUpError) {
-        setError(signUpError.message);
-        setLoading(false);
-        return;
-      }
-    }
 
-    router.push("/dashboard");
-    router.refresh();
+      router.push("/dashboard");
+      router.refresh();
+    } catch (error) {
+      setError(
+        error instanceof Error
+          ? `Unable to reach Supabase. ${error.message}`
+          : "Unable to reach Supabase. Check your internet connection and Supabase project status."
+      );
+    } finally {
+      setLoading(false);
+      }
   };
 
   return (

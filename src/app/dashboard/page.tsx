@@ -200,12 +200,10 @@ export default function DashboardPage() {
         </div>
       ) : null}
 
-      {liveCryptoState.message ? (
+      {liveCryptoState.message && liveCryptoState.state !== "connected" ? (
         <div
           className={`rounded-2xl px-4 py-3 text-sm ${
-            liveCryptoState.state === "connected"
-              ? "border border-emerald-200 bg-emerald-50 text-emerald-800"
-              : liveCryptoState.state === "error"
+            liveCryptoState.state === "error"
                 ? "border border-amber-200 bg-amber-50 text-amber-800"
                 : "border border-slate-200 bg-slate-50 text-slate-700"
           }`}

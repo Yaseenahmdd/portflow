@@ -4,6 +4,9 @@
  * No API key required.
  */
 
+import { getCachedOrFetch, type CachedFetchResult } from "@/lib/api/cache";
+import { STOCK_CACHE_TTL_MS } from "@/lib/constants";
+
 export interface StockQuote {
   symbol: string;
   price: number;
@@ -22,58 +25,70 @@ function toYahooSymbol(symbol: string) {
 }
 
 export async function fetchStockQuote(symbol: string): Promise<StockQuote | null> {
-  try {
-    const yahooSymbol = toYahooSymbol(symbol);
+  const yahooSymbol = toYahooSymbol(symbol);
 
-    const res = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${yahooSymbol}?interval=1d&range=1d`, {
-      cache: "no-store",
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-      },
-    });
+  const res = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${yahooSymbol}?interval=1d&range=1d`, {
+    cache: "no-store",
+    headers: {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    },
+  });
 
-    if (!res.ok) {
-      throw new Error(`Yahoo Finance error: ${res.status}`);
-    }
+  if (!res.ok) {
+    throw new Error(`Yahoo Finance error: ${res.status}`);
+  }
 
-    const data = await res.json();
-    const result = data?.chart?.result?.[0];
-    if (!result?.meta) {
-      return null;
-    }
-
-    const price = result.meta.regularMarketPrice;
-    const previousClose = result.meta.chartPreviousClose ?? result.meta.previousClose ?? 0;
-    const changePercent =
-      previousClose > 0 ? `${(((price - previousClose) / previousClose) * 100).toFixed(2)}%` : "0.00%";
-
-    return {
-      symbol: symbol.replace("NSE:", ""),
-      price: price || 0,
-      previousClose,
-      changePercent,
-    };
-  } catch (err) {
-    console.error(`Yahoo Finance: failed to fetch ${symbol}:`, err);
+  const data = await res.json();
+  const result = data?.chart?.result?.[0];
+  if (!result?.meta) {
     return null;
   }
+
+  const price = result.meta.regularMarketPrice;
+  const previousClose = result.meta.chartPreviousClose ?? result.meta.previousClose ?? 0;
+  const changePercent =
+    previousClose > 0 ? `${(((price - previousClose) / previousClose) * 100).toFixed(2)}%` : "0.00%";
+
+  return {
+    symbol: symbol.replace("NSE:", ""),
+    price: price || 0,
+    previousClose,
+    changePercent,
+  };
 }
 
 /**
  * Fetch multiple stock/ETF quotes from Yahoo Finance without an API key.
  */
 export async function fetchAlphaVantageMultiple(
-  symbols: string[]
-): Promise<Record<string, StockQuote>> {
-  const results: Record<string, StockQuote> = {};
+  symbols: string[],
+  options?: { forceRefresh?: boolean }
+): Promise<CachedFetchResult<Record<string, StockQuote>>> {
+  const cacheKey = `yahoo:${[...symbols].sort().join(",")}`;
 
-  const promises = symbols.map(async (symbol) => {
-    const quote = await fetchStockQuote(symbol);
-    if (quote) {
-      results[symbol.replace("NSE:", "")] = quote;
-    }
+  return getCachedOrFetch({
+    key: cacheKey,
+    ttlMs: STOCK_CACHE_TTL_MS,
+    source: "yahoo-finance",
+    forceRefresh: options?.forceRefresh,
+    loader: async () => {
+      const results: Record<string, StockQuote> = {};
+      const promises = symbols.map((symbol) => fetchStockQuote(symbol));
+      const settled = await Promise.allSettled(promises);
+
+      settled.forEach((result, index) => {
+        if (result.status !== "fulfilled" || !result.value) {
+          return;
+        }
+
+        results[symbols[index].replace("NSE:", "")] = result.value;
+      });
+
+      if (!Object.keys(results).length && symbols.length) {
+        throw new Error("Yahoo Finance returned no prices");
+      }
+
+      return results;
+    },
   });
-
-  await Promise.all(promises);
-  return results;
 }

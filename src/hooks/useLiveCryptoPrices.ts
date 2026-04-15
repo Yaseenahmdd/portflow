@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useLivePricesEnabled } from "@/hooks/useLivePricesEnabled";
-import { LIVE_CRYPTO_STREAMS, USD_TO_AED, type Currency, type Holding } from "@/lib/constants";
+import { LIVE_CRYPTO_STREAMS, type Holding } from "@/lib/constants";
+import { convertPriceBetweenCurrencies } from "@/lib/utils";
 
 const BINANCE_STREAM_BASE_URL = "wss://stream.binance.com:9443/stream";
 const RECONNECT_DELAY_MS = 3000;
@@ -31,25 +31,12 @@ interface LiveCryptoStatus {
   message: string | null;
 }
 
-function convertUsdPrice(priceUsd: number, currency: Currency, inrToAedRate: number) {
-  if (currency === "AED") {
-    return priceUsd * USD_TO_AED;
-  }
-
-  if (currency === "INR") {
-    return inrToAedRate > 0 ? (priceUsd * USD_TO_AED) / inrToAedRate : priceUsd;
-  }
-
-  return priceUsd;
-}
-
 export function useLiveCryptoPrices({
   holdings,
   inrToAedRate,
   applyLivePrices,
   clearLivePrices,
 }: UseLiveCryptoPricesOptions) {
-  const livePricesEnabled = useLivePricesEnabled();
   const liveCryptoHoldings = useMemo(
     () =>
       holdings.filter(
@@ -63,7 +50,7 @@ export function useLiveCryptoPrices({
     const liveCryptoIds = liveCryptoHoldings.map((holding) => holding.id);
     clearLivePrices(liveCryptoIds);
 
-    if (!livePricesEnabled || !liveCryptoHoldings.length) {
+    if (!liveCryptoHoldings.length) {
       return;
     }
 
@@ -121,7 +108,7 @@ export function useLiveCryptoPrices({
             }
 
             accumulator[id] = {
-              currentPrice: convertUsdPrice(priceUsd, holding.currency, inrToAedRate),
+              currentPrice: convertPriceBetweenCurrencies(priceUsd, "USD", holding.currency, inrToAedRate),
               lastPriceUpdate,
             };
             return accumulator;
@@ -165,16 +152,9 @@ export function useLiveCryptoPrices({
 
       socket?.close();
     };
-  }, [applyLivePrices, clearLivePrices, inrToAedRate, liveCryptoHoldings, livePricesEnabled]);
+  }, [applyLivePrices, clearLivePrices, inrToAedRate, liveCryptoHoldings]);
 
   return useMemo<LiveCryptoStatus>(() => {
-    if (!livePricesEnabled) {
-      return {
-        state: "inactive",
-        message: "Live crypto prices are off. Enable them with the env flag or local browser override.",
-      };
-    }
-
     if (!liveCryptoHoldings.length) {
       return {
         state: "inactive",
@@ -200,5 +180,5 @@ export function useLiveCryptoPrices({
       state: "connecting",
       message: `Connecting live crypto feed for ${liveCryptoHoldings.length} holding${liveCryptoHoldings.length === 1 ? "" : "s"}.`,
     };
-  }, [connectionState, liveCryptoHoldings.length, livePricesEnabled]);
+  }, [connectionState, liveCryptoHoldings.length]);
 }

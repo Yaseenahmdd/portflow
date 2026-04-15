@@ -13,7 +13,13 @@ export async function GET() {
   try {
     const symbols = Object.values(INDIAN_STOCK_TICKERS);
     const results = await fetchAlphaVantageMultiple(symbols);
-    return Response.json({ success: true, data: results, timestamp: new Date().toISOString() });
+    return Response.json({
+      success: true,
+      data: results.data,
+      source: results.source,
+      stale: results.stale,
+      timestamp: results.lastUpdated,
+    });
   } catch (error) {
     console.error('Indian Stocks API error:', error);
     return Response.json({ success: false, error: 'Failed to fetch Indian stock prices' }, { status: 500 });
