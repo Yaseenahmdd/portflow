@@ -1,5 +1,6 @@
 "use client";
 import { formatMoney, formatOrMask } from "@/lib/utils";
+import { toggle } from "@/lib/haptics";
 
 interface SparklinePoint {
   value: number;
@@ -168,13 +169,14 @@ export default function PortfolioSummaryStrip({
             </div>
             <button
               type="button"
-              onClick={() =>
+              onClick={() => {
+                toggle();
                 window.dispatchEvent(
                   new CustomEvent("portflow:toggle-visibility", {
                     detail: { visible: !isAmountsVisible },
                   })
-                )
-              }
+                );
+              }}
               className="flex h-9 w-9 items-center justify-center rounded-full border border-border-default bg-bg-card text-text-secondary"
               aria-label={isAmountsVisible ? "Hide values" : "Show values"}
             >

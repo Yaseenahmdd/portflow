@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { ALLOCATION_CLASS_OPTIONS, ASSET_CLASS_OPTIONS, CURRENCY_OPTIONS, GEOGRAPHY_OPTIONS, PLATFORM_OPTIONS, RISK_OPTIONS, type Currency, type Holding } from "@/lib/constants";
+import { tap, success as hapticSuccess } from "@/lib/haptics";
 import { computeHolding, formatMoney, toNumber } from "@/lib/utils";
 
 interface Props {
@@ -54,6 +55,7 @@ export default function HoldingModal({ holding, inrToAedRate, onSave, onClose }:
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
     if (!form.assetName.trim()) return;
+    hapticSuccess();
     onSave(form);
   };
 
@@ -430,7 +432,7 @@ export default function HoldingModal({ holding, inrToAedRate, onSave, onClose }:
           </div>
 
           <div className="flex items-center justify-end gap-3">
-            <button type="button" onClick={onClose} className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700">
+            <button type="button" onClick={() => { tap(); onClose(); }} className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700">
               Cancel
             </button>
             <button type="submit" className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white">

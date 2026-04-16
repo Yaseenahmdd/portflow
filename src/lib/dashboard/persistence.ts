@@ -1,6 +1,6 @@
 import { DEFAULT_HOLDINGS, type Holding } from "@/lib/constants";
 import { normalizeHoldings } from "@/lib/holdings-normalize";
-import { fetchRemoteHoldings, replaceRemoteHoldings } from "@/lib/holdings-store";
+import { fetchRemoteHoldings, upsertRemoteHoldings, deleteRemoteHolding } from "@/lib/holdings-store";
 import { createClient } from "@/lib/supabase/client";
 
 export const DEFAULT_INR_TO_AED_RATE = 0.044;
@@ -59,15 +59,21 @@ export async function loadDashboardPersistenceState() {
   try {
     const remoteHoldings = await fetchRemoteHoldings(supabase, userId);
 
-    if (remoteHoldings) {
+    if (remoteHoldings && remoteHoldings.length > 0) {
       const { normalized, changed } = normalizeHoldings(remoteHoldings);
       persistLocalHoldings(userId, normalized);
 
       if (changed) {
-        await replaceRemoteHoldings(supabase, userId, normalized);
+        await upsertRemoteHoldings(supabase, userId, normalized);
       }
 
       return { userId, holdings: normalized, inrToAedRate, fxUpdatedAt };
+    }
+
+    if (storedHoldings) {
+      persistLocalHoldings(userId, storedHoldings);
+      await upsertRemoteHoldings(supabase, userId, storedHoldings);
+      return { userId, holdings: storedHoldings, inrToAedRate, fxUpdatedAt };
     }
   } catch {
     if (storedHoldings) {
@@ -99,7 +105,29 @@ export function persistFxUpdatedAt(userId: string, fxUpdatedAt: string | null) {
   localStorage.setItem(getFxUpdatedAtStorageKey(userId), fxUpdatedAt);
 }
 
-export async function syncRemoteHoldings(userId: string, holdings: Holding[]) {
+export async function syncDashboardHoldingsFromRemote(userId: string) {
   const supabase = createClient();
-  await replaceRemoteHoldings(supabase, userId, holdings);
+  const remoteHoldings = await fetchRemoteHoldings(supabase, userId);
+
+  if (!remoteHoldings) {
+    return null;
+  }
+
+  const { normalized, changed } = normalizeHoldings(remoteHoldings);
+
+  if (changed) {
+    await upsertRemoteHoldings(supabase, userId, normalized);
+  }
+
+  return normalized;
+}
+
+export async function upsertRemoteHoldingsState(userId: string, holdings: Holding[]) {
+  const supabase = createClient();
+  await upsertRemoteHoldings(supabase, userId, holdings);
+}
+
+export async function deleteRemoteHoldingState(userId: string, id: string) {
+  const supabase = createClient();
+  await deleteRemoteHolding(supabase, userId, id);
 }

@@ -4,6 +4,7 @@ import { fetchDfmQuotes } from "@/lib/api/dfm";
 import { fetchExchangeRates } from "@/lib/api/frankfurter";
 import { fetchMutualFundNav } from "@/lib/api/mfapi";
 import type { Holding } from "@/lib/constants";
+import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
@@ -21,11 +22,14 @@ function createPriceTask(source: string, loader: () => Promise<unknown>): Promis
       success: true,
       data,
     }))
-    .catch((error: unknown) => ({
-      source,
-      success: false,
-      error: error instanceof Error ? error.message : `Failed to fetch ${source}`,
-    }));
+    .catch((error: unknown) => {
+      console.error(`[prices/${source}]`, error);
+      return {
+        source,
+        success: false,
+        error: `Failed to fetch ${source}`,
+      };
+    });
 }
 
 function unique(values: string[]) {
@@ -38,6 +42,12 @@ function normalizeIndianSymbol(holding: Holding) {
 }
 
 export async function POST(request: Request) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return Response.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
     const body = await request.json();
     const holdings = (body?.holdings || []) as Holding[];
@@ -113,11 +123,9 @@ export async function POST(request: Request) {
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
+    console.error("[prices/refresh-all]", error);
     return Response.json(
-      {
-        success: false,
-        error: error instanceof Error ? error.message : "Failed to refresh prices",
-      },
+      { success: false, error: "Failed to refresh prices" },
       { status: 500 }
     );
   }

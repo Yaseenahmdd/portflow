@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { tap, toggle, success as hapticSuccess, destructive as hapticError } from "@/lib/haptics";
 import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
@@ -22,6 +23,7 @@ export default function LoginPage() {
     if (mode === "login") {
       const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
       if (signInError) {
+        hapticError();
         setError(signInError.message);
         setLoading(false);
         return;
@@ -29,12 +31,14 @@ export default function LoginPage() {
     } else {
       const { error: signUpError } = await supabase.auth.signUp({ email, password });
       if (signUpError) {
+        hapticError();
         setError(signUpError.message);
         setLoading(false);
         return;
       }
     }
 
+    hapticSuccess();
     router.push("/dashboard");
     router.refresh();
   };
@@ -90,6 +94,7 @@ export default function LoginPage() {
 
             <button
               type="submit"
+              onClick={tap}
               disabled={loading}
               className="w-full rounded-full bg-accent-violet px-5 py-3.5 text-sm font-semibold text-white transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-55"
             >
@@ -101,6 +106,7 @@ export default function LoginPage() {
             <button
               type="button"
               onClick={() => {
+                toggle();
                 setMode((current) => (current === "login" ? "signup" : "login"));
                 setError("");
               }}

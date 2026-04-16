@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import type { Holding } from "@/lib/constants";
+import { tap } from "@/lib/haptics";
 import { computeHolding, formatMoney, timeAgo, toNumber } from "@/lib/utils";
 
 interface Props {
@@ -39,7 +40,7 @@ export default function HoldingDetailsModal({ holding, inrToAedRate, onClose }: 
               <span>Risk {holding.risk}</span>
             </div>
           </div>
-          <button type="button" onClick={onClose} className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700">
+          <button type="button" onClick={() => { tap(); onClose(); }} className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700">
             Close
           </button>
         </div>

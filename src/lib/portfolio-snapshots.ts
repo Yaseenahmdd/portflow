@@ -23,6 +23,11 @@ interface PortfolioSnapshotRow {
 
 type PortfolioSnapshotUpsertRow = Omit<PortfolioSnapshotRow, "created_at" | "updated_at">;
 
+type DeleteBuilder = Promise<{ error: { message: string } | null }> & {
+  eq: (column: string, value: string) => DeleteBuilder;
+  in: (column: string, values: string[]) => DeleteBuilder;
+};
+
 type SupabaseLikeClient = {
   from?: (table: string) => {
     select: (query: string) => {
@@ -30,12 +35,7 @@ type SupabaseLikeClient = {
         order: (column: string, options?: { ascending?: boolean }) => Promise<{ data: PortfolioSnapshotRow[] | null; error: { message: string } | null }>;
       };
     };
-    delete: () => {
-      eq: (column: string, value: string) => {
-        eq: (column: string, value: string) => Promise<{ error: { message: string } | null }>;
-        in: (column: string, values: string[]) => Promise<{ error: { message: string } | null }>;
-      };
-    };
+    delete: () => DeleteBuilder;
     upsert: (
       values: PortfolioSnapshotUpsertRow[],
       options?: { onConflict?: string }
@@ -177,10 +177,10 @@ export async function replacePortfolioSnapshots(userId: string, snapshots: Portf
   persistLocalPortfolioSnapshots(userId, sortedSnapshots);
 
   if (!sortedSnapshots.length) {
-    const deleteResult = await (supabase
+    const deleteResult = await supabase
       .from("portfolio_snapshots")
       .delete()
-      .eq("user_id", userId) as Promise<{ error: { message: string } | null }>);
+      .eq("user_id", userId);
     if (deleteResult.error) {
       throw new Error(deleteResult.error.message);
     }

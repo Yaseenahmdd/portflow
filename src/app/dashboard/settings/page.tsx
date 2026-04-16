@@ -1,13 +1,30 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { type Holding } from "@/lib/constants";
+import { tap, success as hapticSuccess, destructive as hapticDestructive, medium } from "@/lib/haptics";
 import { DEFAULT_INR_TO_AED_RATE, getRateStorageKey } from "@/lib/dashboard/persistence";
 import { buildBackfilledSnapshots } from "@/lib/history-backfill";
 import { normalizeHoldings } from "@/lib/holdings-normalize";
 import { replaceRemoteHoldings } from "@/lib/holdings-store";
 import { fetchPortfolioSnapshots, replacePortfolioSnapshots } from "@/lib/portfolio-snapshots";
 import { createClient } from "@/lib/supabase/client";
+
+const REQUIRED_HOLDING_FIELDS: (keyof Holding)[] = [
+  "id", "assetName", "ticker", "assetClass", "geography",
+  "currency", "quantity", "avgBuyPrice", "currentPrice", "priceSource",
+];
+
+function validateHoldings(data: unknown): data is Holding[] {
+  if (!Array.isArray(data)) return false;
+  return data.every(
+    (item) =>
+      item !== null &&
+      typeof item === "object" &&
+      REQUIRED_HOLDING_FIELDS.every((field) => field in item)
+  );
+}
 
 interface ApiStatus {
   name: string;
@@ -28,10 +45,14 @@ const apiStatuses: ApiStatus[] = [
 ];
 
 export default function SettingsPage() {
+  const router = useRouter();
   const [userId, setUserId] = useState<string>("default");
   const [testResults, setTestResults] = useState<Record<string, string>>({});
   const [testing, setTesting] = useState(false);
   const [rebuildingHistory, setRebuildingHistory] = useState(false);
+  const [resetting, setResetting] = useState(false);
+  const [resetConfirming, setResetConfirming] = useState(false);
+  const [dataError, setDataError] = useState<string | null>(null);
 
   useEffect(() => {
     async function getUser() {
@@ -74,20 +95,19 @@ export default function SettingsPage() {
       { name: "Frankfurter", path: "/api/prices/currency" },
     ];
 
-    const results: Record<string, string> = {};
+    setTestResults(Object.fromEntries(endpoints.map((e) => [e.name, "Checking"])));
 
-    for (const endpoint of endpoints) {
-      results[endpoint.name] = "Checking";
-      setTestResults({ ...results });
-      results[endpoint.name] = await testEndpoint(endpoint.path);
-      setTestResults({ ...results });
-    }
+    const settled = await Promise.all(
+      endpoints.map(async (endpoint) => [endpoint.name, await testEndpoint(endpoint.path)] as const)
+    );
 
+    setTestResults(Object.fromEntries(settled));
     setTesting(false);
   };
 
   const rebuildHistory = async () => {
     setRebuildingHistory(true);
+    setDataError(null);
 
     try {
       const rawHoldings = localStorage.getItem(storageKey);
@@ -101,12 +121,65 @@ export default function SettingsPage() {
       const rebuiltSnapshots = buildBackfilledSnapshots(normalized, existingSnapshots, inrToAedRate);
 
       await replacePortfolioSnapshots(userId, rebuiltSnapshots);
-      window.location.reload();
+      hapticSuccess();
+      router.refresh();
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to rebuild history";
-      alert(message);
+      setDataError(error instanceof Error ? error.message : "Failed to rebuild history");
     } finally {
       setRebuildingHistory(false);
+    }
+  };
+
+  const handleImport = () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".json";
+    input.onchange = async (event) => {
+      const file = (event.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+
+      setDataError(null);
+      const text = await file.text();
+
+      try {
+        const parsed = JSON.parse(text);
+        if (!validateHoldings(parsed)) {
+          setDataError("Invalid holdings file: each entry must include id, assetName, ticker, assetClass, geography, currency, quantity, avgBuyPrice, currentPrice, and priceSource");
+          return;
+        }
+
+        const { normalized } = normalizeHoldings(parsed);
+        const supabase = createClient();
+        await replaceRemoteHoldings(supabase, userId, normalized);
+        localStorage.setItem(storageKey, JSON.stringify(normalized));
+        router.refresh();
+      } catch (error) {
+        setDataError(
+          error instanceof SyntaxError
+            ? "Invalid JSON file"
+            : error instanceof Error
+              ? error.message
+              : "Failed to import holdings"
+        );
+      }
+    };
+    input.click();
+  };
+
+  const handleReset = async () => {
+    setResetting(true);
+    setDataError(null);
+
+    try {
+      const supabase = createClient();
+      await replaceRemoteHoldings(supabase, userId, []);
+      localStorage.removeItem(storageKey);
+      setResetConfirming(false);
+      router.refresh();
+    } catch (error) {
+      setDataError(error instanceof Error ? error.message : "Failed to reset holdings");
+    } finally {
+      setResetting(false);
     }
   };
 
@@ -122,7 +195,7 @@ export default function SettingsPage() {
             <h2 className="font-display text-xl font-semibold tracking-[-0.03em] text-text-primary">Service health</h2>
           </div>
           <button
-            onClick={runTests}
+            onClick={() => { tap(); runTests(); }}
             disabled={testing}
             className="rounded-full bg-accent-violet px-5 py-3 text-sm font-semibold text-bg-primary transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-55"
           >
@@ -170,55 +243,41 @@ export default function SettingsPage() {
               }}
             />
 
-            <ActionButton
-              label="Import holdings"
-              onClick={() => {
-                const input = document.createElement("input");
-                input.type = "file";
-                input.accept = ".json";
-                input.onchange = async (event) => {
-                  const file = (event.target as HTMLInputElement).files?.[0];
-                  if (!file) return;
+            <ActionButton label="Import holdings" onClick={() => { tap(); handleImport(); }} />
 
-                  const text = await file.text();
-                  try {
-                    const parsed = JSON.parse(text);
-                    if (!Array.isArray(parsed)) {
-                      throw new Error("Expected an array of holdings");
-                    }
-
-                    const { normalized } = normalizeHoldings(parsed as Holding[]);
-                    const supabase = createClient();
-                    await replaceRemoteHoldings(supabase, userId, normalized);
-                    localStorage.setItem(storageKey, JSON.stringify(normalized));
-                    window.location.reload();
-                  } catch (error) {
-                    if (error instanceof SyntaxError) {
-                      alert("Invalid JSON file");
-                      return;
-                    }
-
-                    const message = error instanceof Error ? error.message : "Failed to import holdings";
-                    alert(message);
-                  }
-                };
-                input.click();
-              }}
-            />
-
-            <ActionButton
-              label="Reset storage"
-              destructive
-              onClick={async () => {
-                if (confirm("Reset all holdings to defaults? This cannot be undone.")) {
-                  const supabase = createClient();
-                  await replaceRemoteHoldings(supabase, userId, []);
-                  localStorage.removeItem(storageKey);
-                  window.location.reload();
-                }
-              }}
-            />
+            {resetConfirming ? (
+              <div className="flex flex-col gap-2 rounded-[1.2rem] border border-accent-loss/20 bg-accent-loss-bg p-4">
+                <p className="text-xs font-medium text-accent-loss">This cannot be undone.</p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => { hapticDestructive(); handleReset(); }}
+                    disabled={resetting}
+                    className="rounded-full bg-accent-loss px-3 py-1.5 text-xs font-semibold text-white transition hover:brightness-105 disabled:opacity-55"
+                  >
+                    {resetting ? "Resetting…" : "Confirm"}
+                  </button>
+                  <button
+                    onClick={() => setResetConfirming(false)}
+                    className="rounded-full border border-border-default bg-bg-card px-3 py-1.5 text-xs font-semibold text-text-primary transition hover:bg-bg-elevated"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <ActionButton
+                label="Reset storage"
+                destructive
+                onClick={() => { medium(); setDataError(null); setResetConfirming(true); }}
+              />
+            )}
           </div>
+
+          {dataError && (
+            <p className="mt-3 rounded-[1rem] border border-accent-loss/20 bg-accent-loss-bg px-4 py-3 text-sm text-accent-loss">
+              {dataError}
+            </p>
+          )}
 
           <div className="mt-5 rounded-[1.2rem] border border-border-default bg-bg-elevated p-4">
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -229,7 +288,7 @@ export default function SettingsPage() {
                 </p>
               </div>
               <button
-                onClick={rebuildHistory}
+                onClick={() => { tap(); rebuildHistory(); }}
                 disabled={rebuildingHistory}
                 className="rounded-full border border-border-default bg-bg-card px-4 py-2.5 text-sm font-semibold text-text-primary transition hover:bg-bg-card-hover disabled:cursor-not-allowed disabled:opacity-55"
               >

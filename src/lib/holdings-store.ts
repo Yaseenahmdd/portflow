@@ -19,8 +19,12 @@ interface HoldingRow {
   price_source: string;
   scheme_code: string | null;
   last_price_update: string | null;
-  purchases: string | null;
 }
+
+type DeleteBuilder = Promise<{ error: { message: string } | null }> & {
+  eq: (column: string, value: string) => DeleteBuilder;
+  in: (column: string, values: string[]) => DeleteBuilder;
+};
 
 type SupabaseLikeClient = {
   from?: (table: string) => {
@@ -29,12 +33,7 @@ type SupabaseLikeClient = {
         order: (column: string, options?: { ascending?: boolean }) => Promise<{ data: HoldingRow[] | null; error: { message: string } | null }>;
       };
     };
-    delete: () => {
-      eq: (column: string, value: string) => {
-        eq: (column: string, value: string) => Promise<{ error: { message: string } | null }>;
-        in: (column: string, values: string[]) => Promise<{ error: { message: string } | null }>;
-      };
-    };
+    delete: () => DeleteBuilder;
     insert: (values: HoldingRow[]) => Promise<{ error: { message: string } | null }>;
     upsert: (
       values: HoldingRow[],
@@ -66,7 +65,6 @@ function mapRowToHolding(row: HoldingRow): Holding {
     priceSource: row.price_source as Holding["priceSource"],
     schemeCode: row.scheme_code || undefined,
     lastPriceUpdate: row.last_price_update || undefined,
-    purchases: row.purchases ? JSON.parse(row.purchases) : undefined,
   };
 }
 
@@ -90,7 +88,6 @@ function mapHoldingToRow(userId: string, holding: Holding): HoldingRow {
     price_source: holding.priceSource,
     scheme_code: holding.schemeCode || null,
     last_price_update: holding.lastPriceUpdate || null,
-    purchases: holding.purchases ? JSON.stringify(holding.purchases) : null,
   };
 }
 
@@ -183,6 +180,41 @@ export async function replaceRemoteHoldings(client: unknown, userId: string, hol
     if (deleteResult.error) {
       throw new Error(deleteResult.error.message);
     }
+  }
+
+  return true;
+}
+
+export async function upsertRemoteHoldings(client: unknown, userId: string, holdings: Holding[]): Promise<boolean> {
+  if (!hasDatabaseClient(client)) {
+    return false;
+  }
+
+  const sanitizedHoldings = sanitizeHoldingIds(holdings);
+  if (!sanitizedHoldings.length) {
+    return true;
+  }
+
+  const rows = sanitizedHoldings.map((holding) => mapHoldingToRow(userId, holding));
+  const upsertResult = await client.from("holdings").upsert(rows, {
+    onConflict: "user_id,id",
+  });
+  
+  if (upsertResult.error) {
+    throw new Error(upsertResult.error.message);
+  }
+
+  return true;
+}
+
+export async function deleteRemoteHolding(client: unknown, userId: string, holdingId: string): Promise<boolean> {
+  if (!hasDatabaseClient(client)) {
+    return false;
+  }
+
+  const deleteResult = await client.from("holdings").delete().eq("user_id", userId).eq("id", holdingId);
+  if (deleteResult.error) {
+    throw new Error(deleteResult.error.message);
   }
 
   return true;

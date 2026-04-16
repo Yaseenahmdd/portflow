@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 import { ASSET_CLASS_OPTIONS, GEOGRAPHY_OPTIONS, RISK_OPTIONS, type ComputedHolding, type Holding } from "@/lib/constants";
+import { tap, toggle, medium, destructive as hapticDestructive } from "@/lib/haptics";
 import { formatMoney, formatOrMask, timeAgo } from "@/lib/utils";
 
 interface Props {
@@ -23,6 +24,7 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
     search: "",
   });
   const [actionMenuId, setActionMenuId] = useState<string | null>(null);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [mobileColumn3Mode, setMobileColumn3Mode] = useState<"value" | "return">("value");
   const [sortKey, setSortKey] = useState<string | null>(null);
@@ -92,6 +94,22 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
     [filteredHoldings]
   );
 
+  const handleSort = useCallback((key: string) => {
+    tap();
+
+    if (sortKey === key) {
+      if (sortDir === "desc") {
+        setSortDir("asc");
+      } else {
+        setSortKey(null);
+        setSortDir("desc");
+      }
+    } else {
+      setSortKey(key);
+      setSortDir("desc");
+    }
+  }, [sortKey, sortDir]);
+
   const mobileSortedHoldings = useMemo(() => {
     if (!mobileSortDir) {
       return filteredHoldings;
@@ -106,21 +124,8 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
     });
   }, [filteredHoldings, mobileColumn3Mode, mobileSortDir]);
 
-  function handleSort(key: string) {
-    if (sortKey === key) {
-      if (sortDir === "desc") {
-        setSortDir("asc");
-      } else {
-        setSortKey(null);
-        setSortDir("desc");
-      }
-    } else {
-      setSortKey(key);
-      setSortDir("desc");
-    }
-  }
-
   function handleMobileSort() {
+    tap();
     setMobileSortDir((current) => {
       if (current === null) return "desc";
       if (current === "desc") return "asc";
@@ -129,13 +134,14 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
   }
 
   function handleDeleteClick(holding: ComputedHolding) {
-    const shouldDelete = window.confirm(`Delete "${holding.assetName}" from your holdings?`);
+    medium();
+    setPendingDeleteId(holding.id);
+  }
 
-    if (!shouldDelete) {
-      return;
-    }
-
-    onDelete(holding.id);
+  function confirmDelete(id: string) {
+    hapticDestructive();
+    onDelete(id);
+    setPendingDeleteId(null);
     setActionMenuId(null);
   }
 
@@ -185,7 +191,7 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
               {filteredHoldings.length} of {holdings.length}
             </div>
             <button
-              onClick={onAddHolding}
+              onClick={() => { tap(); onAddHolding(); }}
               className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-accent-violet text-bg-primary shadow-sm transition hover:brightness-105"
               aria-label="Add holding"
             >
@@ -207,7 +213,7 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => setMobileFiltersOpen((current) => !current)}
+              onClick={() => { tap(); setMobileFiltersOpen((current) => !current); }}
               className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
               aria-expanded={mobileFiltersOpen}
               aria-label="Toggle filters"
@@ -306,7 +312,7 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
           </button>
           <button
             type="button"
-            onClick={() => setMobileColumn3Mode((mode) => (mode === "value" ? "return" : "value"))}
+            onClick={() => { toggle(); setMobileColumn3Mode((mode) => (mode === "value" ? "return" : "value")); }}
             className="flex h-5 w-5 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 active:bg-slate-100"
             aria-label="Toggle current and gain/loss view"
           >
@@ -322,7 +328,7 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
           mobileSortedHoldings.map((holding) => (
             <div key={holding.id} className="bg-white">
               <div className="flex items-center justify-between gap-3 px-4 py-3">
-                <button type="button" className="min-w-0 flex-1 pr-3 text-left" onClick={() => onView(holding)}>
+                <button type="button" className="min-w-0 flex-1 pr-3 text-left" onClick={() => { tap(); onView(holding); }}>
                   <div className="truncate text-sm font-semibold text-slate-900">{getMobileAssetName(holding.assetName)}</div>
                   <div className="mt-0.5 text-xs text-slate-500">{holding.ticker || "No ticker"}</div>
                 </button>
@@ -352,7 +358,7 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
 
                 <button
                   type="button"
-                  onClick={() => setActionMenuId((current) => (current === holding.id ? null : holding.id))}
+                  onClick={() => { tap(); setActionMenuId((current) => (current === holding.id ? null : holding.id)); }}
                   className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-600"
                   aria-label={`Actions for ${holding.assetName}`}
                 >
@@ -362,25 +368,41 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
 
               {actionMenuId === holding.id && (
                 <div className="border-t border-slate-50 bg-slate-50/50 px-4 py-3">
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      onClick={() => {
-                        onEdit(holding);
-                        setActionMenuId(null);
-                      }}
-                      className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm"
-                    >
-                      Edit Holding
-                    </button>
-                    <button
-                      onClick={() => {
-                        handleDeleteClick(holding);
-                      }}
-                      className="rounded-lg border border-red-100 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-600 shadow-sm"
-                    >
-                      Delete
-                    </button>
-                  </div>
+                  {pendingDeleteId === holding.id ? (
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-red-600">Delete {holding.assetName}?</span>
+                      <button
+                        onClick={() => confirmDelete(holding.id)}
+                        className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white"
+                      >
+                        Confirm
+                      </button>
+                      <button
+                        onClick={() => setPendingDeleteId(null)}
+                        className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        onClick={() => {
+                          onEdit(holding);
+                          setActionMenuId(null);
+                        }}
+                        className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm"
+                      >
+                        Edit Holding
+                      </button>
+                      <button
+                        onClick={() => handleDeleteClick(holding)}
+                        className="rounded-lg border border-red-100 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-600 shadow-sm"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -473,6 +495,7 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
                     <button
                       onClick={(event) => {
                         event.stopPropagation();
+                        tap();
                         setActionMenuId(actionMenuId === holding.id ? null : holding.id);
                       }}
                       className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-600 hover:bg-slate-50"
@@ -481,25 +504,45 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
                     </button>
                     {actionMenuId === holding.id && (
                       <div className="absolute right-3 top-12 z-20 min-w-28 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
-                        <button
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            onEdit(holding);
-                            setActionMenuId(null);
-                          }}
-                          className="block w-full px-4 py-2.5 text-left text-xs text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            handleDeleteClick(holding);
-                          }}
-                          className="block w-full px-4 py-2.5 text-left text-xs text-red-600 hover:bg-slate-50"
-                        >
-                          Delete
-                        </button>
+                        {pendingDeleteId === holding.id ? (
+                          <>
+                            <div className="px-4 py-2.5 text-xs font-medium text-red-600">Delete {holding.assetName}?</div>
+                            <button
+                              onClick={(event) => { event.stopPropagation(); confirmDelete(holding.id); }}
+                              className="block w-full px-4 py-2.5 text-left text-xs font-semibold text-red-600 hover:bg-red-50"
+                            >
+                              Confirm delete
+                            </button>
+                            <button
+                              onClick={(event) => { event.stopPropagation(); setPendingDeleteId(null); }}
+                              className="block w-full px-4 py-2.5 text-left text-xs text-slate-600 hover:bg-slate-50"
+                            >
+                              Cancel
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                onEdit(holding);
+                                setActionMenuId(null);
+                              }}
+                              className="block w-full px-4 py-2.5 text-left text-xs text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                handleDeleteClick(holding);
+                              }}
+                              className="block w-full px-4 py-2.5 text-left text-xs text-red-600 hover:bg-slate-50"
+                            >
+                              Delete
+                            </button>
+                          </>
+                        )}
                       </div>
                     )}
                   </td>
@@ -519,7 +562,7 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
   );
 }
 
-function SortHeader({
+const SortHeader = memo(function SortHeader({
   label,
   sortKey,
   currentKey,
@@ -537,39 +580,24 @@ function SortHeader({
   children?: React.ReactNode;
 }) {
   const isActive = currentKey === sortKey;
-  const [isHovered, setIsHovered] = useState(false);
   return (
     <th
-      className={`${className || "px-3 py-3"} cursor-pointer select-none transition-colors`}
+      className={`${className || "px-3 py-3"} group cursor-pointer select-none transition-colors`}
       onClick={() => onSort(sortKey)}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
     >
       <div className="inline-flex items-center gap-1">
-        <div
-          className="leading-tight transition-colors"
-          style={{
-            color: isHovered ? "var(--color-text-primary)" : "var(--color-text-muted)",
-          }}
-        >
+        <div className="leading-tight transition-colors text-text-muted group-hover:text-text-primary">
           {children || label}
         </div>
         <span
-          className="text-[10px] transition-colors"
-          style={{
-            color: isActive
-              ? "var(--color-text-primary)"
-              : isHovered
-                ? "var(--color-text-secondary)"
-                : "var(--color-text-muted)",
-          }}
+          className={`text-[10px] transition-colors group-hover:text-text-secondary ${isActive ? "text-text-primary" : "text-text-muted"}`}
         >
           {isActive ? (dir === "asc" ? "\u25B2" : "\u25BC") : "\u21C5"}
         </span>
       </div>
     </th>
   );
-}
+});
 
 function FilterInput({
   label,

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { tap, toggle, destructive as hapticDestructive } from "@/lib/haptics";
 import { requestDashboardRefresh } from "@/lib/dashboard/refresh-controller";
 import { useRouter } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
@@ -99,6 +100,7 @@ export default function DashboardShell({
   }, []);
 
   const handleSignOut = async () => {
+    hapticDestructive();
     const supabase = createClient();
     await supabase.auth.signOut();
     router.push("/login");
@@ -133,6 +135,7 @@ export default function DashboardShell({
               <div className="flex items-center rounded-full border border-slate-200 bg-slate-50 p-1">
                 <button
                   onClick={() => {
+                    tap();
                     requestDashboardRefresh();
                   }}
                   className={`inline-flex ${iconButtonClass}`}
@@ -150,13 +153,14 @@ export default function DashboardShell({
                 </button>
 
                 <button
-                  onClick={() =>
+                  onClick={() => {
+                    toggle();
                     window.dispatchEvent(
                       new CustomEvent("portflow:toggle-visibility", {
                         detail: { visible: !isAmountsVisible },
                       })
-                    )
-                  }
+                    );
+                  }}
                   className={`hidden ${iconButtonClass} lg:inline-flex`}
                   title={isAmountsVisible ? "Hide values" : "Show values"}
                   aria-label={isAmountsVisible ? "Hide values" : "Show values"}
@@ -177,7 +181,7 @@ export default function DashboardShell({
                 </button>
 
                 <button
-                  onClick={() => setIsDarkMode((current) => !current)}
+                  onClick={() => { toggle(); setIsDarkMode((current) => !current); }}
                   className={`inline-flex ${iconButtonClass}`}
                   title={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
                   aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
@@ -197,7 +201,7 @@ export default function DashboardShell({
 
               <div ref={profileMenuRef} className="relative">
                 <button
-                  onClick={() => setProfileMenuOpen((current) => !current)}
+                  onClick={() => { tap(); setProfileMenuOpen((current) => !current); }}
                   className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-sm font-semibold text-slate-700"
                   aria-label="Open profile menu"
                 >
