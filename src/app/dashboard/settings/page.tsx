@@ -2,11 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { type Holding } from "@/lib/constants";
-import { DEFAULT_INR_TO_AED_RATE, getRateStorageKey } from "@/lib/dashboard/persistence";
-import { buildBackfilledSnapshots } from "@/lib/history-backfill";
 import { normalizeHoldings } from "@/lib/holdings-normalize";
 import { replaceRemoteHoldings } from "@/lib/holdings-store";
-import { fetchPortfolioSnapshots, replacePortfolioSnapshots } from "@/lib/portfolio-snapshots";
 import { createClient } from "@/lib/supabase/client";
 
 interface ApiStatus {
@@ -31,7 +28,6 @@ export default function SettingsPage() {
   const [userId, setUserId] = useState<string>("default");
   const [testResults, setTestResults] = useState<Record<string, string>>({});
   const [testing, setTesting] = useState(false);
-  const [rebuildingHistory, setRebuildingHistory] = useState(false);
 
   useEffect(() => {
     async function getUser() {
@@ -46,7 +42,6 @@ export default function SettingsPage() {
   }, []);
 
   const storageKey = `portflow-holdings-${userId}`;
-  const rateStorageKey = getRateStorageKey(userId);
 
   const testEndpoint = async (path: string) => {
     try {
@@ -84,30 +79,6 @@ export default function SettingsPage() {
     }
 
     setTesting(false);
-  };
-
-  const rebuildHistory = async () => {
-    setRebuildingHistory(true);
-
-    try {
-      const rawHoldings = localStorage.getItem(storageKey);
-      const parsed = rawHoldings ? (JSON.parse(rawHoldings) as Holding[]) : [];
-      const { normalized } = normalizeHoldings(parsed);
-      const storedRate = Number(localStorage.getItem(rateStorageKey));
-      const inrToAedRate =
-        Number.isFinite(storedRate) && storedRate > 0 ? storedRate : DEFAULT_INR_TO_AED_RATE;
-
-      const existingSnapshots = await fetchPortfolioSnapshots(userId);
-      const rebuiltSnapshots = buildBackfilledSnapshots(normalized, existingSnapshots, inrToAedRate);
-
-      await replacePortfolioSnapshots(userId, rebuiltSnapshots);
-      window.location.reload();
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to rebuild history";
-      alert(message);
-    } finally {
-      setRebuildingHistory(false);
-    }
   };
 
   return (
@@ -219,42 +190,6 @@ export default function SettingsPage() {
               }}
             />
           </div>
-
-          <div className="mt-5 rounded-[1.2rem] border border-border-default bg-bg-elevated p-4">
-            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-              <div>
-                <h3 className="text-sm font-semibold text-text-primary">Historical snapshots</h3>
-                <p className="mt-1 text-sm leading-6 text-text-secondary">
-                  Rebuild missing history from purchase dates. Backfilled dates assume portfolio value matched invested cost on those earlier entries.
-                </p>
-              </div>
-              <button
-                onClick={rebuildHistory}
-                disabled={rebuildingHistory}
-                className="rounded-full border border-border-default bg-bg-card px-4 py-2.5 text-sm font-semibold text-text-primary transition hover:bg-bg-card-hover disabled:cursor-not-allowed disabled:opacity-55"
-              >
-                {rebuildingHistory ? "Rebuilding history" : "Rebuild history"}
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div className="glass-card p-6">
-          <h2 className="font-display text-xl font-semibold tracking-[-0.03em] text-text-primary">Setup</h2>
-          <div className="mt-5 space-y-5 text-sm leading-6 text-slate-600">
-            <SetupStep
-              title="Supabase"
-              body="Add the project URL and anon key to .env.local, then run the holdings migration."
-            />
-            <SetupStep
-              title="Twelve Data"
-              body="Add TWELVE_DATA_API_KEY for US ETFs and UAE equities."
-            />
-            <SetupStep
-              title="Deploy"
-              body="Mirror the same environment variables in Vercel."
-            />
-          </div>
         </div>
       </section>
     </div>
@@ -289,14 +224,5 @@ function ActionButton({
     >
       {label}
     </button>
-  );
-}
-
-function SetupStep({ title, body }: { title: string; body: string }) {
-  return (
-    <div className="rounded-[1.2rem] border border-border-default bg-bg-elevated p-4">
-      <h3 className="font-semibold text-text-primary">{title}</h3>
-      <p className="mt-1.5 text-text-secondary">{body}</p>
-    </div>
   );
 }

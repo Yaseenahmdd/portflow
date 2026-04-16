@@ -84,6 +84,13 @@ function PortfolioValueSparkline({
           <filter id="portfolio-summary-spark-shadow" x="-20%" y="-40%" width="160%" height="200%">
             <feDropShadow dx="0" dy="2" stdDeviation="2" floodColor="rgba(148, 163, 184, 0.28)" />
           </filter>
+          <filter id="portfolio-summary-live-dot-glow" x="-240%" y="-240%" width="580%" height="580%">
+            <feGaussianBlur stdDeviation="3.8" result="blurred" />
+            <feMerge>
+              <feMergeNode in="blurred" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
         </defs>
         <path
           d={path}
@@ -94,8 +101,34 @@ function PortfolioValueSparkline({
           strokeLinejoin="round"
           filter="url(#portfolio-summary-spark-shadow)"
         />
-        <circle cx={lastPoint.x} cy={lastPoint.y} r="5.5" fill="rgba(148, 163, 184, 0.12)" filter="url(#portfolio-summary-spark-shadow)" />
-        <circle cx={lastPoint.x} cy={lastPoint.y} r="3" fill="rgba(100, 116, 139, 0.9)" />
+        <circle
+          cx={lastPoint.x}
+          cy={lastPoint.y}
+          r="7.6"
+          fill="rgba(255, 92, 92, 0.24)"
+          filter="url(#portfolio-summary-live-dot-glow)"
+        >
+          <animate attributeName="r" values="6.1;10.8;6.1" dur="1.35s" repeatCount="indefinite" />
+          <animate attributeName="opacity" values="0.72;0;0.72" dur="1.35s" repeatCount="indefinite" />
+        </circle>
+        <circle
+          cx={lastPoint.x}
+          cy={lastPoint.y}
+          r="5.6"
+          fill="rgba(255, 92, 92, 0.34)"
+          filter="url(#portfolio-summary-live-dot-glow)"
+        >
+          <animate attributeName="r" values="5.1;6.5;5.1" dur="1.05s" repeatCount="indefinite" />
+          <animate attributeName="opacity" values="0.92;0.58;0.92" dur="1.05s" repeatCount="indefinite" />
+        </circle>
+        <circle
+          cx={lastPoint.x}
+          cy={lastPoint.y}
+          r="3.5"
+          fill="#ff5c5c"
+          filter="url(#portfolio-summary-live-dot-glow)"
+        />
+        <circle cx={lastPoint.x} cy={lastPoint.y} r="1.2" fill="rgba(255,255,255,0.98)" />
       </svg>
     </div>
   );

@@ -68,10 +68,10 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
     const getValue = (h: ComputedHolding): number | string => {
       switch (sortKey) {
         case "asset": return h.assetName.toLowerCase();
-        case "qty": return h.quantity;
         case "value": return h.currentValue;
         case "allocation": return h.investedAmountAed;
         case "currentAed": return h.currentValueAed;
+        case "dayGain": return h.dayGainAed;
         case "pl": return h.gainLossAed;
         case "plPct": return h.gainLossPct;
         default: return 0;
@@ -159,6 +159,26 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
     }
 
     return trimmedName;
+  }
+
+  function formatQuantity(quantity: number) {
+    if (quantity < 1) {
+      return quantity.toFixed(7).replace(/0+$/, "").replace(/\.$/, "");
+    }
+
+    return quantity.toLocaleString();
+  }
+
+  function getAssetMetaLine(holding: ComputedHolding) {
+    const formattedQuantity = formatQuantity(holding.quantity);
+    return {
+      ticker: holding.ticker,
+      quantity: formattedQuantity,
+    };
+  }
+
+  function formatSignedPercent(value: number) {
+    return `${value >= 0 ? "+" : ""}${value.toFixed(2)}%`;
   }
 
   function clearFilters() {
@@ -324,7 +344,15 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
               <div className="flex items-center justify-between gap-3 px-4 py-3">
                 <button type="button" className="min-w-0 flex-1 pr-3 text-left" onClick={() => onView(holding)}>
                   <div className="truncate text-sm font-semibold text-slate-900">{getMobileAssetName(holding.assetName)}</div>
-                  <div className="mt-0.5 text-xs text-slate-500">{holding.ticker || "No ticker"}</div>
+                  <div className="mt-0.5 flex items-center gap-1.5 text-xs text-slate-500">
+                    {getAssetMetaLine(holding).ticker ? (
+                      <span className="rounded-md bg-slate-100 px-1.5 py-0.5 font-mono text-[11px] text-slate-700">
+                        {getAssetMetaLine(holding).ticker}
+                      </span>
+                    ) : null}
+                    {getAssetMetaLine(holding).ticker ? <span>&bull;</span> : null}
+                    <span>{getAssetMetaLine(holding).quantity}</span>
+                  </div>
                 </button>
 
                 <div className="text-right">
@@ -396,7 +424,6 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
             <tr>
               <th className="w-10 whitespace-nowrap px-3 py-3 text-center">#</th>
               <SortHeader label="Asset" sortKey="asset" currentKey={sortKey} dir={sortDir} onSort={handleSort} className="px-5 py-3" />
-              <SortHeader label="Qty" sortKey="qty" currentKey={sortKey} dir={sortDir} onSort={handleSort} className="px-3 py-3 text-center" />
               <th className="px-3 py-3">Market Price</th>
               <SortHeader label="Value" sortKey="value" currentKey={sortKey} dir={sortDir} onSort={handleSort} className="px-3 py-3 text-center" />
               <SortHeader label="Allocation" sortKey="allocation" currentKey={sortKey} dir={sortDir} onSort={handleSort} />
@@ -404,6 +431,7 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
                 <div>Current</div>
                 <div>(Invested)</div>
               </SortHeader>
+              <SortHeader label="Day Gain" sortKey="dayGain" currentKey={sortKey} dir={sortDir} onSort={handleSort} />
               <SortHeader label="P/L (AED)" sortKey="pl" currentKey={sortKey} dir={sortDir} onSort={handleSort} />
               <th className="px-3 py-3">Updated</th>
               <th className="px-3 py-3" />
@@ -416,23 +444,19 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
                   <td className="w-10 whitespace-nowrap px-3 py-3.5 text-center text-sm font-semibold text-slate-400">
                     {index + 1}
                   </td>
-                  <td className="px-5 py-3.5">
+                  <td className="px-5 py-3">
                     <div className="font-medium text-slate-900">{holding.assetName}</div>
                     <div className="mt-0.5 flex items-center gap-1.5 text-xs text-slate-500">
-                      {holding.ticker ? (
-                        <span className="rounded-md bg-slate-100 px-1.5 py-0.5 font-mono text-slate-700">
-                          {holding.ticker}
+                      {getAssetMetaLine(holding).ticker ? (
+                        <span className="rounded-md bg-slate-100 px-1.5 py-0.5 font-mono text-[11px] text-slate-700">
+                          {getAssetMetaLine(holding).ticker}
                         </span>
                       ) : null}
-                      <span>{holding.assetClass}</span>
-                      <span>&middot;</span>
-                      <span>{holding.geography}</span>
+                      {getAssetMetaLine(holding).ticker ? <span>&bull;</span> : null}
+                      <span>{getAssetMetaLine(holding).quantity}</span>
                     </div>
                   </td>
-                  <td className="px-3 py-3.5 text-center font-mono text-slate-600">
-                    {holding.quantity < 1 ? holding.quantity.toFixed(7) : holding.quantity.toLocaleString()}
-                  </td>
-                  <td className="px-3 py-3.5">
+                  <td className="px-3 py-3">
                     <input
                       type="number"
                       step="any"
@@ -443,15 +467,15 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
                       placeholder="0"
                     />
                   </td>
-                  <td className="px-3 py-3.5 text-center font-mono text-slate-600">
+                  <td className="px-3 py-3 text-center font-mono text-slate-600">
                     {formatOrMask(holding.currentValue, holding.currency, isAmountsVisible)}
                   </td>
-                  <td className="px-3 py-3.5 text-center">
+                  <td className="px-3 py-3 text-center">
                     <div className="font-mono text-slate-900">
                       {totalInvestedAed ? `${((holding.investedAmountAed / totalInvestedAed) * 100).toFixed(2)}%` : "0.00%"}
                     </div>
                   </td>
-                  <td className="px-3 py-3.5">
+                  <td className="px-3 py-3">
                     <div className="font-mono text-slate-900">
                       {formatOrMask(holding.currentValueAed, "AED", isAmountsVisible)}
                     </div>
@@ -459,17 +483,33 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
                       ({formatOrMask(holding.investedAmountAed, "AED", isAmountsVisible).replace("AED", "").trim()})
                     </div>
                   </td>
-                  <td className="px-3 py-3.5">
+                  <td className="px-3 py-3">
+                    {holding.hasDayGain ? (
+                      <>
+                        <div className={`font-mono font-medium ${holding.dayGainAed >= 0 ? "text-green-600" : "text-red-600"}`}>
+                          {formatMoney(holding.dayGainAed, "AED")}
+                        </div>
+                        <div className={`mt-0.5 text-xs ${holding.dayGainAed >= 0 ? "text-green-600/80" : "text-red-600/80"}`}>
+                          {holding.dayGainPct === null ? "—" : formatSignedPercent(holding.dayGainPct)}
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="font-mono font-medium text-slate-400">—</div>
+                        <div className="mt-0.5 text-xs text-slate-400">—</div>
+                      </>
+                    )}
+                  </td>
+                  <td className="px-3 py-3">
                     <div className={`font-mono font-medium ${holding.gainLossAed >= 0 ? "text-green-600" : "text-red-600"}`}>
                       {formatMoney(holding.gainLossAed, "AED")}
                     </div>
                     <div className="mt-0.5 text-xs text-slate-500">
-                      {holding.gainLossPct >= 0 ? "+" : ""}
-                      {holding.gainLossPct.toFixed(2)}%
+                      {formatSignedPercent(holding.gainLossPct)}
                     </div>
                   </td>
-                  <td className="px-3 py-3.5 text-xs text-slate-500">{timeAgo(holding.lastPriceUpdate)}</td>
-                  <td className="relative px-3 py-3.5">
+                  <td className="px-3 py-3 text-xs text-slate-500">{timeAgo(holding.lastPriceUpdate)}</td>
+                  <td className="relative px-3 py-3">
                     <button
                       onClick={(event) => {
                         event.stopPropagation();

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   fetchPortfolioSnapshots,
   persistLocalPortfolioSnapshots,
@@ -37,7 +37,20 @@ export function usePortfolioSnapshots({
   holdingsCount,
   summary,
 }: UsePortfolioSnapshotsOptions) {
-  const [snapshots, setSnapshots] = useState<PortfolioSnapshot[]>([]);
+  const [storedSnapshots, setStoredSnapshots] = useState<PortfolioSnapshot[]>([]);
+
+  const snapshot = useMemo<PortfolioSnapshot>(() => ({
+    snapshotDate: getTodaySnapshotDate(),
+    totalValueAed: summary.totalValue,
+    totalInvestedAed: summary.totalInvested,
+    totalGainLossAed: summary.totalGainLoss,
+    holdingsCount,
+  }), [holdingsCount, summary.totalGainLoss, summary.totalInvested, summary.totalValue]);
+
+  const snapshots = useMemo(
+    () => upsertSnapshotInList(storedSnapshots, snapshot),
+    [snapshot, storedSnapshots]
+  );
 
   useEffect(() => {
     if (!mounted) {
@@ -49,7 +62,7 @@ export function usePortfolioSnapshots({
     void (async () => {
       const history = await fetchPortfolioSnapshots(userId);
       if (active) {
-        setSnapshots(history);
+        setStoredSnapshots(history);
       }
     })();
 
@@ -62,31 +75,16 @@ export function usePortfolioSnapshots({
     if (!mounted) {
       return;
     }
+    persistLocalPortfolioSnapshots(userId, snapshots);
 
-    const snapshot: PortfolioSnapshot = {
-      snapshotDate: getTodaySnapshotDate(),
-      totalValueAed: summary.totalValue,
-      totalInvestedAed: summary.totalInvested,
-      totalGainLossAed: summary.totalGainLoss,
-      holdingsCount,
-    };
-
-    const timeoutId = window.setTimeout(async () => {
-      setSnapshots((current) => {
-        const next = upsertSnapshotInList(current, snapshot);
-        persistLocalPortfolioSnapshots(userId, next);
-        return next;
-      });
-
+    void (async () => {
       try {
         await syncPortfolioSnapshot(userId, snapshot);
       } catch (error) {
         console.error("Failed to sync portfolio snapshot:", error);
       }
-    }, 500);
-
-    return () => window.clearTimeout(timeoutId);
-  }, [mounted, userId, holdingsCount, summary.totalGainLoss, summary.totalInvested, summary.totalValue]);
+    })();
+  }, [mounted, snapshot, snapshots, userId]);
 
   return { snapshots };
 }

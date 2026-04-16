@@ -89,6 +89,8 @@ export interface Holding {
   priceSource: PriceSource;
   schemeCode?: string; // for MFs
   lastPriceUpdate?: string; // ISO timestamp
+  previousClose?: number;
+  dayChangePercent?: number;
   purchases?: Purchase[];
 }
 
@@ -102,6 +104,9 @@ export interface ComputedHolding extends Holding {
   investedAmountAed: number;
   currentValueAed: number;
   gainLossAed: number;
+  dayGainAed: number;
+  dayGainPct: number | null;
+  hasDayGain: boolean;
 }
 
 // ──────────────────────────────────────────────
