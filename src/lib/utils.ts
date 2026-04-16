@@ -106,12 +106,13 @@ export function generateId(): string {
 export function getAllocation(
   holdings: ComputedHolding[],
   key: keyof ComputedHolding,
-  totalValue: number
+  totalValue: number,
+  valueKey: "currentValueAed" | "investedAmountAed" = "currentValueAed"
 ): { label: string; value: number; weight: number }[] {
   const tv = totalValue || 1;
   const grouped = holdings.reduce<Record<string, number>>((acc, item) => {
     const label = String(item[key]) || 'Uncategorized';
-    acc[label] = (acc[label] || 0) + item.currentValueAed;
+    acc[label] = (acc[label] || 0) + item[valueKey];
     return acc;
   }, {});
 

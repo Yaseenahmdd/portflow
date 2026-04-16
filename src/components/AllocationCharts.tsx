@@ -10,16 +10,20 @@ import { formatMoney, getAllocation } from "@/lib/utils";
 interface Props {
   holdings: ComputedHolding[];
   totalValue: number;
+  totalInvested: number;
 }
 
-export default function AllocationCharts({ holdings, totalValue }: Props) {
+export default function AllocationCharts({ holdings, totalValue, totalInvested }: Props) {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [mobileChartIndex, setMobileChartIndex] = useState(0);
+  const [categoryMetric, setCategoryMetric] = useState<"current" | "invested">("current");
   const mobileTrackRef = useRef<HTMLDivElement | null>(null);
   const mobileCardRefs = useRef<Array<HTMLDivElement | null>>([]);
   const byPlatform = getAllocation(holdings, "platform", totalValue);
   const byAssetClass = getAllocation(holdings, "allocationClass", totalValue);
+  const byAssetClassInvested = getAllocation(holdings, "allocationClass", totalInvested, "investedAmountAed");
   const byGeography = getAllocation(holdings, "geography", totalValue);
+  const activeByAssetClass = categoryMetric === "invested" ? byAssetClassInvested : byAssetClass;
 
   useEffect(() => {
     const root = document.documentElement;
@@ -54,13 +58,13 @@ export default function AllocationCharts({ holdings, totalValue }: Props) {
   const assetClassColorMap = useMemo(() => {
     if (isDarkMode) {
       const mapping = new Map<string, string>();
-      byAssetClass.forEach((item, index) => {
+      activeByAssetClass.forEach((item, index) => {
         mapping.set(item.label, DARK_PIE_COLORS[index % DARK_PIE_COLORS.length]);
       });
       return mapping;
     }
     return new Map(Object.entries(LIGHT_ASSET_CLASS_COLORS));
-  }, [byAssetClass, isDarkMode]);
+  }, [activeByAssetClass, isDarkMode]);
 
   const geographyColorMap = useMemo(() => {
     if (isDarkMode) {
@@ -75,7 +79,13 @@ export default function AllocationCharts({ holdings, totalValue }: Props) {
 
   const chartCards = [
     { title: "By platform", items: byPlatform, colorMap: platformColorMap },
-    { title: "By category", items: byAssetClass, colorMap: assetClassColorMap },
+    {
+      title: "By category",
+      items: activeByAssetClass,
+      colorMap: assetClassColorMap,
+      metric: categoryMetric,
+      onMetricChange: setCategoryMetric,
+    },
     { title: "By geography", items: byGeography, colorMap: geographyColorMap },
   ];
 
@@ -162,7 +172,14 @@ export default function AllocationCharts({ holdings, totalValue }: Props) {
                 className="w-full shrink-0 snap-center"
               >
                 <div className="h-full px-1">
-                  <PieAllocationCard title={chart.title} items={chart.items} colorMap={chart.colorMap} isDarkMode={isDarkMode} />
+                  <PieAllocationCard
+                    title={chart.title}
+                    items={chart.items}
+                    colorMap={chart.colorMap}
+                    isDarkMode={isDarkMode}
+                    metric={chart.metric}
+                    onMetricChange={chart.onMetricChange}
+                  />
                 </div>
               </div>
             ))}
@@ -224,6 +241,8 @@ export default function AllocationCharts({ holdings, totalValue }: Props) {
             items={chart.items}
             colorMap={chart.colorMap}
             isDarkMode={isDarkMode}
+            metric={chart.metric}
+            onMetricChange={chart.onMetricChange}
           />
         ))}
       </div>
@@ -236,12 +255,18 @@ function PieAllocationCard({
   items,
   colorMap,
   isDarkMode,
+  metric,
+  onMetricChange,
 }: {
   title: string;
   items: { label: string; value: number; weight: number }[];
   colorMap: Map<string, string>;
   isDarkMode: boolean;
+  metric?: "current" | "invested";
+  onMetricChange?: (metric: "current" | "invested") => void;
 }) {
+  const showMetricToggle = title === "By category" && metric && onMetricChange;
+
   return (
     <div
       className="dashboard-card flex h-full flex-col overflow-hidden rounded-2xl border p-4 shadow-sm"
@@ -250,9 +275,40 @@ function PieAllocationCard({
         borderColor: isDarkMode ? "var(--color-border-default)" : "#e2e8f0",
       }}
     >
-      <h2 style={{ color: isDarkMode ? "var(--color-text-primary)" : "#0f172a" }} className="font-display text-base font-semibold tracking-[-0.02em]">
-        {title}
-      </h2>
+      <div className="flex items-start justify-between gap-3">
+        <h2 style={{ color: isDarkMode ? "var(--color-text-primary)" : "#0f172a" }} className="font-display text-base font-semibold tracking-[-0.02em]">
+          {title}
+        </h2>
+        {showMetricToggle ? (
+          <button
+            type="button"
+            onClick={() => onMetricChange(metric === "current" ? "invested" : "current")}
+            className="inline-flex h-7 w-7 items-center justify-center rounded-full border transition-colors"
+            aria-label={
+              metric === "current"
+                ? "Switch category allocation to invested value"
+                : "Switch category allocation to current value"
+            }
+            title={
+              metric === "current"
+                ? "Show invested allocation"
+                : "Show current allocation"
+            }
+            style={{
+              borderColor: isDarkMode ? "rgba(148, 163, 184, 0.14)" : "rgba(148, 163, 184, 0.18)",
+              backgroundColor: isDarkMode ? "rgba(255, 255, 255, 0.02)" : "rgba(248, 250, 252, 0.7)",
+              color: isDarkMode ? "rgba(226, 232, 240, 0.7)" : "rgba(71, 85, 105, 0.72)",
+            }}
+          >
+            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M17 3l4 4-4 4" />
+              <path d="M3 7h18" />
+              <path d="M7 21l-4-4 4-4" />
+              <path d="M21 17H3" />
+            </svg>
+          </button>
+        ) : null}
+      </div>
       {items.length ? (
         <>
           <div className="mt-3 h-40 w-full min-h-0 min-w-0 sm:h-44">

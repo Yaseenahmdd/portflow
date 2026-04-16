@@ -7,6 +7,7 @@ export interface ExchangeRates {
   base: string;
   date: string;
   rates: Record<string, number>;
+  fetchedAt?: string;
 }
 
 export async function fetchExchangeRates(
@@ -14,7 +15,7 @@ export async function fetchExchangeRates(
   try {
     // AED is pegged to USD (1 USD = 3.6725 AED). We fetch USD to INR.
     const res = await fetch(`https://api.frankfurter.app/latest?from=USD&to=INR`, {
-      next: { revalidate: 3600 },
+      cache: "no-store",
     });
     if (!res.ok) throw new Error(`Frankfurter error: ${res.status}`);
     const data: ExchangeRates = await res.json();
@@ -27,6 +28,7 @@ export async function fetchExchangeRates(
       base: 'AED',
       date: data.date,
       rates: { INR: inrPerAed },
+      fetchedAt: new Date().toISOString(),
     };
     return convertedData;
   } catch (err) {

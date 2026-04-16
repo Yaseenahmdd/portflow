@@ -16,7 +16,7 @@ export async function fetchMutualFundNav(schemeCodes: string[]): Promise<MFNavRe
   const fetches = schemeCodes.map(async (code) => {
     try {
       const res = await fetch(`https://api.mfapi.in/mf/${code}/latest`, {
-        next: { revalidate: 3600 }, // Cache for 1 hour
+        cache: "no-store",
       });
       if (!res.ok) throw new Error(`MFAPI error: ${res.status}`);
       const data = await res.json();

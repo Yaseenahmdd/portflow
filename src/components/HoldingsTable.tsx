@@ -29,6 +29,7 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
   const [mobileColumn3Mode, setMobileColumn3Mode] = useState<"value" | "return">("value");
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [mobileSortDir, setMobileSortDir] = useState<"asc" | "desc" | null>(null);
 
   const platforms = useMemo(() => ["All", ...new Set(holdings.map((holding) => holding.platform))], [holdings]);
   const activeFilterCount = [
@@ -95,6 +96,7 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
 
   const handleSort = useCallback((key: string) => {
     tap();
+
     if (sortKey === key) {
       if (sortDir === "desc") {
         setSortDir("asc");
@@ -107,6 +109,29 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
       setSortDir("desc");
     }
   }, [sortKey, sortDir]);
+
+  const mobileSortedHoldings = useMemo(() => {
+    if (!mobileSortDir) {
+      return filteredHoldings;
+    }
+
+    const getMobileSortValue = (holding: ComputedHolding) =>
+      mobileColumn3Mode === "value" ? holding.currentValueAed : holding.gainLossAed;
+
+    return [...filteredHoldings].sort((a, b) => {
+      const difference = getMobileSortValue(a) - getMobileSortValue(b);
+      return mobileSortDir === "asc" ? difference : -difference;
+    });
+  }, [filteredHoldings, mobileColumn3Mode, mobileSortDir]);
+
+  function handleMobileSort() {
+    tap();
+    setMobileSortDir((current) => {
+      if (current === null) return "desc";
+      if (current === "desc") return "asc";
+      return null;
+    });
+  }
 
   function handleDeleteClick(holding: ComputedHolding) {
     medium();
@@ -265,6 +290,28 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
           </span>
           <button
             type="button"
+            onClick={handleMobileSort}
+            className="flex h-5 w-5 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 active:bg-slate-100"
+            aria-label={
+              mobileSortDir === null
+                ? "Sort descending"
+                : mobileSortDir === "desc"
+                  ? "Sort ascending"
+                  : "Remove sort"
+            }
+          >
+            <svg className="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              {mobileSortDir === "asc" ? (
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8 7l4-4m0 0l4 4m-4-4v18" />
+              ) : mobileSortDir === "desc" ? (
+                <path strokeLinecap="round" strokeLinejoin="round" d="M16 17l-4 4m0 0l-4-4m4 4V3" />
+              ) : (
+                <path strokeLinecap="round" strokeLinejoin="round" d="M7 4v16m0 0l-3-3m3 3l3-3M17 20V4m0 0l-3 3m3-3l3 3" />
+              )}
+            </svg>
+          </button>
+          <button
+            type="button"
             onClick={() => { toggle(); setMobileColumn3Mode((mode) => (mode === "value" ? "return" : "value")); }}
             className="flex h-5 w-5 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 active:bg-slate-100"
             aria-label="Toggle current and gain/loss view"
@@ -277,8 +324,8 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
       </div>
 
       <div className="divide-y divide-slate-100 sm:hidden">
-        {filteredHoldings.length ? (
-          filteredHoldings.map((holding) => (
+        {mobileSortedHoldings.length ? (
+          mobileSortedHoldings.map((holding) => (
             <div key={holding.id} className="bg-white">
               <div className="flex items-center justify-between gap-3 px-4 py-3">
                 <button type="button" className="min-w-0 flex-1 pr-3 text-left" onClick={() => { tap(); onView(holding); }}>

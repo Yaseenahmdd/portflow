@@ -4,6 +4,7 @@ import { fetchRemoteHoldings, upsertRemoteHoldings, deleteRemoteHolding } from "
 import { createClient } from "@/lib/supabase/client";
 
 export const DEFAULT_INR_TO_AED_RATE = 0.044;
+export const DEFAULT_FX_UPDATED_AT: string | null = null;
 
 export function getHoldingsStorageKey(userId: string) {
   return `portflow-holdings-${userId}`;
@@ -11,6 +12,10 @@ export function getHoldingsStorageKey(userId: string) {
 
 export function getRateStorageKey(userId: string) {
   return `portflow-inr-aed-rate-${userId}`;
+}
+
+export function getFxUpdatedAtStorageKey(userId: string) {
+  return `portflow-inr-aed-rate-updated-at-${userId}`;
 }
 
 function parseStoredHoldings(raw: string | null): Holding[] | null {
@@ -31,6 +36,15 @@ function parseStoredRate(raw: string | null) {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_INR_TO_AED_RATE;
 }
 
+function parseStoredTimestamp(raw: string | null) {
+  if (!raw) {
+    return DEFAULT_FX_UPDATED_AT;
+  }
+
+  const timestamp = new Date(raw).getTime();
+  return Number.isFinite(timestamp) ? new Date(timestamp).toISOString() : DEFAULT_FX_UPDATED_AT;
+}
+
 export async function loadDashboardPersistenceState() {
   const supabase = createClient();
   const {
@@ -40,6 +54,7 @@ export async function loadDashboardPersistenceState() {
   const userId = user?.id || "default";
   const storedHoldings = parseStoredHoldings(localStorage.getItem(getHoldingsStorageKey(userId)));
   const inrToAedRate = parseStoredRate(localStorage.getItem(getRateStorageKey(userId)));
+  const fxUpdatedAt = parseStoredTimestamp(localStorage.getItem(getFxUpdatedAtStorageKey(userId)));
 
   try {
     const remoteHoldings = await fetchRemoteHoldings(supabase, userId);
@@ -52,21 +67,25 @@ export async function loadDashboardPersistenceState() {
         await upsertRemoteHoldings(supabase, userId, normalized);
       }
 
-      return { userId, holdings: normalized, inrToAedRate };
+      return { userId, holdings: normalized, inrToAedRate, fxUpdatedAt };
     }
 
     if (storedHoldings) {
       persistLocalHoldings(userId, storedHoldings);
       await upsertRemoteHoldings(supabase, userId, storedHoldings);
-      return { userId, holdings: storedHoldings, inrToAedRate };
+      return { userId, holdings: storedHoldings, inrToAedRate, fxUpdatedAt };
     }
   } catch {
     if (storedHoldings) {
-      return { userId, holdings: storedHoldings, inrToAedRate };
+      return { userId, holdings: storedHoldings, inrToAedRate, fxUpdatedAt };
     }
   }
 
-  return { userId, holdings: DEFAULT_HOLDINGS, inrToAedRate };
+  if (storedHoldings) {
+    return { userId, holdings: storedHoldings, inrToAedRate, fxUpdatedAt };
+  }
+
+  return { userId, holdings: DEFAULT_HOLDINGS, inrToAedRate, fxUpdatedAt };
 }
 
 export function persistLocalHoldings(userId: string, holdings: Holding[]) {
@@ -75,6 +94,15 @@ export function persistLocalHoldings(userId: string, holdings: Holding[]) {
 
 export function persistDashboardRate(userId: string, inrToAedRate: number) {
   localStorage.setItem(getRateStorageKey(userId), String(inrToAedRate));
+}
+
+export function persistFxUpdatedAt(userId: string, fxUpdatedAt: string | null) {
+  if (!fxUpdatedAt) {
+    localStorage.removeItem(getFxUpdatedAtStorageKey(userId));
+    return;
+  }
+
+  localStorage.setItem(getFxUpdatedAtStorageKey(userId), fxUpdatedAt);
 }
 
 export async function syncDashboardHoldingsFromRemote(userId: string) {

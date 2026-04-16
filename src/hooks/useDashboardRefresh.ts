@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import type { Holding } from "@/lib/constants";
+import { registerDashboardRefreshHandler } from "@/lib/dashboard/refresh-controller";
 import { refreshDashboardPrices, type RefreshFailure } from "@/lib/dashboard/refresh";
 import { threshold as hapticThreshold, success as hapticSuccess, destructive as hapticError } from "@/lib/haptics";
 
@@ -10,15 +11,19 @@ const MAX_PULL_DISTANCE = 96;
 const PULL_THRESHOLD = 72;
 
 interface UseDashboardRefreshOptions {
+  mounted: boolean;
   holdings: Holding[];
   setHoldings: Dispatch<SetStateAction<Holding[]>>;
   setInrToAedRate: Dispatch<SetStateAction<number>>;
+  setFxUpdatedAt: Dispatch<SetStateAction<string | null>>;
 }
 
 export function useDashboardRefresh({
+  mounted,
   holdings,
   setHoldings,
   setInrToAedRate,
+  setFxUpdatedAt,
 }: UseDashboardRefreshOptions) {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isPullRefreshing, setIsPullRefreshing] = useState(false);
@@ -33,17 +38,9 @@ export function useDashboardRefresh({
   const pullingRef = useRef(false);
   const crossedThresholdRef = useRef(false);
 
-  useEffect(() => {
-    holdingsRef.current = holdings;
-  }, [holdings]);
-
-  useEffect(() => {
-    isRefreshingRef.current = isRefreshing;
-  }, [isRefreshing]);
-
-  useEffect(() => {
-    pullDistanceRef.current = pullDistance;
-  }, [pullDistance]);
+  holdingsRef.current = holdings;
+  isRefreshingRef.current = isRefreshing;
+  pullDistanceRef.current = pullDistance;
 
   const refreshPrices = useCallback(async () => {
     if (isRefreshingRef.current) {
@@ -63,6 +60,10 @@ export function useDashboardRefresh({
       if (refreshedState.inrToAedRate) {
         setInrToAedRate(refreshedState.inrToAedRate);
       }
+
+      if (refreshedState.fxUpdatedAt) {
+        setFxUpdatedAt(refreshedState.fxUpdatedAt);
+      }
     } catch (error) {
       setRefreshError(error instanceof Error ? error.message : "Refresh failed");
       hapticError();
@@ -72,16 +73,17 @@ export function useDashboardRefresh({
       setIsRefreshing(false);
       setIsPullRefreshing(false);
     }
-  }, [setHoldings, setInrToAedRate]);
+  }, [setFxUpdatedAt, setHoldings, setInrToAedRate]);
 
   useEffect(() => {
-    function handleRefresh() {
-      void refreshPrices();
+    if (!mounted) {
+      return;
     }
 
-    window.addEventListener("portflow:refresh-prices", handleRefresh);
-    return () => window.removeEventListener("portflow:refresh-prices", handleRefresh);
-  }, [refreshPrices]);
+    return registerDashboardRefreshHandler(() => {
+      void refreshPrices();
+    });
+  }, [mounted, refreshPrices]);
 
   useEffect(() => {
     window.dispatchEvent(

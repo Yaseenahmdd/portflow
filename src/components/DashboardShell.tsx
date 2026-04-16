@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { tap, toggle, destructive as hapticDestructive } from "@/lib/haptics";
+import { requestDashboardRefresh } from "@/lib/dashboard/refresh-controller";
 import { useRouter } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 
@@ -20,7 +21,7 @@ export default function DashboardShell({
   const [isAmountsVisible, setIsAmountsVisible] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
-  const [statusMeta, setStatusMeta] = useState<{ lastRefresh: string; fxRate: string } | null>(null);
+  const [statusMeta, setStatusMeta] = useState<{ lastRefresh: string; fxRate: string; fxUpdatedAt: string } | null>(null);
   const profileMenuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -80,8 +81,13 @@ export default function DashboardShell({
 
   useEffect(() => {
     function handleStatusMeta(event: Event) {
-      const detail = (event as CustomEvent<{ lastRefresh: string; fxRate: string } | null>).detail;
-      if (detail && typeof detail.lastRefresh === "string" && typeof detail.fxRate === "string") {
+      const detail = (event as CustomEvent<{ lastRefresh: string; fxRate: string; fxUpdatedAt: string } | null>).detail;
+      if (
+        detail &&
+        typeof detail.lastRefresh === "string" &&
+        typeof detail.fxRate === "string" &&
+        typeof detail.fxUpdatedAt === "string"
+      ) {
         setStatusMeta(detail);
         return;
       }
@@ -121,12 +127,17 @@ export default function DashboardShell({
                   <span>
                     AED/INR <span className="font-mono text-slate-600">{statusMeta.fxRate}</span>
                   </span>
+                  <span className="mx-2 h-3.5 w-px bg-slate-200" aria-hidden="true" />
+                  <span>{statusMeta.fxUpdatedAt}</span>
                 </div>
               ) : null}
 
               <div className="flex items-center rounded-full border border-slate-200 bg-slate-50 p-1">
                 <button
-                  onClick={() => { tap(); window.dispatchEvent(new CustomEvent("portflow:refresh-prices")); }}
+                  onClick={() => {
+                    tap();
+                    requestDashboardRefresh();
+                  }}
                   className={`inline-flex ${iconButtonClass}`}
                   aria-label={isRefreshing ? "Refreshing prices" : "Refresh prices"}
                 >

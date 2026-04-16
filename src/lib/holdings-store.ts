@@ -23,12 +23,13 @@ interface HoldingRow {
 
 type DeleteBuilder = Promise<{ error: { message: string } | null }> & {
   eq: (column: string, value: string) => DeleteBuilder;
+  in: (column: string, values: string[]) => DeleteBuilder;
 };
 
 type SupabaseLikeClient = {
   from?: (table: string) => {
     select: (query: string) => {
-      eq: (column: string, value: string) => {
+      eq: (column: string, value: string) => Promise<{ data: HoldingRow[] | Array<Pick<HoldingRow, "id">> | null; error: { message: string } | null }> & {
         order: (column: string, options?: { ascending?: boolean }) => Promise<{ data: HoldingRow[] | null; error: { message: string } | null }>;
       };
     };
@@ -142,12 +143,13 @@ export async function replaceRemoteHoldings(client: unknown, userId: string, hol
 
   const sanitizedHoldings = sanitizeHoldingIds(holdings);
 
-  const deleteResult = await client.from("holdings").delete().eq("user_id", userId);
-  if (deleteResult.error) {
-    throw new Error(deleteResult.error.message);
-  }
-
   if (!sanitizedHoldings.length) {
+    const deleteResult = await (client.from("holdings").delete().eq("user_id", userId) as Promise<{
+      error: { message: string } | null;
+    }>);
+    if (deleteResult.error) {
+      throw new Error(deleteResult.error.message);
+    }
     return true;
   }
 
@@ -157,6 +159,27 @@ export async function replaceRemoteHoldings(client: unknown, userId: string, hol
   });
   if (upsertResult.error) {
     throw new Error(upsertResult.error.message);
+  }
+
+  const { data: existingRows, error: existingRowsError } = await client
+    .from("holdings")
+    .select("id")
+    .eq("user_id", userId);
+
+  if (existingRowsError) {
+    throw new Error(existingRowsError.message);
+  }
+
+  const nextIds = new Set(sanitizedHoldings.map((holding) => holding.id));
+  const staleIds = (existingRows || [])
+    .map((row) => row.id)
+    .filter((id) => !nextIds.has(id));
+
+  if (staleIds.length) {
+    const deleteResult = await client.from("holdings").delete().eq("user_id", userId).in("id", staleIds);
+    if (deleteResult.error) {
+      throw new Error(deleteResult.error.message);
+    }
   }
 
   return true;

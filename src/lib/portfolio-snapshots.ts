@@ -26,12 +26,15 @@ type PortfolioSnapshotUpsertRow = Omit<PortfolioSnapshotRow, "created_at" | "upd
 type SupabaseLikeClient = {
   from?: (table: string) => {
     select: (query: string) => {
-      eq: (column: string, value: string) => {
+      eq: (column: string, value: string) => Promise<{ data: PortfolioSnapshotRow[] | Array<Pick<PortfolioSnapshotRow, "snapshot_date">> | null; error: { message: string } | null }> & {
         order: (column: string, options?: { ascending?: boolean }) => Promise<{ data: PortfolioSnapshotRow[] | null; error: { message: string } | null }>;
       };
     };
     delete: () => {
-      eq: (column: string, value: string) => Promise<{ error: { message: string } | null }>;
+      eq: (column: string, value: string) => {
+        eq: (column: string, value: string) => Promise<{ error: { message: string } | null }>;
+        in: (column: string, values: string[]) => Promise<{ error: { message: string } | null }>;
+      };
     };
     upsert: (
       values: PortfolioSnapshotUpsertRow[],
@@ -170,15 +173,17 @@ export async function replacePortfolioSnapshots(userId: string, snapshots: Portf
     return false;
   }
 
-  const deleteResult = await supabase.from("portfolio_snapshots").delete().eq("user_id", userId);
-  if (deleteResult.error) {
-    throw new Error(deleteResult.error.message);
-  }
-
   const sortedSnapshots = sortSnapshots(snapshots);
   persistLocalPortfolioSnapshots(userId, sortedSnapshots);
 
   if (!sortedSnapshots.length) {
+    const deleteResult = await (supabase
+      .from("portfolio_snapshots")
+      .delete()
+      .eq("user_id", userId) as Promise<{ error: { message: string } | null }>);
+    if (deleteResult.error) {
+      throw new Error(deleteResult.error.message);
+    }
     return true;
   }
 
@@ -189,6 +194,32 @@ export async function replacePortfolioSnapshots(userId: string, snapshots: Portf
 
   if (error) {
     throw new Error(error.message);
+  }
+
+  const { data: existingRows, error: existingRowsError } = await supabase
+    .from("portfolio_snapshots")
+    .select("snapshot_date")
+    .eq("user_id", userId);
+
+  if (existingRowsError) {
+    throw new Error(existingRowsError.message);
+  }
+
+  const nextDates = new Set(sortedSnapshots.map((snapshot) => snapshot.snapshotDate));
+  const staleDates = (existingRows || [])
+    .map((row) => row.snapshot_date)
+    .filter((snapshotDate) => !nextDates.has(snapshotDate));
+
+  if (staleDates.length) {
+    const deleteResult = await supabase
+      .from("portfolio_snapshots")
+      .delete()
+      .eq("user_id", userId)
+      .in("snapshot_date", staleDates);
+
+    if (deleteResult.error) {
+      throw new Error(deleteResult.error.message);
+    }
   }
 
   return true;
