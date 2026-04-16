@@ -13,16 +13,14 @@ import {
   upsertRemoteHoldingsState,
   deleteRemoteHoldingState,
 } from "@/lib/dashboard/persistence";
+import { getHoldingsSignature, mergeRemoteHoldingsWithLocalPrices } from "@/lib/dashboard/holdings-sync";
 import { normalizeHoldings } from "@/lib/holdings-normalize";
 import { generateId } from "@/lib/utils";
 
 const REMOTE_SYNC_INTERVAL_MS = 30 * 1000;
 const REMOTE_SYNC_COOLDOWN_MS = 2500;
 const REMOTE_WRITE_DEBOUNCE_MS = 2500;
-
-function getHoldingsSignature(holdings: Holding[]) {
-  return JSON.stringify(holdings);
-}
+const REMOTE_SYNC_LOCAL_WRITE_GUARD_MS = REMOTE_WRITE_DEBOUNCE_MS + REMOTE_SYNC_COOLDOWN_MS;
 
 export function useDashboardHoldings() {
   const [holdings, setHoldings] = useState<Holding[]>([]);
@@ -39,12 +37,12 @@ export function useDashboardHoldings() {
     holdingsRef.current = holdings;
   }, [holdings]);
 
-  const syncFromRemote = useCallback(async (force = false) => {
+  const syncFromRemote = useCallback(async () => {
     if (!mounted || userId === "default" || remoteSyncInFlightRef.current) {
       return;
     }
 
-    if (!force && Date.now() - lastLocalMutationAtRef.current < REMOTE_SYNC_COOLDOWN_MS) {
+    if (Date.now() - lastLocalMutationAtRef.current < REMOTE_SYNC_LOCAL_WRITE_GUARD_MS) {
       return;
     }
 
@@ -61,9 +59,12 @@ export function useDashboardHoldings() {
         return;
       }
 
-      if (getHoldingsSignature(remoteHoldings) !== getHoldingsSignature(holdingsRef.current)) {
-        setHoldings(remoteHoldings);
-      }
+      setHoldings((current) => {
+        const mergedHoldings = mergeRemoteHoldingsWithLocalPrices(remoteHoldings, current);
+        return getHoldingsSignature(mergedHoldings) === getHoldingsSignature(current)
+          ? current
+          : mergedHoldings;
+      });
     } catch (error) {
       console.error("Failed to sync holdings from Supabase:", error);
     } finally {
@@ -139,12 +140,12 @@ export function useDashboardHoldings() {
     }
 
     const handleWindowFocus = () => {
-      void syncFromRemote(true);
+      void syncFromRemote();
     };
 
     const handleVisibilityChange = () => {
       if (!document.hidden) {
-        void syncFromRemote(true);
+        void syncFromRemote();
       }
     };
 
