@@ -112,16 +112,16 @@ function CustomTooltip({
       <div className="mt-2 space-y-1.5">
         <div className="flex items-center justify-between gap-4">
           <span className="text-text-secondary">Portfolio</span>
-          <span>{isAmountsVisible ? formatMoney(value, "AED") : "-----"}</span>
+          <span>{formatOrMask(value, "AED", isAmountsVisible)}</span>
         </div>
         <div className="flex items-center justify-between gap-4">
           <span className="text-text-secondary">Invested</span>
-          <span>{isAmountsVisible ? formatMoney(invested, "AED") : "-----"}</span>
+          <span>{formatOrMask(invested, "AED", isAmountsVisible)}</span>
         </div>
         <div className="flex items-center justify-between gap-4">
           <span className="text-text-secondary">Gain / Loss</span>
           <span className={gainLossPositive ? "text-accent-gain" : "text-accent-loss"}>
-            {isAmountsVisible ? formatSignedMoney(gainLoss, "AED", true) : "-----"}
+            {formatSignedMoney(gainLoss, "AED", isAmountsVisible)}
           </span>
         </div>
         <div className="flex items-center justify-between gap-4">
@@ -228,11 +228,11 @@ export default function PortfolioTrendChart({ chartData, isAmountsVisible }: Pro
               />
               <YAxis
                 domain={yAxisDomain}
-                tickFormatter={(value) => compactNumber(Number(value))}
+                tickFormatter={(value) => (isAmountsVisible ? compactNumber(Number(value)) : "...")}
                 tick={{ fill: isDarkMode ? "var(--color-text-muted)" : "#64748b", fontSize: 12 }}
                 axisLine={false}
                 tickLine={false}
-                width={60}
+                width={isAmountsVisible ? 60 : 30}
                 tickCount={4}
               />
               <Tooltip

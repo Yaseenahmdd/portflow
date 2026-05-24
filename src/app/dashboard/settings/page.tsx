@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { type Holding } from "@/lib/constants";
+import { useDashboardStateContext } from "@/components/dashboard/DashboardStateProvider";
 import { normalizeHoldings } from "@/lib/holdings-normalize";
 import { replaceRemoteHoldings } from "@/lib/holdings-store";
 import { createClient } from "@/lib/supabase/client";
@@ -25,21 +26,9 @@ const apiStatuses: ApiStatus[] = [
 ];
 
 export default function SettingsPage() {
-  const [userId, setUserId] = useState<string>("default");
+  const { userId } = useDashboardStateContext();
   const [testResults, setTestResults] = useState<Record<string, string>>({});
   const [testing, setTesting] = useState(false);
-
-  useEffect(() => {
-    async function getUser() {
-      const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      setUserId(user?.id || "default");
-    }
-
-    getUser();
-  }, []);
 
   const storageKey = `portflow-holdings-${userId}`;
 

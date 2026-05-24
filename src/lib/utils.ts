@@ -18,15 +18,10 @@ export function formatMoney(value: number, currency: Currency | string = 'AED'):
   }).format(value || 0);
 }
 
-/**
- * Format as money, or return dashes equal to the number of integer digits
- * (e.g. 4-digit number like 4,123 returns '----')
- */
 export function formatOrMask(value: number, currency: Currency | string = 'AED', isVisible: boolean = true): string {
   if (isVisible) return formatMoney(value, currency as Currency);
-  const digitCount = Math.max(1, Math.floor(Math.abs(value || 0)).toString().length);
-  // Use Mathematical Minus Sign (U+2212) to prevent font ligatures from blending standard hyphens
-  return "\u2212".repeat(digitCount);
+
+  return formatMoney(value, currency as Currency).replace(/\d/g, "\u2212");
 }
 
 /**
@@ -81,11 +76,11 @@ export function computeHolding(holding: Holding, inrToAedRate: number): Computed
   const gainLossPct = investedAmountAed ? (gainLossAed / investedAmountAed) * 100 : 0;
   const previousClose = toNumber(holding.previousClose);
   const hasPreviousClose = previousClose > 0;
-  const hasExplicitDayChangePercent = isFiniteNumber(holding.dayChangePercent);
+  const explicitDayChangePercent = holding.dayChangePercent;
   const resolvedDayGainPct = hasPreviousClose
     ? ((currentPrice - previousClose) / previousClose) * 100
-    : hasExplicitDayChangePercent
-      ? holding.dayChangePercent
+    : isFiniteNumber(explicitDayChangePercent)
+      ? explicitDayChangePercent
       : null;
   const previousPriceFromPercent =
     resolvedDayGainPct !== null ? currentPrice / (1 + resolvedDayGainPct / 100) : 0;

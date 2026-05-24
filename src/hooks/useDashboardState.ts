@@ -6,8 +6,8 @@ import { usePortfolioSnapshots } from "@/hooks/usePortfolioSnapshots";
 import { useDashboardVisibility } from "@/hooks/useDashboardVisibility";
 import { usePortfolioSummary } from "@/hooks/usePortfolioSummary";
 
-export function useDashboardState() {
-  const holdingsState = useDashboardHoldings();
+export function useDashboardState(initialUserId: string) {
+  const holdingsState = useDashboardHoldings(initialUserId);
   const refreshState = useDashboardRefresh({
     mounted: holdingsState.mounted,
     holdings: holdingsState.holdings,

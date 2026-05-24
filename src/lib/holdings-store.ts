@@ -32,7 +32,7 @@ type SupabaseLikeClient = {
       };
     };
     delete: () => {
-      eq: (column: string, value: string) => {
+      eq: (column: string, value: string) => Promise<{ error: { message: string } | null }> & {
         eq: (column: string, value: string) => Promise<{ error: { message: string } | null }>;
         in: (column: string, values: string[]) => Promise<{ error: { message: string } | null }>;
       };

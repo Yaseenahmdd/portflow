@@ -1,4 +1,5 @@
 import { computeInrToAed, type ExchangeRates } from "@/lib/api/frankfurter";
+import type { CryptoPrice } from "@/lib/api/coingecko";
 import type { Holding } from "@/lib/constants";
 import { normalizeHoldings } from "@/lib/holdings-normalize";
 
@@ -110,7 +111,7 @@ function applyRefreshResults(holdings: Holding[], results: PriceResult[]) {
       }
 
       case "crypto": {
-        const prices = result.data as Record<string, { usd: number; aed: number }>;
+        const prices = result.data as Record<string, CryptoPrice>;
         if (prices.bitcoin) {
           const index = updated.findIndex((holding) => holding.ticker === "BTC");
           if (index !== -1) {

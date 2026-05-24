@@ -12,21 +12,22 @@ import {
   syncRemoteHoldings,
 } from "@/lib/dashboard/persistence";
 import { normalizeHoldings } from "@/lib/holdings-normalize";
+import { isRefreshTokenReuseError } from "@/lib/supabase/errors";
 import { generateId } from "@/lib/utils";
 
-export function useDashboardHoldings() {
+export function useDashboardHoldings(initialUserId: string) {
   const [holdings, setHoldings] = useState<Holding[]>([]);
   const [inrToAedRate, setInrToAedRate] = useState(DEFAULT_INR_TO_AED_RATE);
   const [fxUpdatedAt, setFxUpdatedAt] = useState<string | null>(DEFAULT_FX_UPDATED_AT);
   const [mounted, setMounted] = useState(false);
-  const [userId, setUserId] = useState("default");
+  const [userId, setUserId] = useState(initialUserId);
 
   useEffect(() => {
     let active = true;
 
     void (async () => {
       try {
-        const state = await loadDashboardPersistenceState();
+        const state = await loadDashboardPersistenceState(initialUserId);
         if (!active) {
           return;
         }
@@ -36,7 +37,9 @@ export function useDashboardHoldings() {
         setInrToAedRate(state.inrToAedRate);
         setFxUpdatedAt(state.fxUpdatedAt);
       } catch (error) {
-        console.error("Failed to load dashboard holdings:", error);
+        if (!isRefreshTokenReuseError(error)) {
+          console.error("Failed to load dashboard holdings:", error);
+        }
       } finally {
         if (active) {
           setMounted(true);
@@ -47,7 +50,7 @@ export function useDashboardHoldings() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [initialUserId]);
 
   useEffect(() => {
     if (!mounted) {
@@ -60,7 +63,9 @@ export function useDashboardHoldings() {
       try {
         await syncRemoteHoldings(userId, holdings);
       } catch (error) {
-        console.error("Failed to sync holdings to Supabase:", error);
+        if (!isRefreshTokenReuseError(error)) {
+          console.error("Failed to sync holdings to Supabase:", error);
+        }
       }
     }, 400);
 

@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/client";
+import { isRefreshTokenReuseError } from "@/lib/supabase/errors";
 
 export interface PortfolioSnapshot {
   snapshotDate: string;
@@ -31,7 +32,7 @@ type SupabaseLikeClient = {
       };
     };
     delete: () => {
-      eq: (column: string, value: string) => {
+      eq: (column: string, value: string) => Promise<{ error: { message: string } | null }> & {
         eq: (column: string, value: string) => Promise<{ error: { message: string } | null }>;
         in: (column: string, values: string[]) => Promise<{ error: { message: string } | null }>;
       };
@@ -142,7 +143,9 @@ export async function fetchPortfolioSnapshots(userId: string): Promise<Portfolio
       return remoteSnapshots;
     }
   } catch (error) {
-    console.error("Failed to load portfolio snapshots:", error);
+    if (!isRefreshTokenReuseError(error)) {
+      console.error("Failed to load portfolio snapshots:", error);
+    }
   }
 
   return localSnapshots;

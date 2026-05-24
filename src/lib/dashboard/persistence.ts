@@ -45,13 +45,8 @@ function parseStoredTimestamp(raw: string | null) {
   return Number.isFinite(timestamp) ? new Date(timestamp).toISOString() : DEFAULT_FX_UPDATED_AT;
 }
 
-export async function loadDashboardPersistenceState() {
+export async function loadDashboardPersistenceState(userId: string) {
   const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const userId = user?.id || "default";
   const storedHoldings = parseStoredHoldings(localStorage.getItem(getHoldingsStorageKey(userId)));
   const inrToAedRate = parseStoredRate(localStorage.getItem(getRateStorageKey(userId)));
   const fxUpdatedAt = parseStoredTimestamp(localStorage.getItem(getFxUpdatedAtStorageKey(userId)));

@@ -8,6 +8,7 @@ import {
   type PortfolioSnapshot,
   upsertSnapshotInList,
 } from "@/lib/portfolio-snapshots";
+import { isRefreshTokenReuseError } from "@/lib/supabase/errors";
 
 interface SummarySnapshotInput {
   totalValue: number;
@@ -81,7 +82,9 @@ export function usePortfolioSnapshots({
       try {
         await syncPortfolioSnapshot(userId, snapshot);
       } catch (error) {
-        console.error("Failed to sync portfolio snapshot:", error);
+        if (!isRefreshTokenReuseError(error)) {
+          console.error("Failed to sync portfolio snapshot:", error);
+        }
       }
     })();
   }, [mounted, snapshot, snapshots, userId]);

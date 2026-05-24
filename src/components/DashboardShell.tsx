@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import Link from "next/link";
+import { useEffect, useRef, useState, type ReactNode, type TouchEvent } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { requestDashboardRefresh } from "@/lib/dashboard/refresh-controller";
-import { useRouter } from "next/navigation";
+import { useIsCompactViewport } from "@/hooks/useIsCompactViewport";
+import { usePathname, useRouter } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 
 const THEME_STORAGE_KEY = "portflow-theme";
@@ -16,12 +18,17 @@ export default function DashboardShell({
   user: User;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
+  const isCompactViewport = useIsCompactViewport();
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [isAmountsVisible, setIsAmountsVisible] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [statusMeta, setStatusMeta] = useState<{ lastRefresh: string; fxRate: string; fxUpdatedAt: string } | null>(null);
   const profileMenuRef = useRef<HTMLDivElement | null>(null);
+  const swipeStartXRef = useRef<number | null>(null);
+  const swipeStartYRef = useRef<number | null>(null);
+  const swipeLockedRef = useRef(false);
 
   useEffect(() => {
     function handlePointerDown(event: PointerEvent) {
@@ -98,6 +105,19 @@ export default function DashboardShell({
     return () => window.removeEventListener("portflow:status-meta", handleStatusMeta as EventListener);
   }, []);
 
+  const showMobileDashboardNav =
+    isCompactViewport && (pathname === "/dashboard" || pathname === "/dashboard/holdings");
+  const mobileDashboardTarget = pathname === "/dashboard" ? "/dashboard/holdings" : pathname === "/dashboard/holdings" ? "/dashboard" : null;
+
+  useEffect(() => {
+    if (!showMobileDashboardNav) {
+      return;
+    }
+
+    router.prefetch("/dashboard");
+    router.prefetch("/dashboard/holdings");
+  }, [router, showMobileDashboardNav]);
+
   const handleSignOut = async () => {
     const supabase = createClient();
     await supabase.auth.signOut();
@@ -109,126 +129,229 @@ export default function DashboardShell({
   const iconButtonClass =
     "h-8 w-8 items-center justify-center rounded-full text-slate-700 transition hover:bg-slate-100 sm:h-9 sm:w-9";
 
+  function handleMainTouchStart(event: TouchEvent<HTMLElement>) {
+    if (!showMobileDashboardNav || !mobileDashboardTarget) {
+      return;
+    }
+
+    const target = event.target as HTMLElement | null;
+    if (
+      target?.closest(
+        'button, a, input, select, textarea, [role="button"], [role="dialog"], [data-dashboard-swipe-lock="true"]'
+      )
+    ) {
+      swipeLockedRef.current = true;
+      return;
+    }
+
+    const touch = event.touches[0];
+    swipeStartXRef.current = touch.clientX;
+    swipeStartYRef.current = touch.clientY;
+    swipeLockedRef.current = false;
+  }
+
+  function handleMainTouchEnd(event: TouchEvent<HTMLElement>) {
+    if (!showMobileDashboardNav || !mobileDashboardTarget || swipeLockedRef.current) {
+      swipeStartXRef.current = null;
+      swipeStartYRef.current = null;
+      swipeLockedRef.current = false;
+      return;
+    }
+
+    const startX = swipeStartXRef.current;
+    const startY = swipeStartYRef.current;
+    const touch = event.changedTouches[0];
+
+    swipeStartXRef.current = null;
+    swipeStartYRef.current = null;
+    swipeLockedRef.current = false;
+
+    if (startX === null || startY === null) {
+      return;
+    }
+
+    const deltaX = touch.clientX - startX;
+    const deltaY = touch.clientY - startY;
+    const isHorizontalSwipe = Math.abs(deltaX) > 70 && Math.abs(deltaX) > Math.abs(deltaY) * 1.5;
+
+    if (!isHorizontalSwipe) {
+      return;
+    }
+
+    if (pathname === "/dashboard" && deltaX < 0) {
+      router.push("/dashboard/holdings");
+      return;
+    }
+
+    if (pathname === "/dashboard/holdings" && deltaX > 0) {
+      router.push("/dashboard");
+    }
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 p-4 sm:p-6">
       <div className="mx-auto max-w-7xl space-y-4 sm:space-y-6">
         <header className="bg-transparent px-0 py-1 sm:py-1.5">
-          <div className="flex items-center justify-between gap-3">
-            <a href="/dashboard" className="font-display text-[1.65rem] font-semibold tracking-[-0.04em] text-slate-900 sm:text-[1.8rem]">
-              Portflow
-            </a>
-            <div className="flex items-center gap-2 sm:gap-2.5">
-              {statusMeta ? (
-                <div className="hidden items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-medium text-slate-500 md:flex">
-                  <span>{statusMeta.lastRefresh}</span>
-                  <span className="mx-2 h-3.5 w-px bg-slate-200" aria-hidden="true" />
-                  <span>
-                    AED/INR <span className="font-mono text-slate-600">{statusMeta.fxRate}</span>
-                  </span>
-                  <span className="mx-2 h-3.5 w-px bg-slate-200" aria-hidden="true" />
-                  <span>{statusMeta.fxUpdatedAt}</span>
-                </div>
-              ) : null}
-
-              <div className="flex items-center rounded-full border border-slate-200 bg-slate-50 p-1">
-                <button
-                  onClick={() => {
-                    requestDashboardRefresh();
-                  }}
-                  className={`inline-flex ${iconButtonClass}`}
-                  aria-label={isRefreshing ? "Refreshing prices" : "Refresh prices"}
-                >
-                  <svg
-                    className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`}
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    strokeWidth={2}
-                    stroke="currentColor"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182M2.985 19.644l3.181-3.183" />
-                  </svg>
-                </button>
-
-                <button
-                  onClick={() =>
-                    window.dispatchEvent(
-                      new CustomEvent("portflow:toggle-visibility", {
-                        detail: { visible: !isAmountsVisible },
-                      })
-                    )
-                  }
-                  className={`hidden ${iconButtonClass} lg:inline-flex`}
-                  title={isAmountsVisible ? "Hide values" : "Show values"}
-                  aria-label={isAmountsVisible ? "Hide values" : "Show values"}
-                >
-                  {isAmountsVisible ? (
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                  ) : (
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 15.25c2.1-1.85 4.6-2.75 7.5-2.75s5.4.9 7.5 2.75" />
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 9.75l1.75 1.5" />
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M17.25 9.75l-1.75 1.5" />
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 8.75v1.75" />
-                    </svg>
-                  )}
-                </button>
-
-                <button
-                  onClick={() => setIsDarkMode((current) => !current)}
-                  className={`inline-flex ${iconButtonClass}`}
-                  title={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
-                  aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
-                >
-                  {isDarkMode ? (
-                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" />
-                    </svg>
-                  ) : (
-                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-                      <circle cx="12" cy="12" r="5" />
-                      <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
-                    </svg>
-                  )}
-                </button>
-              </div>
-
-              <div ref={profileMenuRef} className="relative">
-                <button
-                  onClick={() => setProfileMenuOpen((current) => !current)}
-                  className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-sm font-semibold text-slate-700"
-                  aria-label="Open profile menu"
-                >
-                  {userInitial}
-                </button>
-
-                {profileMenuOpen && (
-                  <div className="absolute right-0 top-11 z-50 min-w-56 overflow-hidden rounded-2xl bg-white shadow-lg ring-1 ring-slate-200">
-                    <div className="border-b border-slate-200 px-4 py-3">
-                      <div className="truncate text-sm font-semibold text-slate-900">{user.email}</div>
-                    </div>
-                    <a
-                      href="/dashboard/settings"
-                      className="block w-full px-4 py-3 text-left text-sm font-medium text-slate-700 hover:bg-slate-50"
-                    >
-                      Settings
-                    </a>
-                    <button
-                      onClick={handleSignOut}
-                      className="block w-full px-4 py-3 text-left text-sm font-medium text-slate-700 hover:bg-slate-50"
-                    >
-                      Sign Out
-                    </button>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <Link
+                href="/dashboard"
+                className="font-display text-[1.65rem] font-semibold tracking-[-0.04em] text-slate-900 sm:text-[1.8rem]"
+              >
+                Portflow
+              </Link>
+              <div className="flex items-center gap-2 sm:gap-2.5">
+                {statusMeta ? (
+                  <div className="hidden items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-medium text-slate-500 md:flex">
+                    <span>{statusMeta.lastRefresh}</span>
+                    <span className="mx-2 h-3.5 w-px bg-slate-200" aria-hidden="true" />
+                    <span>
+                      AED/INR <span className="font-mono text-slate-600">{statusMeta.fxRate}</span>
+                    </span>
+                    <span className="mx-2 h-3.5 w-px bg-slate-200" aria-hidden="true" />
+                    <span>{statusMeta.fxUpdatedAt}</span>
                   </div>
-                )}
+                ) : null}
+
+                <div className="flex items-center rounded-full border border-slate-200 bg-slate-50 p-1">
+                  <button
+                    onClick={() => {
+                      requestDashboardRefresh();
+                    }}
+                    className={`inline-flex ${iconButtonClass}`}
+                    aria-label={isRefreshing ? "Refreshing prices" : "Refresh prices"}
+                  >
+                    <svg
+                      className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`}
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      strokeWidth={2}
+                      stroke="currentColor"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182M2.985 19.644l3.181-3.183" />
+                    </svg>
+                  </button>
+
+                  <button
+                    onClick={() =>
+                      window.dispatchEvent(
+                        new CustomEvent("portflow:toggle-visibility", {
+                          detail: { visible: !isAmountsVisible },
+                        })
+                      )
+                    }
+                    className={`hidden ${iconButtonClass} lg:inline-flex`}
+                    title={isAmountsVisible ? "Hide values" : "Show values"}
+                    aria-label={isAmountsVisible ? "Hide values" : "Show values"}
+                  >
+                    {isAmountsVisible ? (
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                    ) : (
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 15.25c2.1-1.85 4.6-2.75 7.5-2.75s5.4.9 7.5 2.75" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 9.75l1.75 1.5" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M17.25 9.75l-1.75 1.5" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 8.75v1.75" />
+                      </svg>
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => setIsDarkMode((current) => !current)}
+                    className={`inline-flex ${iconButtonClass}`}
+                    title={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
+                    aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
+                  >
+                    {isDarkMode ? (
+                      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" />
+                      </svg>
+                    ) : (
+                      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="12" cy="12" r="5" />
+                        <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+                      </svg>
+                    )}
+                  </button>
+                </div>
+
+                <div ref={profileMenuRef} className="relative">
+                  <button
+                    onClick={() => setProfileMenuOpen((current) => !current)}
+                    className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-sm font-semibold text-slate-700"
+                    aria-label="Open profile menu"
+                  >
+                    {userInitial}
+                  </button>
+
+                  {profileMenuOpen && (
+                    <div className="absolute right-0 top-11 z-50 min-w-56 overflow-hidden rounded-2xl bg-white shadow-lg ring-1 ring-slate-200">
+                      <div className="border-b border-slate-200 px-4 py-3">
+                        <div className="truncate text-sm font-semibold text-slate-900">{user.email}</div>
+                      </div>
+                      <a
+                        href="/dashboard/settings"
+                        className="block w-full px-4 py-3 text-left text-sm font-medium text-slate-700 hover:bg-slate-50"
+                      >
+                        Settings
+                      </a>
+                      <button
+                        onClick={handleSignOut}
+                        className="block w-full px-4 py-3 text-left text-sm font-medium text-slate-700 hover:bg-slate-50"
+                      >
+                        Sign Out
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
+
+            {showMobileDashboardNav ? (
+              <nav className="sm:hidden">
+                <div className="grid grid-cols-2 border-b border-slate-200/90">
+                  <Link
+                    href="/dashboard"
+                    aria-current={pathname === "/dashboard" ? "page" : undefined}
+                    className={`relative inline-flex min-h-[38px] w-full items-center justify-center px-3 py-2 text-center text-sm font-medium transition-colors ${
+                      pathname === "/dashboard" ? "text-slate-900" : "text-slate-500"
+                    }`}
+                  >
+                    Overview
+                    <span
+                      className={`absolute bottom-[-1px] left-1/2 h-0.5 w-[58%] -translate-x-1/2 rounded-full transition-opacity ${
+                        pathname === "/dashboard" ? "bg-slate-900 opacity-100" : "bg-transparent opacity-0"
+                      }`}
+                      aria-hidden="true"
+                    />
+                  </Link>
+                  <Link
+                    href="/dashboard/holdings"
+                    aria-current={pathname === "/dashboard/holdings" ? "page" : undefined}
+                    className={`relative inline-flex min-h-[38px] w-full items-center justify-center px-3 py-2 text-center text-sm font-medium transition-colors ${
+                      pathname === "/dashboard/holdings" ? "text-slate-900" : "text-slate-500"
+                    }`}
+                  >
+                    Holdings
+                    <span
+                      className={`absolute bottom-[-1px] left-1/2 h-0.5 w-[58%] -translate-x-1/2 rounded-full transition-opacity ${
+                        pathname === "/dashboard/holdings" ? "bg-slate-900 opacity-100" : "bg-transparent opacity-0"
+                      }`}
+                      aria-hidden="true"
+                    />
+                  </Link>
+                </div>
+              </nav>
+            ) : null}
           </div>
         </header>
 
-        <main>{children}</main>
+        <main onTouchStart={handleMainTouchStart} onTouchEnd={handleMainTouchEnd}>
+          {children}
+        </main>
       </div>
     </div>
   );
