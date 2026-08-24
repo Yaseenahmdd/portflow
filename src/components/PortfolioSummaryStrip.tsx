@@ -19,7 +19,8 @@ interface Props {
 
 function formatSignedMoney(value: number, currency: string, isVisible: boolean) {
   if (!isVisible) {
-    return formatOrMask(Math.abs(value), currency, false);
+    const sign = value > 0 ? "+" : value < 0 ? "-" : "";
+    return `${sign}${formatOrMask(Math.abs(value), currency, false)}`;
   }
 
   const formatted = formatMoney(Math.abs(value), currency);
@@ -51,12 +52,10 @@ function splitPortfolioValue(value: number, isVisible: boolean) {
 
 function PortfolioValueSparkline({
   points,
-  isAmountsVisible,
 }: {
   points: SparklinePoint[];
-  isAmountsVisible: boolean;
 }) {
-  if (!isAmountsVisible || points.length < 2) {
+  if (points.length < 2) {
     return null;
   }
 
@@ -87,7 +86,7 @@ function PortfolioValueSparkline({
       >
         <defs>
           <filter id="portfolio-summary-spark-shadow" x="-20%" y="-40%" width="160%" height="200%">
-            <feDropShadow dx="0" dy="2" stdDeviation="2" floodColor="rgba(148, 163, 184, 0.28)" />
+            <feDropShadow dx="0" dy="2" stdDeviation="2" floodColor="rgba(255, 138, 0, 0.34)" />
           </filter>
           <filter id="portfolio-summary-live-dot-glow" x="-240%" y="-240%" width="580%" height="580%">
             <feGaussianBlur stdDeviation="3.8" result="blurred" />
@@ -100,7 +99,7 @@ function PortfolioValueSparkline({
         <path
           d={path}
           fill="none"
-          stroke="rgba(148, 163, 184, 0.72)"
+          stroke="var(--color-accent-violet)"
           strokeWidth="2"
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -110,7 +109,7 @@ function PortfolioValueSparkline({
           cx={lastPoint.x}
           cy={lastPoint.y}
           r="7.6"
-          fill="rgba(255, 92, 92, 0.24)"
+          fill="rgba(255, 138, 0, 0.24)"
           filter="url(#portfolio-summary-live-dot-glow)"
         >
           <animate attributeName="r" values="6.1;10.8;6.1" dur="1.35s" repeatCount="indefinite" />
@@ -120,7 +119,7 @@ function PortfolioValueSparkline({
           cx={lastPoint.x}
           cy={lastPoint.y}
           r="5.6"
-          fill="rgba(255, 92, 92, 0.34)"
+          fill="rgba(255, 138, 0, 0.34)"
           filter="url(#portfolio-summary-live-dot-glow)"
         >
           <animate attributeName="r" values="5.1;6.5;5.1" dur="1.05s" repeatCount="indefinite" />
@@ -130,7 +129,7 @@ function PortfolioValueSparkline({
           cx={lastPoint.x}
           cy={lastPoint.y}
           r="3.5"
-          fill="#ff5c5c"
+          fill="var(--color-accent-violet)"
           filter="url(#portfolio-summary-live-dot-glow)"
         />
         <circle cx={lastPoint.x} cy={lastPoint.y} r="1.2" fill="rgba(255,255,255,0.98)" />
@@ -146,7 +145,6 @@ function SummaryCard({
   tone = "default",
   isPrimary = false,
   portfolioHistory = [],
-  isAmountsVisible = true,
 }: {
   label: string;
   value: string;
@@ -154,7 +152,6 @@ function SummaryCard({
   tone?: "default" | "positive" | "negative";
   isPrimary?: boolean;
   portfolioHistory?: SparklinePoint[];
-  isAmountsVisible?: boolean;
 }) {
   const toneClass =
     tone === "positive"
@@ -170,7 +167,7 @@ function SummaryCard({
         {value}
       </div>
       <div className={`relative z-10 ${isPrimary ? "mt-2 text-sm text-text-muted" : "mt-1.5 text-sm text-text-muted"}`}>{subtext}</div>
-      {isPrimary ? <PortfolioValueSparkline points={portfolioHistory} isAmountsVisible={isAmountsVisible} /> : null}
+      {isPrimary ? <PortfolioValueSparkline points={portfolioHistory} /> : null}
     </div>
   );
 }
@@ -270,7 +267,6 @@ export default function PortfolioSummaryStrip({
           subtext={`Invested ${desktopInvested}`}
           isPrimary
           portfolioHistory={portfolioHistory}
-          isAmountsVisible={isAmountsVisible}
         />
         <SummaryCard
           label="Today's P/L"

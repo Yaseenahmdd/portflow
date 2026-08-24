@@ -21,7 +21,11 @@ export function formatMoney(value: number, currency: Currency | string = 'AED'):
 export function formatOrMask(value: number, currency: Currency | string = 'AED', isVisible: boolean = true): string {
   if (isVisible) return formatMoney(value, currency as Currency);
 
-  return formatMoney(value, currency as Currency).replace(/\d/g, "\u2212");
+  const formatted = formatMoney(value, currency as Currency);
+  const currencyMatch = formatted.match(/^\D+/);
+  const currencyPrefix = currencyMatch?.[0].trim() || String(currency);
+
+  return `${currencyPrefix} \u2022\u2022\u2022\u2022\u2022\u2022`;
 }
 
 /**

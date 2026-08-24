@@ -63,7 +63,8 @@ function getChartDomain(points: ChartPoint[]): [number, number] {
 
 function formatSignedMoney(value: number, currency: string, isVisible: boolean) {
   if (!isVisible) {
-    return formatOrMask(Math.abs(value), currency, false);
+    const sign = value > 0 ? "+" : value < 0 ? "-" : "";
+    return `${sign}${formatOrMask(Math.abs(value), currency, false)}`;
   }
 
   const formatted = formatMoney(Math.abs(value), currency);
@@ -228,11 +229,11 @@ export default function PortfolioTrendChart({ chartData, isAmountsVisible }: Pro
               />
               <YAxis
                 domain={yAxisDomain}
-                tickFormatter={(value) => (isAmountsVisible ? compactNumber(Number(value)) : "...")}
+                tickFormatter={(value) => (isAmountsVisible ? compactNumber(Number(value)) : "\u2022\u2022\u2022\u2022\u2022")}
                 tick={{ fill: isDarkMode ? "var(--color-text-muted)" : "#64748b", fontSize: 12 }}
                 axisLine={false}
                 tickLine={false}
-                width={isAmountsVisible ? 60 : 30}
+                width={60}
                 tickCount={4}
               />
               <Tooltip

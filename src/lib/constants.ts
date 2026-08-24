@@ -126,11 +126,12 @@ export const PIE_COLORS = [
 ];
 
 export const DARK_PIE_COLORS = [
-  '#4A4DFF',
-  '#F24B8A',
-  '#6F2DBD',
-  '#8896FF',
-  '#C15CFF',
+  '#FF8A00',
+  '#FF4F70',
+  '#8B5CF6',
+  '#4F9CFF',
+  '#FFB020',
+  '#36E07F',
 ];
 
 export const LIGHT_PLATFORM_COLORS = {

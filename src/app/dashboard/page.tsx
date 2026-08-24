@@ -1,21 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import HoldingDetailsModal from "@/components/HoldingDetailsModal";
-import HoldingModal from "@/components/HoldingModal";
-import DashboardHoldingsContent from "@/components/dashboard/DashboardHoldingsContent";
+import { useEffect, useMemo } from "react";
 import DashboardOverviewContent from "@/components/dashboard/DashboardOverviewContent";
 import DashboardPullToRefreshIndicator from "@/components/dashboard/DashboardPullToRefreshIndicator";
 import { useDashboardStateContext } from "@/components/dashboard/DashboardStateProvider";
-import { useIsCompactViewport } from "@/hooks/useIsCompactViewport";
-import type { Holding } from "@/lib/constants";
 import { timeAgo } from "@/lib/utils";
 
 export default function DashboardPage() {
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editingHolding, setEditingHolding] = useState<Holding | null>(null);
-  const [viewingHolding, setViewingHolding] = useState<Holding | null>(null);
-  const isCompactViewport = useIsCompactViewport();
   const {
     mounted,
     inrToAedRate,
@@ -29,29 +20,7 @@ export default function DashboardPage() {
     computedHoldings,
     summary,
     snapshots,
-    saveHolding,
-    deleteHolding,
-    updatePrice,
   } = useDashboardStateContext();
-
-  const handleSaveHolding = (holding: Holding) => {
-    saveHolding(holding);
-    setModalOpen(false);
-    setEditingHolding(null);
-  };
-
-  const handleEdit = (holding: Holding) => {
-    setEditingHolding(holding);
-    setModalOpen(true);
-  };
-
-  const handleDelete = (id: string) => {
-    deleteHolding(id);
-  };
-
-  const handlePriceUpdate = (id: string, price: number) => {
-    updatePrice(id, price);
-  };
 
   const trendChartData = useMemo(
     () =>
@@ -114,7 +83,6 @@ export default function DashboardPage() {
             <div key={item} className="skeleton h-72 rounded-2xl" />
           ))}
         </div>
-        <div className="skeleton h-[28rem] rounded-2xl" />
       </div>
     );
   }
@@ -141,42 +109,7 @@ export default function DashboardPage() {
           refreshError={refreshError}
           refreshFailures={refreshFailures}
         />
-
-        {!isCompactViewport ? (
-          <DashboardHoldingsContent
-            holdings={computedHoldings}
-            isAmountsVisible={isAmountsVisible}
-            onView={setViewingHolding}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
-            onPriceUpdate={handlePriceUpdate}
-            onAddHolding={() => {
-              setEditingHolding(null);
-              setModalOpen(true);
-            }}
-          />
-        ) : null}
       </div>
-
-      {modalOpen && (
-        <HoldingModal
-          holding={editingHolding}
-          inrToAedRate={inrToAedRate}
-          onSave={handleSaveHolding}
-          onClose={() => {
-            setModalOpen(false);
-            setEditingHolding(null);
-          }}
-        />
-      )}
-
-      {viewingHolding && (
-        <HoldingDetailsModal
-          holding={viewingHolding}
-          inrToAedRate={inrToAedRate}
-          onClose={() => setViewingHolding(null)}
-        />
-      )}
     </div>
   );
 }

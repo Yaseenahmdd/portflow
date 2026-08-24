@@ -1,4 +1,5 @@
 import type { Holding } from "@/lib/constants";
+import { parseHoldingPurchases } from "@/lib/safe-json";
 
 interface HoldingRow {
   id: string;
@@ -70,7 +71,7 @@ function mapRowToHolding(row: HoldingRow): Holding {
     lastPriceUpdate: row.last_price_update || undefined,
     previousClose: row.previous_close ?? undefined,
     dayChangePercent: row.day_change_percent ?? undefined,
-    purchases: row.purchases ? JSON.parse(row.purchases) : undefined,
+    purchases: parseHoldingPurchases(row.purchases),
   };
 }
 

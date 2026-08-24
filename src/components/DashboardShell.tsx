@@ -9,6 +9,11 @@ import { usePathname, useRouter } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 
 const THEME_STORAGE_KEY = "portflow-theme";
+const DASHBOARD_NAV_ITEMS = [
+  { href: "/dashboard", label: "Overview" },
+  { href: "/dashboard/history", label: "History" },
+  { href: "/dashboard/holdings", label: "Holdings" },
+];
 
 export default function DashboardShell({
   children,
@@ -105,17 +110,24 @@ export default function DashboardShell({
     return () => window.removeEventListener("portflow:status-meta", handleStatusMeta as EventListener);
   }, []);
 
-  const showMobileDashboardNav =
-    isCompactViewport && (pathname === "/dashboard" || pathname === "/dashboard/holdings");
-  const mobileDashboardTarget = pathname === "/dashboard" ? "/dashboard/holdings" : pathname === "/dashboard/holdings" ? "/dashboard" : null;
+  const dashboardNavIndex = DASHBOARD_NAV_ITEMS.findIndex((item) => item.href === pathname);
+  const showDashboardNav = dashboardNavIndex !== -1;
+  const showMobileDashboardNav = isCompactViewport && showDashboardNav;
+  const mobileDashboardTarget =
+    showMobileDashboardNav && dashboardNavIndex < DASHBOARD_NAV_ITEMS.length - 1
+      ? DASHBOARD_NAV_ITEMS[dashboardNavIndex + 1]?.href
+      : null;
+  const mobilePreviousDashboardTarget =
+    showMobileDashboardNav && dashboardNavIndex > 0
+      ? DASHBOARD_NAV_ITEMS[dashboardNavIndex - 1]?.href
+      : null;
 
   useEffect(() => {
     if (!showMobileDashboardNav) {
       return;
     }
 
-    router.prefetch("/dashboard");
-    router.prefetch("/dashboard/holdings");
+    DASHBOARD_NAV_ITEMS.forEach((item) => router.prefetch(item.href));
   }, [router, showMobileDashboardNav]);
 
   const handleSignOut = async () => {
@@ -151,7 +163,11 @@ export default function DashboardShell({
   }
 
   function handleMainTouchEnd(event: TouchEvent<HTMLElement>) {
-    if (!showMobileDashboardNav || !mobileDashboardTarget || swipeLockedRef.current) {
+    if (
+      !showMobileDashboardNav ||
+      (!mobileDashboardTarget && !mobilePreviousDashboardTarget) ||
+      swipeLockedRef.current
+    ) {
       swipeStartXRef.current = null;
       swipeStartYRef.current = null;
       swipeLockedRef.current = false;
@@ -178,13 +194,13 @@ export default function DashboardShell({
       return;
     }
 
-    if (pathname === "/dashboard" && deltaX < 0) {
-      router.push("/dashboard/holdings");
+    if (deltaX < 0 && mobileDashboardTarget) {
+      router.push(mobileDashboardTarget);
       return;
     }
 
-    if (pathname === "/dashboard/holdings" && deltaX > 0) {
-      router.push("/dashboard");
+    if (deltaX > 0 && mobilePreviousDashboardTarget) {
+      router.push(mobilePreviousDashboardTarget);
     }
   }
 
@@ -310,39 +326,33 @@ export default function DashboardShell({
               </div>
             </div>
 
-            {showMobileDashboardNav ? (
-              <nav className="sm:hidden">
-                <div className="grid grid-cols-2 border-b border-slate-200/90">
-                  <Link
-                    href="/dashboard"
-                    aria-current={pathname === "/dashboard" ? "page" : undefined}
-                    className={`relative inline-flex min-h-[38px] w-full items-center justify-center px-3 py-2 text-center text-sm font-medium transition-colors ${
-                      pathname === "/dashboard" ? "text-slate-900" : "text-slate-500"
-                    }`}
-                  >
-                    Overview
-                    <span
-                      className={`absolute bottom-[-1px] left-1/2 h-0.5 w-[58%] -translate-x-1/2 rounded-full transition-opacity ${
-                        pathname === "/dashboard" ? "bg-slate-900 opacity-100" : "bg-transparent opacity-0"
-                      }`}
-                      aria-hidden="true"
-                    />
-                  </Link>
-                  <Link
-                    href="/dashboard/holdings"
-                    aria-current={pathname === "/dashboard/holdings" ? "page" : undefined}
-                    className={`relative inline-flex min-h-[38px] w-full items-center justify-center px-3 py-2 text-center text-sm font-medium transition-colors ${
-                      pathname === "/dashboard/holdings" ? "text-slate-900" : "text-slate-500"
-                    }`}
-                  >
-                    Holdings
-                    <span
-                      className={`absolute bottom-[-1px] left-1/2 h-0.5 w-[58%] -translate-x-1/2 rounded-full transition-opacity ${
-                        pathname === "/dashboard/holdings" ? "bg-slate-900 opacity-100" : "bg-transparent opacity-0"
-                      }`}
-                      aria-hidden="true"
-                    />
-                  </Link>
+            {showDashboardNav ? (
+              <nav>
+                <div className="grid grid-cols-3 border-b border-slate-200/90 sm:flex sm:gap-2 sm:border-b-0">
+                  {DASHBOARD_NAV_ITEMS.map((item) => {
+                    const active = pathname === item.href;
+
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        aria-current={active ? "page" : undefined}
+                        className={`relative inline-flex min-h-[38px] items-center justify-center px-3 py-2 text-center text-sm font-medium transition-colors sm:rounded-full sm:border sm:px-4 ${
+                          active
+                            ? "border-accent-violet bg-accent-violet text-bg-primary"
+                            : "border-transparent text-text-secondary hover:bg-bg-card hover:text-text-primary sm:hover:border-border-default"
+                        }`}
+                      >
+                        {item.label}
+                        <span
+                          className={`absolute bottom-[-1px] left-1/2 h-0.5 w-[58%] -translate-x-1/2 rounded-full transition-opacity sm:hidden ${
+                            active ? "bg-accent-violet opacity-100" : "bg-transparent opacity-0"
+                          }`}
+                          aria-hidden="true"
+                        />
+                      </Link>
+                    );
+                  })}
                 </div>
               </nav>
             ) : null}
