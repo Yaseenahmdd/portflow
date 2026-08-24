@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ALLOCATION_CLASS_OPTIONS, ASSET_CLASS_OPTIONS, CURRENCY_OPTIONS, GEOGRAPHY_OPTIONS, PLATFORM_OPTIONS, RISK_OPTIONS, type Currency, type Holding } from "@/lib/constants";
 import { tap, success as hapticSuccess } from "@/lib/haptics";
 import { computeHolding, formatMoney, toNumber } from "@/lib/utils";
@@ -52,6 +52,28 @@ export default function HoldingModal({ holding, inrToAedRate, onSave, onClose }:
   const showsTickerField = form.assetClass !== "Mutual Funds" && form.assetClass !== "Cash";
   const showsSchemeCodeField = form.assetClass === "Mutual Funds";
 
+  useEffect(() => {
+    const { body } = document;
+    const previousOverflow = body.style.overflow;
+    const previousPosition = body.style.position;
+    const previousTop = body.style.top;
+    const previousWidth = body.style.width;
+    const scrollY = window.scrollY;
+
+    body.style.overflow = "hidden";
+    body.style.position = "fixed";
+    body.style.top = `-${scrollY}px`;
+    body.style.width = "100%";
+
+    return () => {
+      body.style.overflow = previousOverflow;
+      body.style.position = previousPosition;
+      body.style.top = previousTop;
+      body.style.width = previousWidth;
+      window.scrollTo(0, scrollY);
+    };
+  }, []);
+
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
     if (!form.assetName.trim()) return;
@@ -75,10 +97,10 @@ export default function HoldingModal({ holding, inrToAedRate, onSave, onClose }:
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4 sm:items-center" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto overscroll-contain p-4 sm:items-center" onClick={onClose}>
       <div className="absolute inset-0 bg-slate-900/20 backdrop-blur-sm" />
       <div
-        className="relative my-6 w-full max-w-5xl rounded-2xl bg-white p-4 shadow-xl ring-1 ring-slate-200 sm:max-h-[90vh] sm:overflow-y-auto sm:p-6"
+        className="relative my-6 max-h-[calc(100dvh-3rem)] w-full max-w-5xl overflow-y-auto rounded-2xl bg-white p-4 shadow-xl ring-1 ring-slate-200 sm:max-h-[90vh] sm:p-6"
         onClick={(event) => event.stopPropagation()}
       >
         <form onSubmit={handleSubmit} className="space-y-4">

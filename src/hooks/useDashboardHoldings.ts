@@ -15,6 +15,7 @@ import {
 } from "@/lib/dashboard/persistence";
 import { getHoldingsSignature, mergeRemoteHoldingsWithLocalPrices } from "@/lib/dashboard/holdings-sync";
 import { normalizeHoldings } from "@/lib/holdings-normalize";
+import { isRefreshTokenReuseError } from "@/lib/supabase/errors";
 import { generateId } from "@/lib/utils";
 
 const REMOTE_SYNC_INTERVAL_MS = 30 * 1000;
@@ -22,12 +23,12 @@ const REMOTE_SYNC_COOLDOWN_MS = 2500;
 const REMOTE_WRITE_DEBOUNCE_MS = 2500;
 const REMOTE_SYNC_LOCAL_WRITE_GUARD_MS = REMOTE_WRITE_DEBOUNCE_MS + REMOTE_SYNC_COOLDOWN_MS;
 
-export function useDashboardHoldings() {
+export function useDashboardHoldings(initialUserId: string) {
   const [holdings, setHoldings] = useState<Holding[]>([]);
   const [inrToAedRate, setInrToAedRate] = useState(DEFAULT_INR_TO_AED_RATE);
   const [fxUpdatedAt, setFxUpdatedAt] = useState<string | null>(DEFAULT_FX_UPDATED_AT);
   const [mounted, setMounted] = useState(false);
-  const [userId, setUserId] = useState("default");
+  const [userId, setUserId] = useState(initialUserId);
   const holdingsRef = useRef<Holding[]>([]);
   const lastLocalMutationAtRef = useRef(0);
   const remoteSyncInFlightRef = useRef(false);
@@ -77,7 +78,7 @@ export function useDashboardHoldings() {
 
     void (async () => {
       try {
-        const state = await loadDashboardPersistenceState();
+        const state = await loadDashboardPersistenceState(initialUserId);
         if (!active) {
           return;
         }
@@ -89,7 +90,9 @@ export function useDashboardHoldings() {
         setInrToAedRate(state.inrToAedRate);
         setFxUpdatedAt(state.fxUpdatedAt);
       } catch (error) {
-        console.error("Failed to load dashboard holdings:", error);
+        if (!isRefreshTokenReuseError(error)) {
+          console.error("Failed to load dashboard holdings:", error);
+        }
       } finally {
         if (active) {
           setMounted(true);
@@ -100,7 +103,7 @@ export function useDashboardHoldings() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [initialUserId]);
 
   useEffect(() => {
     if (!mounted) {
@@ -121,7 +124,9 @@ export function useDashboardHoldings() {
         await upsertRemoteHoldingsState(userId, holdings);
         lastWrittenHoldingsRef.current = holdingsSignature;
       } catch (error) {
-        console.error("Failed to sync holdings to Supabase:", error);
+        if (!isRefreshTokenReuseError(error)) {
+          console.error("Failed to sync holdings to Supabase:", error);
+        }
       }
     }, REMOTE_WRITE_DEBOUNCE_MS);
 

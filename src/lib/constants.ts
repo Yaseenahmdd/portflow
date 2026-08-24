@@ -89,6 +89,8 @@ export interface Holding {
   priceSource: PriceSource;
   schemeCode?: string; // for MFs
   lastPriceUpdate?: string; // ISO timestamp
+  previousClose?: number;
+  dayChangePercent?: number;
   purchases?: Purchase[];
 }
 
@@ -102,6 +104,9 @@ export interface ComputedHolding extends Holding {
   investedAmountAed: number;
   currentValueAed: number;
   gainLossAed: number;
+  dayGainAed: number;
+  dayGainPct: number | null;
+  hasDayGain: boolean;
 }
 
 // ──────────────────────────────────────────────
@@ -121,11 +126,12 @@ export const PIE_COLORS = [
 ];
 
 export const DARK_PIE_COLORS = [
-  '#4A4DFF',
-  '#F24B8A',
-  '#6F2DBD',
-  '#8896FF',
-  '#C15CFF',
+  '#FF8A00',
+  '#FF4F70',
+  '#8B5CF6',
+  '#4F9CFF',
+  '#FFB020',
+  '#36E07F',
 ];
 
 export const LIGHT_PLATFORM_COLORS = {

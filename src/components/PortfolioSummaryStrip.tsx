@@ -20,7 +20,8 @@ interface Props {
 
 function formatSignedMoney(value: number, currency: string, isVisible: boolean) {
   if (!isVisible) {
-    return formatOrMask(Math.abs(value), currency, false);
+    const sign = value > 0 ? "+" : value < 0 ? "-" : "";
+    return `${sign}${formatOrMask(Math.abs(value), currency, false)}`;
   }
 
   const formatted = formatMoney(Math.abs(value), currency);
@@ -34,25 +35,28 @@ function formatSignedPercent(value: number) {
 }
 
 function splitPortfolioValue(value: number, isVisible: boolean) {
+  const formatted = isVisible ? formatMoney(value, "AED") : formatOrMask(value, "AED", false);
+  const [currency, ...amountParts] = formatted.split(/\s+/);
+
   if (!isVisible) {
-    return { currency: null, amount: formatOrMask(value, "AED", false) };
+    return {
+      currency: currency || "AED",
+      amount: amountParts.join(" ") || formatted,
+    };
   }
 
-  const [currency, ...amountParts] = formatMoney(value, "AED").split(/\s+/);
   return {
     currency: currency === "AED" ? "د.إ" : (currency ?? "د.إ"),
-    amount: amountParts.join(" ") || formatMoney(value, "AED"),
+    amount: amountParts.join(" ") || formatted,
   };
 }
 
 function PortfolioValueSparkline({
   points,
-  isAmountsVisible,
 }: {
   points: SparklinePoint[];
-  isAmountsVisible: boolean;
 }) {
-  if (!isAmountsVisible || points.length < 2) {
+  if (points.length < 2) {
     return null;
   }
 
@@ -83,20 +87,53 @@ function PortfolioValueSparkline({
       >
         <defs>
           <filter id="portfolio-summary-spark-shadow" x="-20%" y="-40%" width="160%" height="200%">
-            <feDropShadow dx="0" dy="2" stdDeviation="2" floodColor="rgba(148, 163, 184, 0.28)" />
+            <feDropShadow dx="0" dy="2" stdDeviation="2" floodColor="rgba(255, 138, 0, 0.34)" />
+          </filter>
+          <filter id="portfolio-summary-live-dot-glow" x="-240%" y="-240%" width="580%" height="580%">
+            <feGaussianBlur stdDeviation="3.8" result="blurred" />
+            <feMerge>
+              <feMergeNode in="blurred" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
           </filter>
         </defs>
         <path
           d={path}
           fill="none"
-          stroke="rgba(148, 163, 184, 0.72)"
+          stroke="var(--color-accent-violet)"
           strokeWidth="2"
           strokeLinecap="round"
           strokeLinejoin="round"
           filter="url(#portfolio-summary-spark-shadow)"
         />
-        <circle cx={lastPoint.x} cy={lastPoint.y} r="5.5" fill="rgba(148, 163, 184, 0.12)" filter="url(#portfolio-summary-spark-shadow)" />
-        <circle cx={lastPoint.x} cy={lastPoint.y} r="3" fill="rgba(100, 116, 139, 0.9)" />
+        <circle
+          cx={lastPoint.x}
+          cy={lastPoint.y}
+          r="7.6"
+          fill="rgba(255, 138, 0, 0.24)"
+          filter="url(#portfolio-summary-live-dot-glow)"
+        >
+          <animate attributeName="r" values="6.1;10.8;6.1" dur="1.35s" repeatCount="indefinite" />
+          <animate attributeName="opacity" values="0.72;0;0.72" dur="1.35s" repeatCount="indefinite" />
+        </circle>
+        <circle
+          cx={lastPoint.x}
+          cy={lastPoint.y}
+          r="5.6"
+          fill="rgba(255, 138, 0, 0.34)"
+          filter="url(#portfolio-summary-live-dot-glow)"
+        >
+          <animate attributeName="r" values="5.1;6.5;5.1" dur="1.05s" repeatCount="indefinite" />
+          <animate attributeName="opacity" values="0.92;0.58;0.92" dur="1.05s" repeatCount="indefinite" />
+        </circle>
+        <circle
+          cx={lastPoint.x}
+          cy={lastPoint.y}
+          r="3.5"
+          fill="var(--color-accent-violet)"
+          filter="url(#portfolio-summary-live-dot-glow)"
+        />
+        <circle cx={lastPoint.x} cy={lastPoint.y} r="1.2" fill="rgba(255,255,255,0.98)" />
       </svg>
     </div>
   );
@@ -109,7 +146,6 @@ function SummaryCard({
   tone = "default",
   isPrimary = false,
   portfolioHistory = [],
-  isAmountsVisible = true,
 }: {
   label: string;
   value: string;
@@ -117,7 +153,6 @@ function SummaryCard({
   tone?: "default" | "positive" | "negative";
   isPrimary?: boolean;
   portfolioHistory?: SparklinePoint[];
-  isAmountsVisible?: boolean;
 }) {
   const toneClass =
     tone === "positive"
@@ -133,7 +168,7 @@ function SummaryCard({
         {value}
       </div>
       <div className={`relative z-10 ${isPrimary ? "mt-2 text-sm text-text-muted" : "mt-1.5 text-sm text-text-muted"}`}>{subtext}</div>
-      {isPrimary ? <PortfolioValueSparkline points={portfolioHistory} isAmountsVisible={isAmountsVisible} /> : null}
+      {isPrimary ? <PortfolioValueSparkline points={portfolioHistory} /> : null}
     </div>
   );
 }
@@ -159,13 +194,13 @@ export default function PortfolioSummaryStrip({
     <>
       <section className="sm:hidden">
         <div className="overflow-hidden rounded-[1.4rem] border border-border-default bg-bg-card px-4 py-4 text-text-primary shadow-sm">
-          <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-text-muted">
+          <div className="text-[9px] font-semibold uppercase tracking-[0.22em] text-text-muted">
             Holdings ({holdingsCount})
           </div>
           <div className="mt-2 flex items-center justify-between gap-2">
-            <div className="flex items-baseline gap-1 font-mono font-semibold leading-none tracking-[-0.06em] text-text-primary">
-              {mobilePortfolioValue.currency ? <span className="text-[1.32rem]">{mobilePortfolioValue.currency}</span> : null}
-              <span className="text-[1.5rem]">{mobilePortfolioValue.amount}</span>
+            <div className="flex items-baseline gap-1 font-mono font-semibold leading-none tracking-[-0.05em] text-text-primary">
+              {mobilePortfolioValue.currency ? <span className="text-[1.12rem]">{mobilePortfolioValue.currency}</span> : null}
+              <span className="text-[1.28rem]">{mobilePortfolioValue.amount}</span>
             </div>
             <button
               type="button"
@@ -198,28 +233,28 @@ export default function PortfolioSummaryStrip({
 
           <div className="mt-4 border-t border-dashed border-border-default pt-3">
             <div className="flex items-start justify-between gap-3 py-2">
-              <div className="text-sm text-text-secondary">1D returns</div>
-              <div className={`text-right text-base font-semibold ${dailyChange >= 0 ? "text-accent-gain" : "text-accent-loss"}`}>
+              <div className="text-[12px] text-text-secondary">1D returns</div>
+              <div className={`text-right text-[0.92rem] font-semibold ${dailyChange >= 0 ? "text-accent-gain" : "text-accent-loss"}`}>
                 {formatSignedMoney(dailyChange, "AED", isAmountsVisible)}
-                <span className="ml-1 whitespace-nowrap text-xs font-medium">
+                <span className="ml-1 whitespace-nowrap text-[10px] font-medium">
                   ({formatSignedPercent(dailyChangePercent)})
                 </span>
               </div>
             </div>
 
             <div className="flex items-start justify-between gap-3 py-2">
-              <div className="text-sm text-text-secondary">Total returns</div>
-              <div className={`text-right text-base font-semibold ${totalGainLoss >= 0 ? "text-accent-gain" : "text-accent-loss"}`}>
+              <div className="text-[12px] text-text-secondary">Total returns</div>
+              <div className={`text-right text-[0.92rem] font-semibold ${totalGainLoss >= 0 ? "text-accent-gain" : "text-accent-loss"}`}>
                 {formatSignedMoney(totalGainLoss, "AED", isAmountsVisible)}
-                <span className="ml-1 whitespace-nowrap text-xs font-medium">
+                <span className="ml-1 whitespace-nowrap text-[10px] font-medium">
                   ({formatSignedPercent(totalGainLossPercent)})
                 </span>
               </div>
             </div>
 
             <div className="flex items-start justify-between gap-3 py-2">
-              <div className="text-sm text-text-secondary">Invested</div>
-              <div className="text-right text-base font-semibold text-text-primary">
+              <div className="text-[12px] text-text-secondary">Invested</div>
+              <div className="text-right text-[0.92rem] font-semibold text-text-primary">
                 {formatOrMask(investedAmount, "AED", isAmountsVisible)}
               </div>
             </div>
@@ -234,7 +269,6 @@ export default function PortfolioSummaryStrip({
           subtext={`Invested ${desktopInvested}`}
           isPrimary
           portfolioHistory={portfolioHistory}
-          isAmountsVisible={isAmountsVisible}
         />
         <SummaryCard
           label="Today's P/L"

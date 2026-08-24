@@ -1,4 +1,5 @@
 import type { Holding } from "@/lib/constants";
+import { parseHoldingPurchases } from "@/lib/safe-json";
 
 interface HoldingRow {
   id: string;
@@ -19,6 +20,9 @@ interface HoldingRow {
   price_source: string;
   scheme_code: string | null;
   last_price_update: string | null;
+  previous_close: number | null;
+  day_change_percent: number | null;
+  purchases: string | null;
 }
 
 type DeleteBuilder = Promise<{ error: { message: string } | null }> & {
@@ -65,6 +69,9 @@ function mapRowToHolding(row: HoldingRow): Holding {
     priceSource: row.price_source as Holding["priceSource"],
     schemeCode: row.scheme_code || undefined,
     lastPriceUpdate: row.last_price_update || undefined,
+    previousClose: row.previous_close ?? undefined,
+    dayChangePercent: row.day_change_percent ?? undefined,
+    purchases: parseHoldingPurchases(row.purchases),
   };
 }
 
@@ -88,6 +95,9 @@ function mapHoldingToRow(userId: string, holding: Holding): HoldingRow {
     price_source: holding.priceSource,
     scheme_code: holding.schemeCode || null,
     last_price_update: holding.lastPriceUpdate || null,
+    previous_close: holding.previousClose ?? null,
+    day_change_percent: holding.dayChangePercent ?? null,
+    purchases: holding.purchases ? JSON.stringify(holding.purchases) : null,
   };
 }
 

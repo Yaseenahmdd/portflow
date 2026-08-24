@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { type Holding } from "@/lib/constants";
 import { tap, success as hapticSuccess, destructive as hapticDestructive, medium } from "@/lib/haptics";
 import { DEFAULT_INR_TO_AED_RATE, getRateStorageKey } from "@/lib/dashboard/persistence";
 import { buildBackfilledSnapshots } from "@/lib/history-backfill";
+import { useDashboardStateContext } from "@/components/dashboard/DashboardStateProvider";
 import { normalizeHoldings } from "@/lib/holdings-normalize";
 import { replaceRemoteHoldings } from "@/lib/holdings-store";
 import { fetchPortfolioSnapshots, replacePortfolioSnapshots } from "@/lib/portfolio-snapshots";
@@ -46,7 +47,7 @@ const apiStatuses: ApiStatus[] = [
 
 export default function SettingsPage() {
   const router = useRouter();
-  const [userId, setUserId] = useState<string>("default");
+  const { userId } = useDashboardStateContext();
   const [testResults, setTestResults] = useState<Record<string, string>>({});
   const [testing, setTesting] = useState(false);
   const [rebuildingHistory, setRebuildingHistory] = useState(false);
@@ -54,17 +55,6 @@ export default function SettingsPage() {
   const [resetConfirming, setResetConfirming] = useState(false);
   const [dataError, setDataError] = useState<string | null>(null);
 
-  useEffect(() => {
-    async function getUser() {
-      const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      setUserId(user?.id || "default");
-    }
-
-    getUser();
-  }, []);
 
   const storageKey = `portflow-holdings-${userId}`;
   const rateStorageKey = getRateStorageKey(userId);
@@ -353,9 +343,9 @@ function ActionButton({
 
 function SetupStep({ title, body }: { title: string; body: string }) {
   return (
-    <div className="rounded-[1.2rem] border border-border-default bg-bg-elevated p-4">
+    <div>
       <h3 className="font-semibold text-text-primary">{title}</h3>
-      <p className="mt-1.5 text-text-secondary">{body}</p>
+      <p className="mt-1 text-text-secondary">{body}</p>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import type { Holding } from "@/lib/constants";
 import { tap } from "@/lib/haptics";
 import { computeHolding, formatMoney, timeAgo, toNumber } from "@/lib/utils";
@@ -14,6 +14,28 @@ interface Props {
 export default function HoldingDetailsModal({ holding, inrToAedRate, onClose }: Props) {
   const computed = useMemo(() => (holding ? computeHolding(holding, inrToAedRate) : null), [holding, inrToAedRate]);
 
+  useEffect(() => {
+    const { body } = document;
+    const previousOverflow = body.style.overflow;
+    const previousPosition = body.style.position;
+    const previousTop = body.style.top;
+    const previousWidth = body.style.width;
+    const scrollY = window.scrollY;
+
+    body.style.overflow = "hidden";
+    body.style.position = "fixed";
+    body.style.top = `-${scrollY}px`;
+    body.style.width = "100%";
+
+    return () => {
+      body.style.overflow = previousOverflow;
+      body.style.position = previousPosition;
+      body.style.top = previousTop;
+      body.style.width = previousWidth;
+      window.scrollTo(0, scrollY);
+    };
+  }, []);
+
   if (!holding || !computed) {
     return null;
   }
@@ -21,10 +43,10 @@ export default function HoldingDetailsModal({ holding, inrToAedRate, onClose }: 
   const purchases = [...(holding.purchases || [])].sort((a, b) => b.date.localeCompare(a.date));
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4 sm:items-center" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto overscroll-contain p-4 sm:items-center" onClick={onClose}>
       <div className="absolute inset-0 bg-slate-900/25 backdrop-blur-sm" />
       <div
-        className="relative my-6 w-full max-w-5xl overflow-x-hidden rounded-2xl bg-white p-4 shadow-xl ring-1 ring-slate-200 sm:max-h-[90vh] sm:overflow-y-auto sm:p-6"
+        className="relative my-6 max-h-[calc(100dvh-3rem)] w-full max-w-5xl overflow-x-hidden overflow-y-auto rounded-2xl bg-white p-4 shadow-xl ring-1 ring-slate-200 sm:max-h-[90vh] sm:p-6"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-4">

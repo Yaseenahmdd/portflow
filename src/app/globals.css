@@ -23,9 +23,9 @@
   --color-accent-blue: #2563eb;
   --color-accent-amber: #d97706;
 
-  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
-  --font-display: var(--font-sora), ui-sans-serif, system-ui, sans-serif;
-  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --font-sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-display: Sora, Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "Geist Mono", "SFMono-Regular", Consolas, "Liberation Mono", ui-monospace, monospace;
 }
 
 html {
@@ -35,38 +35,45 @@ html {
 
 html.dark {
   color-scheme: dark;
-  --color-bg-primary: #0A0B0F;
-  --color-bg-secondary: #0D1016;
-  --color-bg-card: #12141B;
-  --color-bg-card-hover: #151515;
-  --color-bg-input: #0F1117;
-  --color-bg-elevated: #0F1117;
-  --color-border-default: #1B1F2A;
-  --color-border-subtle: #1B1F2A;
+  --color-bg-primary: #050a10;
+  --color-bg-secondary: #07111b;
+  --color-bg-card: #0d1520;
+  --color-bg-card-hover: #111c2a;
+  --color-bg-input: #070d15;
+  --color-bg-elevated: #0a121d;
+  --color-border-default: #223044;
+  --color-border-subtle: #1a2636;
 
-  --color-text-primary: #F3F4F6;
-  --color-text-secondary: #A1A1AA;
-  --color-text-muted: #71717A;
+  --color-text-primary: #f6f8fb;
+  --color-text-secondary: #aab2c1;
+  --color-text-muted: #747f91;
 
-  --color-accent-gain: #22C55E;
-  --color-accent-gain-bg: rgba(16, 185, 129, 0.15);
-  --color-accent-loss: #EF4444;
-  --color-accent-loss-bg: rgba(239, 68, 68, 0.14);
-  --color-accent-violet: #F28C28;
-  --color-accent-violet-bg: rgba(242, 140, 40, 0.14);
-  --color-accent-blue: #FF8A00;
-  --color-accent-amber: #E67E22;
+  --color-accent-gain: #36e07f;
+  --color-accent-gain-bg: rgba(54, 224, 127, 0.13);
+  --color-accent-loss: #ff5a68;
+  --color-accent-loss-bg: rgba(255, 90, 104, 0.13);
+  --color-accent-violet: #ff8a00;
+  --color-accent-violet-bg: rgba(255, 138, 0, 0.16);
+  --color-accent-blue: #4f9cff;
+  --color-accent-amber: #ffb020;
 }
 
 html.dark body {
-  background: var(--color-bg-primary);
+  background:
+    linear-gradient(145deg, #070d14 0%, #050a10 42%, #08111b 100%);
   color: var(--color-text-primary);
 }
 
 html.dark .glass-card {
-  background: var(--color-bg-card);
+  background: linear-gradient(145deg, rgba(15, 24, 37, 0.96), rgba(8, 14, 23, 0.96));
   border-color: var(--color-border-default);
-  box-shadow: 0 1px 2px rgba(255, 255, 255, 0.06);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03), 0 18px 36px rgba(0, 0, 0, 0.18);
+}
+
+html.dark .dashboard-card {
+  background: linear-gradient(145deg, rgba(15, 24, 37, 0.96), rgba(8, 14, 23, 0.98));
+  border-color: var(--color-border-default);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03), 0 18px 36px rgba(0, 0, 0, 0.16);
 }
 
 html.dark .bg-white {
@@ -100,7 +107,7 @@ html.dark .border-slate-50 {
 }
 
 html.dark .bg-slate-50\/50 {
-  background-color: rgba(15, 17, 23, 0.72) !important;
+  background-color: rgba(10, 18, 29, 0.72) !important;
 }
 
 html.dark .ring-slate-200 {
@@ -121,16 +128,16 @@ html.dark textarea {
 }
 
 html.dark ::selection {
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 138, 0, 0.28);
   color: var(--color-text-primary);
 }
 
 html.dark ::-webkit-scrollbar-thumb {
-  background: #202534;
+  background: #26354b;
 }
 
 html.dark ::-webkit-scrollbar-thumb:hover {
-  background: #2a3042;
+  background: #344760;
 }
 
 body {
@@ -229,12 +236,33 @@ body {
   }
 
   html.dark .dashboard-card:hover {
-    box-shadow: 0 18px 32px rgba(255, 255, 255, 0.06) !important;
+    border-color: rgba(255, 138, 0, 0.34) !important;
+    box-shadow: 0 18px 34px rgba(0, 0, 0, 0.24), 0 0 0 1px rgba(255, 138, 0, 0.08) !important;
   }
 }
 
 .gradient-text {
   color: var(--color-text-primary);
+}
+
+@keyframes portflow-sheet-fade-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes portflow-sheet-slide-in {
+  from {
+    transform: translateY(100%);
+  }
+
+  to {
+    transform: translateY(0);
+  }
 }
 
 @keyframes shimmer {

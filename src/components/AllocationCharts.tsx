@@ -159,6 +159,7 @@ export default function AllocationCharts({ holdings, totalValue, totalInvested }
         <div className="relative">
           <div
             ref={mobileTrackRef}
+            data-dashboard-swipe-lock="true"
             className="flex items-stretch snap-x snap-mandatory overflow-x-auto scroll-smooth"
             style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
             aria-label={`${activeMobileChart.title} chart`}

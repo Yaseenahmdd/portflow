@@ -18,15 +18,14 @@ export function formatMoney(value: number, currency: Currency | string = 'AED'):
   }).format(value || 0);
 }
 
-/**
- * Format as money, or return dashes equal to the number of integer digits
- * (e.g. 4-digit number like 4,123 returns '----')
- */
 export function formatOrMask(value: number, currency: Currency | string = 'AED', isVisible: boolean = true): string {
   if (isVisible) return formatMoney(value, currency as Currency);
-  const digitCount = Math.max(1, Math.floor(Math.abs(value || 0)).toString().length);
-  // Use Mathematical Minus Sign (U+2212) to prevent font ligatures from blending standard hyphens
-  return "\u2212".repeat(digitCount);
+
+  const formatted = formatMoney(value, currency as Currency);
+  const currencyMatch = formatted.match(/^\D+/);
+  const currencyPrefix = currencyMatch?.[0].trim() || String(currency);
+
+  return `${currencyPrefix} \u2022\u2022\u2022\u2022\u2022\u2022`;
 }
 
 /**
@@ -35,6 +34,10 @@ export function formatOrMask(value: number, currency: Currency | string = 'AED',
 export function toNumber(value: unknown): number {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value);
 }
 
 /**
@@ -75,6 +78,20 @@ export function computeHolding(holding: Holding, inrToAedRate: number): Computed
 
   const gainLossAed = currentValueAed - investedAmountAed;
   const gainLossPct = investedAmountAed ? (gainLossAed / investedAmountAed) * 100 : 0;
+  const previousClose = toNumber(holding.previousClose);
+  const hasPreviousClose = previousClose > 0;
+  const explicitDayChangePercent = holding.dayChangePercent;
+  const resolvedDayGainPct = hasPreviousClose
+    ? ((currentPrice - previousClose) / previousClose) * 100
+    : isFiniteNumber(explicitDayChangePercent)
+      ? explicitDayChangePercent
+      : null;
+  const previousPriceFromPercent =
+    resolvedDayGainPct !== null ? currentPrice / (1 + resolvedDayGainPct / 100) : 0;
+  const resolvedPreviousPrice = hasPreviousClose ? previousClose : previousPriceFromPercent;
+  const hasDayGain = resolvedDayGainPct !== null && Number.isFinite(resolvedPreviousPrice) && resolvedPreviousPrice > 0;
+  const dayGain = hasDayGain ? quantity * (currentPrice - resolvedPreviousPrice) : 0;
+  const dayGainAed = dayGain * rateToAed;
 
   return {
     ...holding,
@@ -90,6 +107,9 @@ export function computeHolding(holding: Holding, inrToAedRate: number): Computed
     investedAmountAed,
     currentValueAed,
     gainLossAed,
+    dayGainAed,
+    dayGainPct: hasDayGain ? resolvedDayGainPct : null,
+    hasDayGain,
   };
 }
 
