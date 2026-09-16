@@ -1,6 +1,7 @@
 import { DEFAULT_HOLDINGS, type Holding } from "@/lib/constants";
 import { normalizeHoldings } from "@/lib/holdings-normalize";
 import { fetchRemoteHoldings, upsertRemoteHoldings, deleteRemoteHolding } from "@/lib/holdings-store";
+import { fetchRemoteInrToAedRate } from "@/lib/market-rates";
 import { createClient } from "@/lib/supabase/client";
 
 export const DEFAULT_INR_TO_AED_RATE = 0.044;
@@ -48,8 +49,17 @@ function parseStoredTimestamp(raw: string | null) {
 export async function loadDashboardPersistenceState(userId: string) {
   const supabase = createClient();
   const storedHoldings = parseStoredHoldings(localStorage.getItem(getHoldingsStorageKey(userId)));
-  const inrToAedRate = parseStoredRate(localStorage.getItem(getRateStorageKey(userId)));
-  const fxUpdatedAt = parseStoredTimestamp(localStorage.getItem(getFxUpdatedAtStorageKey(userId)));
+  const storedInrToAedRate = parseStoredRate(localStorage.getItem(getRateStorageKey(userId)));
+  const storedFxUpdatedAt = parseStoredTimestamp(localStorage.getItem(getFxUpdatedAtStorageKey(userId)));
+
+  const remoteRate = await fetchRemoteInrToAedRate(supabase).catch(() => null);
+  const inrToAedRate = remoteRate?.rate ?? storedInrToAedRate;
+  const fxUpdatedAt = remoteRate?.fetchedAt ?? storedFxUpdatedAt;
+
+  if (remoteRate) {
+    persistDashboardRate(userId, remoteRate.rate);
+    persistFxUpdatedAt(userId, remoteRate.fetchedAt);
+  }
 
   try {
     const remoteHoldings = await fetchRemoteHoldings(supabase, userId);

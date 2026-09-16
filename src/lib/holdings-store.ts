@@ -1,7 +1,7 @@
 import type { Holding } from "@/lib/constants";
 import { parseHoldingPurchases } from "@/lib/safe-json";
 
-interface HoldingRow {
+export interface HoldingRow {
   id: string;
   user_id: string;
   platform: string;
@@ -50,7 +50,7 @@ function hasDatabaseClient(client: unknown): client is Required<SupabaseLikeClie
   return typeof client === "object" && client !== null && typeof (client as SupabaseLikeClient).from === "function";
 }
 
-function mapRowToHolding(row: HoldingRow): Holding {
+export function mapRowToHolding(row: HoldingRow): Holding {
   return {
     id: row.id,
     platform: row.platform,

@@ -65,6 +65,16 @@ NEXT_PUBLIC_SUPABASE_URL=...
 NEXT_PUBLIC_SUPABASE_ANON_KEY=...
 ```
 
+Required for the scheduled server-side price refresh:
+
+```bash
+SUPABASE_SERVICE_ROLE_KEY=...
+CRON_SECRET=...
+```
+
+Keep both values server-only. The service-role key must never use the
+`NEXT_PUBLIC_` prefix.
+
 Optional/market-data specific:
 
 ```bash
@@ -146,6 +156,10 @@ npm run lint
 Recommended deployment target: Vercel.
 
 Make sure the deployed environment includes the same Supabase and market-data environment variables as local development.
+
+`vercel.json` schedules `/api/cron/refresh-prices` for 21:00 UTC each day,
+which is 1:00 AM in Dubai. The protected route refreshes prices in Supabase
+without requiring the dashboard to be open.
 
 ## Project Goal
 
