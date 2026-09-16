@@ -1,6 +1,11 @@
 import { computeInrToAed, type ExchangeRates } from "@/lib/api/frankfurter";
 import type { CryptoPrice } from "@/lib/api/coingecko";
 import type { Holding } from "@/lib/constants";
+import {
+  buildHoldingPriceIndexes,
+  getPriceIndexes,
+  updateHoldingsAtIndexes,
+} from "@/lib/dashboard/holding-price-index";
 import { normalizeHoldings } from "@/lib/holdings-normalize";
 
 interface PriceResult {
@@ -21,9 +26,10 @@ interface RefreshResponse {
   error?: string;
 }
 
-function applyRefreshResults(holdings: Holding[], results: PriceResult[]) {
+export function applyRefreshResults(holdings: Holding[], results: PriceResult[]) {
   const now = new Date().toISOString();
   const updated = [...holdings];
+  const priceIndexes = buildHoldingPriceIndexes(holdings);
   let inrToAedRate: number | undefined;
   let fxUpdatedAt: string | undefined;
 
@@ -43,16 +49,17 @@ function applyRefreshResults(holdings: Holding[], results: PriceResult[]) {
       case "indian-mf": {
         const navData = result.data as { schemeCode: string; nav: number }[];
         for (const nav of navData) {
-          const index = updated.findIndex((holding) => holding.schemeCode === nav.schemeCode);
-          if (index !== -1) {
-            updated[index] = {
-              ...updated[index],
+          updateHoldingsAtIndexes(
+            updated,
+            getPriceIndexes(priceIndexes.mutualFunds, nav.schemeCode),
+            (holding) => ({
+              ...holding,
               currentPrice: nav.nav,
               previousClose: undefined,
               dayChangePercent: undefined,
               lastPriceUpdate: now,
-            };
-          }
+            })
+          );
         }
         break;
       }
@@ -60,18 +67,17 @@ function applyRefreshResults(holdings: Holding[], results: PriceResult[]) {
       case "indian-stocks": {
         const quotes = result.data as Record<string, { price: number; previousClose?: number; changePercent?: string }>;
         for (const [ticker, quote] of Object.entries(quotes)) {
-          const index = updated.findIndex(
-            (holding) => holding.ticker === ticker || holding.ticker === `NSE:${ticker}`
-          );
-          if (index !== -1) {
-            updated[index] = {
-              ...updated[index],
+          updateHoldingsAtIndexes(
+            updated,
+            getPriceIndexes(priceIndexes.indianStocks, ticker),
+            (holding) => ({
+              ...holding,
               currentPrice: quote.price,
               previousClose: quote.previousClose,
               dayChangePercent: Number.parseFloat(quote.changePercent || "0"),
               lastPriceUpdate: now,
-            };
-          }
+            })
+          );
         }
         break;
       }
@@ -79,15 +85,18 @@ function applyRefreshResults(holdings: Holding[], results: PriceResult[]) {
       case "us-etfs": {
         const quotes = result.data as Record<string, { price: number; previousClose?: number; changePercent?: string }>;
         for (const [symbol, quote] of Object.entries(quotes)) {
-          const index = updated.findIndex((holding) => holding.ticker === symbol);
-          if (index !== -1 && quote.price !== undefined) {
-            updated[index] = {
-              ...updated[index],
-              currentPrice: quote.price,
-              previousClose: quote.previousClose,
-              dayChangePercent: Number.parseFloat(quote.changePercent || "0"),
-              lastPriceUpdate: now,
-            };
+          if (quote.price !== undefined) {
+            updateHoldingsAtIndexes(
+              updated,
+              getPriceIndexes(priceIndexes.usStocks, symbol),
+              (holding) => ({
+                ...holding,
+                currentPrice: quote.price,
+                previousClose: quote.previousClose,
+                dayChangePercent: Number.parseFloat(quote.changePercent || "0"),
+                lastPriceUpdate: now,
+              })
+            );
           }
         }
         break;
@@ -96,15 +105,18 @@ function applyRefreshResults(holdings: Holding[], results: PriceResult[]) {
       case "uae-stocks": {
         const quotes = result.data as Record<string, { lastradeprice: number; previousclosingprice?: number; changepercentage?: number }>;
         for (const [symbol, quote] of Object.entries(quotes)) {
-          const index = updated.findIndex((holding) => holding.ticker === symbol);
-          if (index !== -1 && quote.lastradeprice > 0) {
-            updated[index] = {
-              ...updated[index],
-              currentPrice: quote.lastradeprice,
-              previousClose: quote.previousclosingprice,
-              dayChangePercent: quote.changepercentage,
-              lastPriceUpdate: now,
-            };
+          if (quote.lastradeprice > 0) {
+            updateHoldingsAtIndexes(
+              updated,
+              getPriceIndexes(priceIndexes.uaeStocks, symbol),
+              (holding) => ({
+                ...holding,
+                currentPrice: quote.lastradeprice,
+                previousClose: quote.previousclosingprice,
+                dayChangePercent: quote.changepercentage,
+                lastPriceUpdate: now,
+              })
+            );
           }
         }
         break;
@@ -113,17 +125,17 @@ function applyRefreshResults(holdings: Holding[], results: PriceResult[]) {
       case "crypto": {
         const prices = result.data as Record<string, CryptoPrice>;
         if (prices.bitcoin) {
-          const index = updated.findIndex((holding) => holding.ticker === "BTC");
-          if (index !== -1) {
-            const btcPrice = updated[index].currency === "AED" ? prices.bitcoin.aed : prices.bitcoin.usd;
-            updated[index] = {
-              ...updated[index],
-              currentPrice: btcPrice,
+          updateHoldingsAtIndexes(
+            updated,
+            getPriceIndexes(priceIndexes.crypto, "BTC"),
+            (holding) => ({
+              ...holding,
+              currentPrice: holding.currency === "AED" ? prices.bitcoin.aed : prices.bitcoin.usd,
               previousClose: undefined,
               dayChangePercent: prices.bitcoin.usd_24h_change,
               lastPriceUpdate: now,
-            };
-          }
+            })
+          );
         }
         break;
       }

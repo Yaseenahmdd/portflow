@@ -12,8 +12,8 @@ import type { User } from "@supabase/supabase-js";
 const THEME_STORAGE_KEY = "portflow-theme";
 const DASHBOARD_NAV_ITEMS = [
   { href: "/dashboard", label: "Overview" },
-  { href: "/dashboard/history", label: "History" },
   { href: "/dashboard/holdings", label: "Holdings" },
+  { href: "/dashboard/history", label: "History" },
 ];
 
 export default function DashboardShell({
@@ -141,7 +141,7 @@ export default function DashboardShell({
 
   const userInitial = user.email?.[0]?.toUpperCase() || "U";
   const iconButtonClass =
-    "h-8 w-8 items-center justify-center rounded-full text-slate-700 transition hover:bg-slate-100 sm:h-9 sm:w-9";
+    "h-11 w-11 items-center justify-center rounded-lg text-text-muted transition-colors hover:bg-bg-elevated hover:text-text-primary";
 
   function handleMainTouchStart(event: TouchEvent<HTMLElement>) {
     if (!showMobileDashboardNav || !mobileDashboardTarget) {
@@ -220,7 +220,7 @@ export default function DashboardShell({
               </Link>
               <div className="flex items-center gap-2 sm:gap-2.5">
                 {statusMeta ? (
-                  <div className="hidden items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-medium text-slate-500 md:flex">
+                  <div className="hidden items-center text-xs text-text-muted xl:flex">
                     <span>{statusMeta.lastRefresh}</span>
                     <span className="mx-2 h-3.5 w-px bg-slate-200" aria-hidden="true" />
                     <span>
@@ -231,7 +231,7 @@ export default function DashboardShell({
                   </div>
                 ) : null}
 
-                <div className="flex items-center rounded-full border border-slate-200 bg-slate-50 p-1">
+                <div className="flex items-center gap-0.5">
                   <button
                     onClick={() => {
                       tap();
@@ -301,7 +301,7 @@ export default function DashboardShell({
                 <div ref={profileMenuRef} className="relative">
                   <button
                     onClick={() => { tap(); setProfileMenuOpen((current) => !current); }}
-                    className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-sm font-semibold text-slate-700"
+                    className="flex h-11 w-11 items-center justify-center rounded-full bg-bg-elevated text-sm font-semibold text-text-secondary"
                     aria-label="Open profile menu"
                   >
                     {userInitial}
@@ -331,8 +331,8 @@ export default function DashboardShell({
             </div>
 
             {showDashboardNav ? (
-              <nav>
-                <div className="grid grid-cols-3 border-b border-slate-200/90 sm:flex sm:gap-2 sm:border-b-0">
+              <nav aria-label="Dashboard">
+                <div className="grid grid-cols-3 border-b border-border-default sm:flex sm:gap-8">
                   {DASHBOARD_NAV_ITEMS.map((item) => {
                     const active = pathname === item.href;
 
@@ -341,16 +341,16 @@ export default function DashboardShell({
                         key={item.href}
                         href={item.href}
                         aria-current={active ? "page" : undefined}
-                        className={`relative inline-flex min-h-[38px] items-center justify-center px-3 py-2 text-center text-sm font-medium transition-colors sm:rounded-full sm:border sm:px-4 ${
+                        className={`relative inline-flex min-h-11 items-center justify-center px-3 py-3 text-center text-sm font-medium transition-colors sm:px-0 ${
                           active
-                            ? "border-accent-violet bg-accent-violet text-bg-primary"
-                            : "border-transparent text-text-secondary hover:bg-bg-card hover:text-text-primary sm:hover:border-border-default"
+                            ? "text-text-primary"
+                            : "text-text-muted hover:text-text-primary"
                         }`}
                       >
                         {item.label}
                         <span
-                          className={`absolute bottom-[-1px] left-1/2 h-0.5 w-[58%] -translate-x-1/2 rounded-full transition-opacity sm:hidden ${
-                            active ? "bg-accent-violet opacity-100" : "bg-transparent opacity-0"
+                          className={`absolute bottom-[-1px] left-1/2 h-0.5 w-[58%] -translate-x-1/2 transition-opacity sm:w-full ${
+                            active ? "bg-text-primary opacity-100" : "bg-transparent opacity-0"
                           }`}
                           aria-hidden="true"
                         />

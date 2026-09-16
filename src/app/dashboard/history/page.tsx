@@ -21,13 +21,14 @@ export default function DashboardHistoryPage() {
   if (!mounted) {
     return (
       <div className="space-y-6">
-        <div className="skeleton h-10 w-64" />
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {[1, 2, 3, 4].map((item) => (
-            <div key={item} className="skeleton h-32 rounded-xl" />
+        <div className="skeleton h-8 w-28" />
+        <div className="skeleton h-32 rounded-2xl" />
+        <div className="grid gap-4 lg:grid-cols-2">
+          {[1, 2].map((item) => (
+            <div key={item} className="skeleton h-44 rounded-2xl" />
           ))}
         </div>
-        <div className="skeleton h-[22rem] rounded-2xl" />
+        <div className="skeleton h-64 rounded-2xl" />
       </div>
     );
   }

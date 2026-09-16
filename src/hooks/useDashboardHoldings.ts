@@ -55,11 +55,6 @@ export function useDashboardHoldings(initialUserId: string) {
         return;
       }
 
-      if (remoteHoldings.length === 0 && holdingsRef.current.length > 0) {
-        await upsertRemoteHoldingsState(userId, holdingsRef.current);
-        return;
-      }
-
       setHoldings((current) => {
         const mergedHoldings = mergeRemoteHoldingsWithLocalPrices(remoteHoldings, current);
         return getHoldingsSignature(mergedHoldings) === getHoldingsSignature(current)

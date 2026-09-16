@@ -1,288 +1,151 @@
 "use client";
-import { formatMoney, formatOrMask } from "@/lib/utils";
+
+import { useState } from "react";
+import { formatOrMask } from "@/lib/utils";
 import { toggle } from "@/lib/haptics";
 
-interface SparklinePoint {
-  value: number;
-}
+type GainView = "today" | "overall";
 
 interface Props {
   holdingsCount: number;
   portfolioValue: number;
+  portfolioHistory: { value: number }[];
   investedAmount: number;
   totalGainLoss: number;
   totalGainLossPercent: number;
-  dailyChange: number;
-  dailyChangePercent: number;
+  todayChange: number | null;
+  todayChangePercent: number | null;
+  periodLabel: string;
+  periodChange: number | null;
+  periodReturnPercent: number | null;
   isAmountsVisible: boolean;
-  portfolioHistory?: SparklinePoint[];
 }
 
-function formatSignedMoney(value: number, currency: string, isVisible: boolean) {
-  if (!isVisible) {
-    const sign = value > 0 ? "+" : value < 0 ? "-" : "";
-    return `${sign}${formatOrMask(Math.abs(value), currency, false)}`;
-  }
-
-  const formatted = formatMoney(Math.abs(value), currency);
-  if (value > 0) return `+${formatted}`;
-  if (value < 0) return `-${formatted}`;
-  return formatted;
+function formatSignedMoney(value: number, isVisible: boolean) {
+  const sign = value > 0 ? "+" : value < 0 ? "−" : "";
+  return `${sign}${formatOrMask(Math.abs(value), "AED", isVisible)}`;
 }
 
 function formatSignedPercent(value: number) {
   return `${value >= 0 ? "+" : ""}${value.toFixed(2)}%`;
 }
 
-function splitPortfolioValue(value: number, isVisible: boolean) {
-  const formatted = isVisible ? formatMoney(value, "AED") : formatOrMask(value, "AED", false);
-  const [currency, ...amountParts] = formatted.split(/\s+/);
-
-  if (!isVisible) {
-    return {
-      currency: currency || "AED",
-      amount: amountParts.join(" ") || formatted,
-    };
-  }
-
-  return {
-    currency: currency === "AED" ? "د.إ" : (currency ?? "د.إ"),
-    amount: amountParts.join(" ") || formatted,
-  };
+function valueTone(value: number | null) {
+  if (value === null || value === 0) return "text-text-primary";
+  return value > 0 ? "portfolio-summary-gain" : "text-accent-loss";
 }
 
-function PortfolioValueSparkline({
-  points,
-}: {
-  points: SparklinePoint[];
-}) {
-  if (points.length < 2) {
-    return null;
-  }
+function PortfolioValueSparkline({ points }: { points: { value: number }[] }) {
+  const values = points.map((point) => point.value).filter(Number.isFinite);
+  if (values.length < 2) return null;
 
-  const width = 132;
-  const height = 48;
-  const values = points.map((point) => point.value);
-  const minValue = Math.min(...values);
-  const maxValue = Math.max(...values);
-  const range = maxValue - minValue || Math.max(maxValue * 0.03, 1);
-
-  const coordinates = points.map((point, index) => {
-    const x = (index / Math.max(points.length - 1, 1)) * width;
-    const normalized = (point.value - minValue) / range;
-    const y = height - normalized * (height - 12) - 6;
-    return { x, y };
-  });
-
+  const minimum = Math.min(...values);
+  const range = Math.max(...values) - minimum || 1;
+  const coordinates = values.map((value, index) => ({
+    x: 8 + (index / (values.length - 1)) * 120,
+    y: 42 - ((value - minimum) / range) * 30,
+  }));
   const path = coordinates.map((point, index) => `${index === 0 ? "M" : "L"} ${point.x} ${point.y}`).join(" ");
-  const lastPoint = coordinates[coordinates.length - 1];
+  const last = coordinates[coordinates.length - 1];
 
   return (
-    <div className="pointer-events-none absolute inset-y-0 right-9 hidden items-center sm:flex">
-      <svg
-        viewBox={`0 0 ${width} ${height}`}
-        className="h-12 w-32 overflow-visible"
-        preserveAspectRatio="none"
-        aria-hidden="true"
-      >
-        <defs>
-          <filter id="portfolio-summary-spark-shadow" x="-20%" y="-40%" width="160%" height="200%">
-            <feDropShadow dx="0" dy="2" stdDeviation="2" floodColor="rgba(255, 138, 0, 0.34)" />
-          </filter>
-          <filter id="portfolio-summary-live-dot-glow" x="-240%" y="-240%" width="580%" height="580%">
-            <feGaussianBlur stdDeviation="3.8" result="blurred" />
-            <feMerge>
-              <feMergeNode in="blurred" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
-          </filter>
-        </defs>
-        <path
-          d={path}
-          fill="none"
-          stroke="var(--color-accent-violet)"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          filter="url(#portfolio-summary-spark-shadow)"
-        />
-        <circle
-          cx={lastPoint.x}
-          cy={lastPoint.y}
-          r="7.6"
-          fill="rgba(255, 138, 0, 0.24)"
-          filter="url(#portfolio-summary-live-dot-glow)"
-        >
-          <animate attributeName="r" values="6.1;10.8;6.1" dur="1.35s" repeatCount="indefinite" />
-          <animate attributeName="opacity" values="0.72;0;0.72" dur="1.35s" repeatCount="indefinite" />
-        </circle>
-        <circle
-          cx={lastPoint.x}
-          cy={lastPoint.y}
-          r="5.6"
-          fill="rgba(255, 138, 0, 0.34)"
-          filter="url(#portfolio-summary-live-dot-glow)"
-        >
-          <animate attributeName="r" values="5.1;6.5;5.1" dur="1.05s" repeatCount="indefinite" />
-          <animate attributeName="opacity" values="0.92;0.58;0.92" dur="1.05s" repeatCount="indefinite" />
-        </circle>
-        <circle
-          cx={lastPoint.x}
-          cy={lastPoint.y}
-          r="3.5"
-          fill="var(--color-accent-violet)"
-          filter="url(#portfolio-summary-live-dot-glow)"
-        />
-        <circle cx={lastPoint.x} cy={lastPoint.y} r="1.2" fill="rgba(255,255,255,0.98)" />
-      </svg>
-    </div>
-  );
-}
-
-function SummaryCard({
-  label,
-  value,
-  subtext,
-  tone = "default",
-  isPrimary = false,
-  portfolioHistory = [],
-}: {
-  label: string;
-  value: string;
-  subtext: string;
-  tone?: "default" | "positive" | "negative";
-  isPrimary?: boolean;
-  portfolioHistory?: SparklinePoint[];
-}) {
-  const toneClass =
-    tone === "positive"
-      ? "text-accent-gain"
-      : tone === "negative"
-        ? "text-accent-loss"
-        : "text-text-primary";
-
-  return (
-    <div className={`dashboard-card relative overflow-hidden rounded-xl border border-border-default bg-bg-card shadow-sm ${isPrimary ? "p-6 sm:p-7" : "p-5 sm:p-6"}`}>
-      <div className={`text-sm ${isPrimary ? "pl-1 font-medium text-text-secondary" : "text-text-secondary"}`}>{label}</div>
-      <div className={`relative z-10 ${isPrimary ? "mt-1" : "mt-3"} font-semibold leading-tight ${isPrimary ? `text-3xl sm:text-[2.15rem] ${toneClass}` : `text-2xl sm:text-[2rem] ${toneClass}`}`}>
-        {value}
-      </div>
-      <div className={`relative z-10 ${isPrimary ? "mt-2 text-sm text-text-muted" : "mt-1.5 text-sm text-text-muted"}`}>{subtext}</div>
-      {isPrimary ? <PortfolioValueSparkline points={portfolioHistory} /> : null}
-    </div>
+    <svg className="portfolio-summary-sparkline" viewBox="0 0 144 54" aria-hidden="true">
+      <path d={path} fill="none" stroke="var(--color-accent-violet)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <circle className="portfolio-summary-live-pulse" cx={last.x} cy={last.y} r="7" fill="rgba(255, 138, 0, 0.28)" />
+      <circle className="portfolio-summary-live-dot" cx={last.x} cy={last.y} r="3.5" fill="var(--color-accent-violet)" />
+      <circle cx={last.x} cy={last.y} r="1.2" fill="#fff" />
+    </svg>
   );
 }
 
 export default function PortfolioSummaryStrip({
   holdingsCount,
   portfolioValue,
+  portfolioHistory,
   investedAmount,
   totalGainLoss,
   totalGainLossPercent,
-  dailyChange,
-  dailyChangePercent,
+  todayChange,
+  todayChangePercent,
+  periodLabel,
+  periodChange,
+  periodReturnPercent,
   isAmountsVisible,
-  portfolioHistory = [],
 }: Props) {
-  const mobilePortfolioValue = splitPortfolioValue(portfolioValue, isAmountsVisible);
-  const desktopInvested = formatOrMask(investedAmount, "AED", isAmountsVisible);
-  const desktopPortfolioValue = formatOrMask(portfolioValue, "AED", isAmountsVisible);
-  const desktopDailyChange = formatSignedMoney(dailyChange, "AED", isAmountsVisible);
-  const desktopTotalGainLoss = formatSignedMoney(totalGainLoss, "AED", isAmountsVisible);
+  const [gainView, setGainView] = useState<GainView>("today");
+  const gainChange = gainView === "today" ? todayChange : totalGainLoss;
+  const gainPercent = gainView === "today" ? todayChangePercent : totalGainLossPercent;
+  const portfolioAmount = formatOrMask(portfolioValue, "AED", isAmountsVisible).replace(/^AED\s*/, "");
 
   return (
-    <>
-      <section className="sm:hidden">
-        <div className="overflow-hidden rounded-[1.4rem] border border-border-default bg-bg-card px-4 py-4 text-text-primary shadow-sm">
-          <div className="text-[9px] font-semibold uppercase tracking-[0.22em] text-text-muted">
-            Holdings ({holdingsCount})
-          </div>
-          <div className="mt-2 flex items-center justify-between gap-2">
-            <div className="flex items-baseline gap-1 font-mono font-semibold leading-none tracking-[-0.05em] text-text-primary">
-              {mobilePortfolioValue.currency ? <span className="text-[1.12rem]">{mobilePortfolioValue.currency}</span> : null}
-              <span className="text-[1.28rem]">{mobilePortfolioValue.amount}</span>
-            </div>
+    <section aria-label="Portfolio summary" tabIndex={0} className="portfolio-summary-scroll rounded-xl border border-border-subtle bg-bg-card text-text-primary">
+      <div className="portfolio-summary-grid">
+        <div className="min-w-0 p-4 sm:p-6">
+          <div className="relative flex min-h-8 flex-wrap items-center gap-x-2 pr-10 lg:pr-0">
+            <h1 className="text-sm font-medium text-text-secondary">Portfolio value</h1>
+            <span aria-hidden="true" className="text-text-muted">·</span>
+            <span className="text-[13px] text-text-muted">{holdingsCount} holdings</span>
             <button
               type="button"
               onClick={() => {
                 toggle();
-                window.dispatchEvent(
-                  new CustomEvent("portflow:toggle-visibility", {
-                    detail: { visible: !isAmountsVisible },
-                  })
-                );
+                window.dispatchEvent(new CustomEvent("portflow:toggle-visibility", {
+                  detail: { visible: !isAmountsVisible },
+                }));
               }}
-              className="flex h-9 w-9 items-center justify-center rounded-full border border-border-default bg-bg-card text-text-secondary"
+              className="absolute -right-2 top-1/2 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-lg text-text-muted transition-colors hover:bg-bg-elevated hover:text-text-primary lg:hidden"
               aria-label={isAmountsVisible ? "Hide values" : "Show values"}
             >
-              {isAmountsVisible ? (
-                <svg className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-              ) : (
-                <svg className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 15.25c2.1-1.85 4.6-2.75 7.5-2.75s5.4.9 7.5 2.75" />
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 9.75l1.75 1.5" />
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M17.25 9.75l-1.75 1.5" />
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 8.75v1.75" />
-                </svg>
-              )}
+              <svg className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                {!isAmountsVisible ? <path strokeLinecap="round" d="m3 3 18 18" /> : null}
+              </svg>
             </button>
           </div>
-
-          <div className="mt-4 border-t border-dashed border-border-default pt-3">
-            <div className="flex items-start justify-between gap-3 py-2">
-              <div className="text-[12px] text-text-secondary">1D returns</div>
-              <div className={`text-right text-[0.92rem] font-semibold ${dailyChange >= 0 ? "text-accent-gain" : "text-accent-loss"}`}>
-                {formatSignedMoney(dailyChange, "AED", isAmountsVisible)}
-                <span className="ml-1 whitespace-nowrap text-[10px] font-medium">
-                  ({formatSignedPercent(dailyChangePercent)})
-                </span>
-              </div>
+          <div className="portfolio-summary-value-row mt-2 font-semibold tracking-[-0.03em]">
+            <div className="flex items-baseline gap-x-2 whitespace-nowrap">
+            <span className="text-sm font-normal tracking-normal text-text-muted sm:text-base">AED</span>
+            <span className="text-[1.75rem] leading-10 tabular-nums sm:text-[2rem]">{portfolioAmount}</span>
             </div>
-
-            <div className="flex items-start justify-between gap-3 py-2">
-              <div className="text-[12px] text-text-secondary">Total returns</div>
-              <div className={`text-right text-[0.92rem] font-semibold ${totalGainLoss >= 0 ? "text-accent-gain" : "text-accent-loss"}`}>
-                {formatSignedMoney(totalGainLoss, "AED", isAmountsVisible)}
-                <span className="ml-1 whitespace-nowrap text-[10px] font-medium">
-                  ({formatSignedPercent(totalGainLossPercent)})
-                </span>
-              </div>
-            </div>
-
-            <div className="flex items-start justify-between gap-3 py-2">
-              <div className="text-[12px] text-text-secondary">Invested</div>
-              <div className="text-right text-[0.92rem] font-semibold text-text-primary">
-                {formatOrMask(investedAmount, "AED", isAmountsVisible)}
-              </div>
-            </div>
+            <PortfolioValueSparkline points={portfolioHistory} />
           </div>
+          <p className="mt-2 text-[13px] leading-5 text-text-muted">
+            Invested <span className="ml-1 tabular-nums text-text-secondary">{formatOrMask(investedAmount, "AED", isAmountsVisible)}</span>
+          </p>
         </div>
-      </section>
 
-      <section className="hidden gap-3 sm:grid sm:grid-cols-2 sm:gap-4 xl:grid-cols-[1.3fr_1fr_1fr]">
-        <SummaryCard
-          label={`Holdings (${holdingsCount})`}
-          value={desktopPortfolioValue}
-          subtext={`Invested ${desktopInvested}`}
-          isPrimary
-          portfolioHistory={portfolioHistory}
-        />
-        <SummaryCard
-          label="Today's P/L"
-          value={desktopDailyChange}
-          subtext={`${formatSignedPercent(dailyChangePercent)} daily change`}
-          tone={dailyChange >= 0 ? "positive" : "negative"}
-        />
-        <SummaryCard
-          label="Overall P/L"
-          value={desktopTotalGainLoss}
-          subtext={`${formatSignedPercent(totalGainLossPercent)} since inception`}
-          tone={totalGainLoss >= 0 ? "positive" : "negative"}
-        />
-      </section>
-    </>
+          <div className="min-w-0 border-l border-border-subtle p-4 sm:p-6">
+            <div className="flex min-h-8 items-center gap-3" role="group" aria-label="Gain period">
+              {(["today", "overall"] as const).map((option) => (
+                <button
+                  key={option}
+                  type="button"
+                  aria-pressed={gainView === option}
+                  onClick={() => { toggle(); setGainView(option); }}
+                  className={`relative min-h-8 text-[13px] font-medium transition-colors before:absolute before:-inset-y-1.5 before:inset-x-0 ${gainView === option ? "text-text-primary after:absolute after:bottom-0 after:left-0 after:h-px after:w-full after:bg-text-secondary" : "text-text-muted hover:text-text-primary"}`}
+                >
+                  {option === "today" ? "Today" : "Overall"}
+                </button>
+              ))}
+            </div>
+            <div className={`mt-2 min-h-10 break-words text-lg font-semibold leading-10 tabular-nums sm:text-2xl ${valueTone(gainChange)}`}>
+              {gainChange === null ? "—" : formatSignedMoney(gainChange, isAmountsVisible)}
+            </div>
+            <p className="mt-2 text-[13px] leading-5 text-text-muted">
+              {gainChange === null ? "Price data unavailable" : gainPercent === null ? "—" : formatSignedPercent(gainPercent)}
+            </p>
+          </div>
+          <div className="min-w-0 border-l border-border-subtle p-4 sm:p-6">
+            <div className="flex min-h-8 items-center text-[13px] text-text-secondary">{periodLabel} performance</div>
+            <div className={`mt-2 min-h-10 break-words text-lg font-semibold leading-10 tabular-nums sm:text-2xl ${valueTone(periodChange)}`}>
+              {periodChange === null ? "—" : formatSignedMoney(periodChange, isAmountsVisible)}
+            </div>
+            <p className="mt-2 text-[13px] leading-5 text-text-muted">
+              {periodChange === null || periodReturnPercent === null ? "Not enough history" : formatSignedPercent(periodReturnPercent)}
+            </p>
+          </div>
+      </div>
+    </section>
   );
 }

@@ -47,10 +47,20 @@ export default function HoldingModal({ holding, inrToAedRate, onSave, onClose }:
   const [showAllocationGroup, setShowAllocationGroup] = useState(
     () => Boolean(holding?.allocationClass && holding.allocationClass !== holding.assetClass)
   );
+  const [customPlatformName, setCustomPlatformName] = useState(() => {
+    const initialPlatform = holding?.platform.trim() || "";
+    return initialPlatform && !PLATFORM_OPTIONS.includes(initialPlatform as (typeof PLATFORM_OPTIONS)[number])
+      ? initialPlatform
+      : "";
+  });
   const preview = useMemo(() => computeHolding(form, inrToAedRate), [form, inrToAedRate]);
 
   const showsTickerField = form.assetClass !== "Mutual Funds" && form.assetClass !== "Cash";
   const showsSchemeCodeField = form.assetClass === "Mutual Funds";
+  const selectedPlatform = PLATFORM_OPTIONS.includes(form.platform as (typeof PLATFORM_OPTIONS)[number])
+    ? form.platform
+    : "Custom";
+  const usesCustomPlatform = selectedPlatform === "Custom";
 
   useEffect(() => {
     const { body } = document;
@@ -77,8 +87,10 @@ export default function HoldingModal({ holding, inrToAedRate, onSave, onClose }:
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
     if (!form.assetName.trim()) return;
+    const platform = usesCustomPlatform ? customPlatformName.trim() : form.platform.trim();
+    if (!platform) return;
     hapticSuccess();
-    onSave(form);
+    onSave({ ...form, platform });
   };
 
   const update = (patch: Partial<Holding>) => setForm((current) => ({ ...current, ...patch }));
@@ -123,7 +135,24 @@ export default function HoldingModal({ holding, inrToAedRate, onSave, onClose }:
           </div>
 
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            <FormSelect label="Platform" value={form.platform} options={PLATFORM_OPTIONS} onChange={(value) => update({ platform: value })} />
+            <FormSelect
+              label="Platform"
+              value={selectedPlatform}
+              options={PLATFORM_OPTIONS}
+              onChange={(value) => update({ platform: value === "Custom" ? customPlatformName : value })}
+            />
+            {usesCustomPlatform ? (
+              <FormInput
+                label="Custom Platform Name"
+                value={customPlatformName}
+                onChange={(value) => {
+                  setCustomPlatformName(value);
+                  update({ platform: value });
+                }}
+                placeholder="e.g. Sarwa, eToro"
+                required
+              />
+            ) : null}
             <FormInput label="Asset Name" value={form.assetName} onChange={(value) => update({ assetName: value })} placeholder="Apple, Bitcoin, Nifty ETF" required />
             {showsTickerField ? (
               <FormInput label="Ticker" value={form.ticker} onChange={(value) => update({ ticker: value })} placeholder="AAPL, BTC" />

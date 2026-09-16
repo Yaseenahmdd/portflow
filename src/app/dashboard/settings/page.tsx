@@ -5,11 +5,10 @@ import { useRouter } from "next/navigation";
 import { type Holding } from "@/lib/constants";
 import { tap, success as hapticSuccess, destructive as hapticDestructive, medium } from "@/lib/haptics";
 import { DEFAULT_INR_TO_AED_RATE, getRateStorageKey } from "@/lib/dashboard/persistence";
-import { buildBackfilledSnapshots } from "@/lib/history-backfill";
 import { useDashboardStateContext } from "@/components/dashboard/DashboardStateProvider";
 import { normalizeHoldings } from "@/lib/holdings-normalize";
 import { replaceRemoteHoldings } from "@/lib/holdings-store";
-import { fetchPortfolioSnapshots, replacePortfolioSnapshots } from "@/lib/portfolio-snapshots";
+import { replacePortfolioSnapshots, type PortfolioSnapshot } from "@/lib/portfolio-snapshots";
 import { createClient } from "@/lib/supabase/client";
 
 const REQUIRED_HOLDING_FIELDS: (keyof Holding)[] = [
@@ -35,8 +34,19 @@ interface ApiStatus {
   envVar?: string;
 }
 
+interface HistoryApiResponse {
+  success: boolean;
+  error?: string;
+  data?: {
+    snapshots: PortfolioSnapshot[];
+    unavailableAssets: string[];
+    usedFallbackFx: boolean;
+    dividendsIncluded: false;
+  };
+}
+
 const apiStatuses: ApiStatus[] = [
-  { name: "MFAPI.in", description: "Indian mutual fund NAV data", status: "ok", keyRequired: false },
+  { name: "AMFI / MFAPI.in", description: "Indian mutual fund NAV data with automatic fallback", status: "ok", keyRequired: false },
   { name: "CoinGecko", description: "Cryptocurrency prices", status: "ok", keyRequired: false },
   { name: "Frankfurter", description: "Currency exchange rates", status: "ok", keyRequired: false },
   { name: "Binance WebSocket", description: "Real-time BTC price stream", status: "ok", keyRequired: false },
@@ -47,10 +57,11 @@ const apiStatuses: ApiStatus[] = [
 
 export default function SettingsPage() {
   const router = useRouter();
-  const { userId } = useDashboardStateContext();
+  const { userId, setHoldings } = useDashboardStateContext();
   const [testResults, setTestResults] = useState<Record<string, string>>({});
   const [testing, setTesting] = useState(false);
   const [rebuildingHistory, setRebuildingHistory] = useState(false);
+  const [historyStatus, setHistoryStatus] = useState<string | null>(null);
   const [resetting, setResetting] = useState(false);
   const [resetConfirming, setResetConfirming] = useState(false);
   const [dataError, setDataError] = useState<string | null>(null);
@@ -78,7 +89,7 @@ export default function SettingsPage() {
     setTesting(true);
 
     const endpoints = [
-      { name: "MFAPI.in", path: "/api/prices/indian-mf" },
+      { name: "AMFI / MFAPI.in", path: "/api/prices/indian-mf" },
       { name: "Yahoo Finance (India)", path: "/api/prices/indian-stocks" },
       { name: "Yahoo Finance (US ETFs)", path: "/api/prices/us-etfs" },
       { name: "CoinGecko", path: "/api/prices/crypto" },
@@ -98,6 +109,7 @@ export default function SettingsPage() {
   const rebuildHistory = async () => {
     setRebuildingHistory(true);
     setDataError(null);
+    setHistoryStatus(null);
 
     try {
       const rawHoldings = localStorage.getItem(storageKey);
@@ -107,10 +119,37 @@ export default function SettingsPage() {
       const inrToAedRate =
         Number.isFinite(storedRate) && storedRate > 0 ? storedRate : DEFAULT_INR_TO_AED_RATE;
 
-      const existingSnapshots = await fetchPortfolioSnapshots(userId);
-      const rebuiltSnapshots = buildBackfilledSnapshots(normalized, existingSnapshots, inrToAedRate);
+      const response = await fetch("/api/prices/history", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ holdings: normalized, fallbackInrToAedRate: inrToAedRate }),
+      });
+      const payload = (await response.json()) as HistoryApiResponse;
 
+      if (!response.ok || !payload.success || !payload.data?.snapshots.length) {
+        throw new Error(payload.error || "No historical prices were returned");
+      }
+
+      const rebuiltSnapshots = payload.data.snapshots;
       await replacePortfolioSnapshots(userId, rebuiltSnapshots);
+      window.dispatchEvent(
+        new CustomEvent("portflow:snapshots-rebuilt", {
+          detail: { snapshots: rebuiltSnapshots },
+        })
+      );
+
+      const fallbackNotes = [
+        payload.data.unavailableAssets.length
+          ? `Transaction-price fallback used for ${payload.data.unavailableAssets.join(", ")}.`
+          : "",
+        payload.data.usedFallbackFx ? "Current INR/AED rate used where historical FX was unavailable." : "",
+      ].filter(Boolean);
+
+      setHistoryStatus(
+        `Rebuilt ${rebuiltSnapshots.length} daily portfolio values. Dividends excluded.${
+          fallbackNotes.length ? ` ${fallbackNotes.join(" ")}` : ""
+        }`
+      );
       hapticSuccess();
       router.refresh();
     } catch (error) {
@@ -142,7 +181,7 @@ export default function SettingsPage() {
         const supabase = createClient();
         await replaceRemoteHoldings(supabase, userId, normalized);
         localStorage.setItem(storageKey, JSON.stringify(normalized));
-        router.refresh();
+        setHoldings(normalized);
       } catch (error) {
         setDataError(
           error instanceof SyntaxError
@@ -164,8 +203,8 @@ export default function SettingsPage() {
       const supabase = createClient();
       await replaceRemoteHoldings(supabase, userId, []);
       localStorage.removeItem(storageKey);
+      setHoldings([]);
       setResetConfirming(false);
-      router.refresh();
     } catch (error) {
       setDataError(error instanceof Error ? error.message : "Failed to reset holdings");
     } finally {
@@ -274,7 +313,7 @@ export default function SettingsPage() {
               <div>
                 <h3 className="text-sm font-semibold text-text-primary">Historical snapshots</h3>
                 <p className="mt-1 text-sm leading-6 text-text-secondary">
-                  Rebuild missing history from purchase dates. Backfilled dates assume portfolio value matched invested cost on those earlier entries.
+                  Rebuild the graph from purchase dates, historical closing prices and NAVs, and daily INR/AED rates. Dividends are excluded.
                 </p>
               </div>
               <button
@@ -282,9 +321,14 @@ export default function SettingsPage() {
                 disabled={rebuildingHistory}
                 className="rounded-full border border-border-default bg-bg-card px-4 py-2.5 text-sm font-semibold text-text-primary transition hover:bg-bg-card-hover disabled:cursor-not-allowed disabled:opacity-55"
               >
-                {rebuildingHistory ? "Rebuilding history" : "Rebuild history"}
+                {rebuildingHistory ? "Loading market history" : "Rebuild market history"}
               </button>
             </div>
+            {historyStatus ? (
+              <p className="mt-3 rounded-[1rem] border border-accent-gain/20 bg-accent-gain-bg px-4 py-3 text-sm text-accent-gain">
+                {historyStatus}
+              </p>
+            ) : null}
           </div>
         </div>
 

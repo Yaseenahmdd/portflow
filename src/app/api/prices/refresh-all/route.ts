@@ -23,7 +23,8 @@ function createPriceTask(source: string, loader: () => Promise<unknown>): Promis
       data,
     }))
     .catch((error: unknown) => {
-      console.error(`[prices/${source}]`, error);
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(`[prices/${source}] ${message}`);
       return {
         source,
         success: false,

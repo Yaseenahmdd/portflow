@@ -12,28 +12,63 @@ export const HISTORY_RANGES: Array<{ label: HistoryRange; name: string }> = [
   { label: "ALL", name: "All time" },
 ];
 
+export interface ContributionAdjustedPerformance {
+  adjustedChangeAed: number | null;
+  returnPercent: number | null;
+  estimatedContributionsAed: number;
+  startDate: string | null;
+  endDate: string | null;
+  snapshotCount: number;
+}
+
+export interface PortfolioActivityPoint {
+  snapshot: PortfolioSnapshot;
+  investedChangeAed: number | null;
+  marketChangeAed: number | null;
+  marketReturnPercent: number | null;
+}
+
 function getDateValue(snapshotDate: string) {
-  return new Date(`${snapshotDate}T00:00:00`).getTime();
+  return new Date(`${snapshotDate}T00:00:00Z`).getTime();
 }
 
 function getRangeStartDate(range: HistoryRange, endDate: Date) {
   const startDate = new Date(endDate);
 
+  const subtractMonths = (months: number) => {
+    const dayOfMonth = startDate.getUTCDate();
+    startDate.setUTCDate(1);
+    startDate.setUTCMonth(startDate.getUTCMonth() - months);
+    const lastDayOfMonth = new Date(
+      Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth() + 1, 0)
+    ).getUTCDate();
+    startDate.setUTCDate(Math.min(dayOfMonth, lastDayOfMonth));
+    return startDate;
+  };
+
   switch (range) {
     case "1W":
-      startDate.setDate(startDate.getDate() - 7);
+      startDate.setUTCDate(startDate.getUTCDate() - 7);
       return startDate;
     case "1M":
-      startDate.setMonth(startDate.getMonth() - 1);
-      return startDate;
+      return subtractMonths(1);
     case "3M":
-      startDate.setMonth(startDate.getMonth() - 3);
-      return startDate;
+      return subtractMonths(3);
     case "YTD":
-      return new Date(endDate.getFullYear(), 0, 1);
-    case "1Y":
-      startDate.setFullYear(startDate.getFullYear() - 1);
+      // A Dec 31 closing snapshot is the opening value for Jan 1 performance.
+      return new Date(Date.UTC(endDate.getUTCFullYear() - 1, 11, 31));
+    case "1Y": {
+      const month = startDate.getUTCMonth();
+      const dayOfMonth = startDate.getUTCDate();
+      startDate.setUTCDate(1);
+      startDate.setUTCFullYear(startDate.getUTCFullYear() - 1);
+      startDate.setUTCMonth(month);
+      const lastDayOfMonth = new Date(
+        Date.UTC(startDate.getUTCFullYear(), month + 1, 0)
+      ).getUTCDate();
+      startDate.setUTCDate(Math.min(dayOfMonth, lastDayOfMonth));
       return startDate;
+    }
     case "ALL":
       return null;
   }
@@ -47,7 +82,7 @@ export function filterSnapshotsByRange(snapshots: PortfolioSnapshot[], range: Hi
     return sortedSnapshots;
   }
 
-  const latestDate = new Date(`${latestSnapshot.snapshotDate}T00:00:00`);
+  const latestDate = new Date(`${latestSnapshot.snapshotDate}T00:00:00Z`);
   const startDate = getRangeStartDate(range, latestDate);
   if (!startDate) {
     return sortedSnapshots;
@@ -59,6 +94,148 @@ export function filterSnapshotsByRange(snapshots: PortfolioSnapshot[], range: Hi
 
 export function getSnapshotReturn(startValue: number, endValue: number) {
   return startValue > 0 ? ((endValue - startValue) / startValue) * 100 : 0;
+}
+
+export function getContributionAdjustedPerformance(
+  snapshots: PortfolioSnapshot[],
+  includeOpeningGain = false
+): ContributionAdjustedPerformance {
+  const sortedSnapshots = [...snapshots].sort((a, b) =>
+    a.snapshotDate.localeCompare(b.snapshotDate)
+  );
+  const first = sortedSnapshots[0] ?? null;
+  const latest = sortedSnapshots[sortedSnapshots.length - 1] ?? null;
+  const estimatedContributionsAed =
+    first && latest &&
+    Number.isFinite(first.totalInvestedAed) &&
+    Number.isFinite(latest.totalInvestedAed)
+      ? latest.totalInvestedAed - first.totalInvestedAed
+      : 0;
+  const unavailableResult: ContributionAdjustedPerformance = {
+    adjustedChangeAed: null,
+    returnPercent: null,
+    estimatedContributionsAed,
+    startDate: first?.snapshotDate ?? null,
+    endDate: latest?.snapshotDate ?? null,
+    snapshotCount: sortedSnapshots.length,
+  };
+
+  if ((!includeOpeningGain && sortedSnapshots.length < 2) || !first || !latest) {
+    return unavailableResult;
+  }
+
+  const hasInvalidSnapshot = sortedSnapshots.some(
+    (snapshot) =>
+      !Number.isFinite(snapshot.totalValueAed) ||
+      !Number.isFinite(snapshot.totalInvestedAed)
+  );
+
+  if (
+    hasInvalidSnapshot ||
+    latest.totalInvestedAed <= 0 ||
+    (!includeOpeningGain && first.totalValueAed <= 0)
+  ) {
+    return unavailableResult;
+  }
+
+  const openingGainAed = first.totalValueAed - first.totalInvestedAed;
+  const closingGainAed = latest.totalValueAed - latest.totalInvestedAed;
+  const adjustedChangeAed = includeOpeningGain
+    ? closingGainAed
+    : closingGainAed - openingGainAed;
+  const returnPercent = (adjustedChangeAed / latest.totalInvestedAed) * 100;
+
+  if (!Number.isFinite(adjustedChangeAed) || !Number.isFinite(returnPercent)) {
+    return unavailableResult;
+  }
+
+  return {
+    adjustedChangeAed,
+    returnPercent,
+    estimatedContributionsAed,
+    startDate: first.snapshotDate,
+    endDate: latest.snapshotDate,
+    snapshotCount: sortedSnapshots.length,
+  };
+}
+
+export function getPortfolioActivity(
+  snapshots: PortfolioSnapshot[]
+): PortfolioActivityPoint[] {
+  const sortedSnapshots = [...snapshots].sort((a, b) =>
+    a.snapshotDate.localeCompare(b.snapshotDate)
+  );
+
+  return sortedSnapshots.map((snapshot, index) => {
+    const previous = sortedSnapshots[index - 1];
+
+    if (!previous || previous.totalValueAed <= 0) {
+      return {
+        snapshot,
+        investedChangeAed: null,
+        marketChangeAed: null,
+        marketReturnPercent: null,
+      };
+    }
+
+    const investedChangeAed =
+      snapshot.totalInvestedAed - previous.totalInvestedAed;
+    const marketChangeAed =
+      snapshot.totalValueAed -
+      previous.totalValueAed -
+      investedChangeAed;
+    const capitalAtRiskAed = previous.totalValueAed + investedChangeAed;
+    const marketReturnPercent =
+      capitalAtRiskAed > 0 ? (marketChangeAed / capitalAtRiskAed) * 100 : Number.NaN;
+
+    if (
+      !Number.isFinite(investedChangeAed) ||
+      !Number.isFinite(marketChangeAed) ||
+      !Number.isFinite(marketReturnPercent)
+    ) {
+      return {
+        snapshot,
+        investedChangeAed: null,
+        marketChangeAed: null,
+        marketReturnPercent: null,
+      };
+    }
+
+    return {
+      snapshot,
+      investedChangeAed,
+      marketChangeAed,
+      marketReturnPercent,
+    };
+  });
+}
+
+export function getBestAndWorstMarketMoves(
+  activity: PortfolioActivityPoint[]
+) {
+  const validMoves = activity.filter(
+    (
+      point
+    ): point is PortfolioActivityPoint & {
+      marketChangeAed: number;
+      marketReturnPercent: number;
+    } =>
+      point.marketChangeAed !== null &&
+      point.marketReturnPercent !== null
+  );
+
+  if (!validMoves.length) {
+    return { best: null, worst: null };
+  }
+
+  const sortedMoves = [...validMoves].sort(
+    (a, b) => a.marketReturnPercent - b.marketReturnPercent
+  );
+
+  return {
+    best: sortedMoves[sortedMoves.length - 1],
+    worst: sortedMoves[0],
+  };
 }
 
 export function getMaxDrawdown(snapshots: PortfolioSnapshot[]) {
@@ -78,35 +255,33 @@ export function getMaxDrawdown(snapshots: PortfolioSnapshot[]) {
 }
 
 export function getBestAndWorstDailyMoves(snapshots: PortfolioSnapshot[]) {
-  let best: { snapshotDate: string; changeAed: number; changePercent: number } | null = null;
-  let worst: { snapshotDate: string; changeAed: number; changePercent: number } | null = null;
+  const moves = getBestAndWorstMarketMoves(getPortfolioActivity(snapshots));
+  const toDailyMove = (move: typeof moves.best) =>
+    move
+      ? {
+          snapshotDate: move.snapshot.snapshotDate,
+          changeAed: move.marketChangeAed,
+          changePercent: move.marketReturnPercent,
+        }
+      : null;
 
-  for (let index = 1; index < snapshots.length; index += 1) {
-    const previous = snapshots[index - 1];
-    const current = snapshots[index];
-    const changeAed = current.totalValueAed - previous.totalValueAed;
-    const changePercent = getSnapshotReturn(previous.totalValueAed, current.totalValueAed);
-    const move = { snapshotDate: current.snapshotDate, changeAed, changePercent };
-
-    if (!best || move.changePercent > best.changePercent) {
-      best = move;
-    }
-
-    if (!worst || move.changePercent < worst.changePercent) {
-      worst = move;
-    }
-  }
-
-  return { best, worst };
+  return {
+    best: toDailyMove(moves.best),
+    worst: toDailyMove(moves.worst),
+  };
 }
 
 export function getHistorySummary(snapshots: PortfolioSnapshot[]) {
-  const first = snapshots[0] ?? null;
-  const latest = snapshots[snapshots.length - 1] ?? null;
-  const rangeChangeAed = first && latest ? latest.totalValueAed - first.totalValueAed : 0;
-  const rangeReturnPercent = first && latest ? getSnapshotReturn(first.totalValueAed, latest.totalValueAed) : 0;
+  const sortedSnapshots = [...snapshots].sort((a, b) =>
+    a.snapshotDate.localeCompare(b.snapshotDate)
+  );
+  const first = sortedSnapshots[0] ?? null;
+  const latest = sortedSnapshots[sortedSnapshots.length - 1] ?? null;
+  const performance = getContributionAdjustedPerformance(sortedSnapshots);
+  const rangeChangeAed = performance.adjustedChangeAed ?? 0;
+  const rangeReturnPercent = performance.returnPercent ?? 0;
   const investedChangeAed = first && latest ? latest.totalInvestedAed - first.totalInvestedAed : 0;
-  const { best, worst } = getBestAndWorstDailyMoves(snapshots);
+  const { best, worst } = getBestAndWorstDailyMoves(sortedSnapshots);
 
   return {
     first,
@@ -114,7 +289,7 @@ export function getHistorySummary(snapshots: PortfolioSnapshot[]) {
     rangeChangeAed,
     rangeReturnPercent,
     investedChangeAed,
-    maxDrawdownPercent: getMaxDrawdown(snapshots),
+    maxDrawdownPercent: getMaxDrawdown(sortedSnapshots),
     bestDailyMove: best,
     worstDailyMove: worst,
   };

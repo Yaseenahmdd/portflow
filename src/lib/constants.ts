@@ -7,10 +7,10 @@ export type AllocationClass = AssetClass;
 export type Geography = 'India' | 'US' | 'UAE' | 'Global' | 'Others';
 export type Risk = 'Low' | 'Medium' | 'High';
 export type Currency = 'AED' | 'USD' | 'INR';
-export type Platform = 'IG' | 'iVestor' | 'Binance' | 'Groww' | 'Custom';
+export type Platform = 'IG' | 'iVestor' | 'Binance' | 'Groww' | 'IBKR' | 'Custom';
 export type PriceSource = 'mfapi' | 'twelvedata' | 'coingecko' | 'alphavantage' | 'frankfurter' | 'dfm' | 'manual';
 
-export const PLATFORM_OPTIONS: string[] = ['IG', 'iVestor', 'Binance', 'Groww', 'Custom'];
+export const PLATFORM_OPTIONS: Platform[] = ['IG', 'iVestor', 'Binance', 'Groww', 'IBKR', 'Custom'];
 export const ASSET_CLASS_OPTIONS: AssetClass[] = ['Stocks', 'ETFs', 'Crypto', 'Mutual Funds', 'Cash', 'Gold', 'Bonds', 'Others'];
 export const ALLOCATION_CLASS_OPTIONS: AllocationClass[] = ['Stocks', 'ETFs', 'Crypto', 'Mutual Funds', 'Cash', 'Gold', 'Bonds', 'Others'];
 export const GEOGRAPHY_OPTIONS: Geography[] = ['India', 'US', 'UAE', 'Global', 'Others'];
@@ -139,6 +139,7 @@ export const LIGHT_PLATFORM_COLORS = {
   iVestor: '#3C4A63',
   IG: '#6F7E99',
   Binance: '#A3B1C6',
+  IBKR: '#52627A',
 };
 
 export const LIGHT_ASSET_CLASS_COLORS = {

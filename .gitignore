@@ -51,6 +51,7 @@ yarn-error.log*
 
 # local docs output
 /docs/logs
+/outputs
 
 # typescript
 *.tsbuildinfo

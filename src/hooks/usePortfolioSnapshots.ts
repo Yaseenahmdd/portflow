@@ -76,6 +76,22 @@ export function usePortfolioSnapshots({
     if (!mounted) {
       return;
     }
+
+    const handleSnapshotsRebuilt = (event: Event) => {
+      const detail = (event as CustomEvent<{ snapshots?: PortfolioSnapshot[] }>).detail;
+      if (Array.isArray(detail?.snapshots)) {
+        setStoredSnapshots(detail.snapshots);
+      }
+    };
+
+    window.addEventListener("portflow:snapshots-rebuilt", handleSnapshotsRebuilt);
+    return () => window.removeEventListener("portflow:snapshots-rebuilt", handleSnapshotsRebuilt);
+  }, [mounted]);
+
+  useEffect(() => {
+    if (!mounted) {
+      return;
+    }
     persistLocalPortfolioSnapshots(userId, snapshots);
 
     void (async () => {

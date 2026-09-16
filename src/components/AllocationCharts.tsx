@@ -270,7 +270,7 @@ function PieAllocationCard({
 
   return (
     <div
-      className="dashboard-card flex h-full flex-col overflow-hidden rounded-2xl border p-4 shadow-sm"
+      className="dashboard-card flex h-full flex-col overflow-hidden rounded-2xl border p-5"
       style={{
         backgroundColor: isDarkMode ? "var(--color-bg-card)" : "#ffffff",
         borderColor: isDarkMode ? "var(--color-border-default)" : "#e2e8f0",
@@ -340,10 +340,7 @@ function PieAllocationCard({
             {items.map((item) => (
               <div
                 key={item.label}
-                className="flex items-center justify-between gap-2 rounded-xl px-2.5 py-2 text-xs"
-                style={{
-                  backgroundColor: isDarkMode ? "var(--color-bg-elevated)" : "#f8fafc",
-                }}
+                className="flex items-center justify-between gap-3 py-2 text-[13px]"
               >
                 <div className="flex min-w-0 items-center gap-2">
                   <span

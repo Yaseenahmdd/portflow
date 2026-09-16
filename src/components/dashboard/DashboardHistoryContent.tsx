@@ -1,14 +1,16 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import PortfolioTrendChart from "@/components/PortfolioTrendChart";
 import type { ComputedHolding } from "@/lib/constants";
+import { tap } from "@/lib/haptics";
 import {
   filterSnapshotsByRange,
-  getHistorySummary,
-  getTopHoldingContributors,
+  getBestAndWorstMarketMoves,
+  getContributionAdjustedPerformance,
+  getPortfolioActivity,
   HISTORY_RANGES,
   type HistoryRange,
+  type PortfolioActivityPoint,
 } from "@/lib/portfolio-analytics";
 import type { PortfolioSnapshot } from "@/lib/portfolio-snapshots";
 import { formatMoney, formatOrMask } from "@/lib/utils";
@@ -43,29 +45,69 @@ function formatDate(snapshotDate: string) {
   });
 }
 
-function MetricCard({
+function valueTone(value: number | null) {
+  if (value === null || value === 0) return "text-text-primary";
+  return value > 0 ? "text-accent-gain" : "text-accent-loss";
+}
+
+function PeriodSelector({
+  selectedRange,
+  onChange,
+}: {
+  selectedRange: HistoryRange;
+  onChange: (range: HistoryRange) => void;
+}) {
+  return (
+    <div
+      className="flex w-full items-center gap-1 sm:w-auto"
+      role="group"
+      aria-label="Select history period"
+    >
+      {HISTORY_RANGES.map((range) => {
+        const active = selectedRange === range.label;
+
+        return (
+          <button
+            key={range.label}
+            type="button"
+            onClick={() => {
+              tap();
+              onChange(range.label);
+            }}
+            aria-pressed={active}
+            title={range.name}
+            className={`relative h-11 min-w-0 flex-1 px-1 text-[13px] font-medium transition sm:w-10 sm:flex-none ${
+              active
+                ? "text-text-primary after:absolute after:bottom-0 after:left-1/2 after:h-0.5 after:w-3 after:-translate-x-1/2 after:rounded-full after:bg-accent-violet"
+                : "text-text-muted hover:text-text-primary"
+            }`}
+          >
+            {range.label === "ALL" ? "All" : range.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function BreakdownValue({
   label,
   value,
   detail,
-  tone = "default",
+  tone = "text-text-primary",
 }: {
   label: string;
   value: string;
-  detail: string;
-  tone?: "default" | "positive" | "negative";
+  detail?: string;
+  tone?: string;
 }) {
-  const toneClass =
-    tone === "positive"
-      ? "text-accent-gain"
-      : tone === "negative"
-        ? "text-accent-loss"
-        : "text-text-primary";
-
   return (
-    <div className="dashboard-card rounded-2xl border border-border-default bg-bg-card p-4 shadow-sm">
-      <div className="text-xs font-medium uppercase tracking-[0.12em] text-text-muted">{label}</div>
-      <div className={`mt-3 text-xl font-semibold leading-tight sm:text-2xl ${toneClass}`}>{value}</div>
-      <div className="mt-2 text-sm text-text-secondary">{detail}</div>
+    <div className="min-w-0 px-4 py-3.5 sm:px-5 sm:py-4">
+      <div className="text-[13px] font-medium text-text-muted">
+        {label}
+      </div>
+      <div className={`mt-1.5 truncate font-mono text-lg font-semibold ${tone}`}>{value}</div>
+      {detail ? <div className={`mt-1 text-xs ${tone}`}>{detail}</div> : null}
     </div>
   );
 }
@@ -76,158 +118,185 @@ export default function DashboardHistoryContent({
   isAmountsVisible,
 }: DashboardHistoryContentProps) {
   const [selectedRange, setSelectedRange] = useState<HistoryRange>("1M");
-
   const filteredSnapshots = useMemo(
     () => filterSnapshotsByRange(snapshots, selectedRange),
     [selectedRange, snapshots]
   );
-
-  const historySummary = useMemo(() => getHistorySummary(filteredSnapshots), [filteredSnapshots]);
-  const contributors = useMemo(() => getTopHoldingContributors(holdings), [holdings]);
-  const trendChartData = useMemo(
-    () =>
-      filteredSnapshots.map((snapshot) => ({
-        date: snapshot.snapshotDate,
-        invested: snapshot.totalInvestedAed,
-        value: snapshot.totalValueAed,
-      })),
+  const performance = useMemo(
+    () => getContributionAdjustedPerformance(filteredSnapshots, selectedRange === "ALL"),
+    [filteredSnapshots, selectedRange]
+  );
+  const activity = useMemo(
+    () => getPortfolioActivity(filteredSnapshots),
     [filteredSnapshots]
   );
+  const marketMoves = useMemo(
+    () => getBestAndWorstMarketMoves(activity),
+    [activity]
+  );
+  const contributors = useMemo(() => {
+    const positive = holdings
+      .filter((holding) => holding.gainLossAed > 0)
+      .sort((a, b) => b.gainLossAed - a.gainLossAed)
+      .slice(0, 3);
+    const negative = holdings
+      .filter((holding) => holding.gainLossAed < 0)
+      .sort((a, b) => a.gainLossAed - b.gainLossAed)
+      .slice(0, 3);
 
-  const rangeTone = historySummary.rangeChangeAed >= 0 ? "positive" : "negative";
-  const bestMove = historySummary.bestDailyMove;
-  const worstMove = historySummary.worstDailyMove;
-  const bestContributor = contributors.best;
-  const worstContributor = contributors.worst;
+    return { positive, negative };
+  }, [holdings]);
+
+  const firstSnapshot = filteredSnapshots[0] ?? null;
+  const latestSnapshot = filteredSnapshots[filteredSnapshots.length - 1] ?? null;
+  const dateSpan =
+    firstSnapshot && latestSnapshot
+      ? firstSnapshot.snapshotDate === latestSnapshot.snapshotDate
+        ? formatDate(firstSnapshot.snapshotDate)
+        : `${formatDate(firstSnapshot.snapshotDate)} – ${formatDate(latestSnapshot.snapshotDate)}`
+      : "No history yet";
+  const marketTone = valueTone(performance.adjustedChangeAed);
 
   return (
-    <div className="space-y-4 sm:space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+    <div className="space-y-4 sm:space-y-5">
+      <header>
         <div>
-          <h1 className="font-display text-3xl font-semibold tracking-[-0.04em] text-text-primary">
-            Performance History
+          <h1 className="font-display text-2xl font-semibold tracking-[-0.04em] text-text-primary">
+            History
           </h1>
-          <p className="mt-2 max-w-2xl text-sm text-text-secondary">
-            Snapshot-based portfolio returns, drawdowns, and contribution signals.
-          </p>
+          <div className="mt-1 text-xs text-text-muted">{dateSpan}</div>
         </div>
+      </header>
 
-        <div className="flex flex-wrap gap-1.5 rounded-full border border-border-default bg-bg-card p-1">
-          {HISTORY_RANGES.map((range) => (
-            <button
-              key={range.label}
-              type="button"
-              onClick={() => setSelectedRange(range.label)}
-              title={range.name}
-              className={`min-h-8 rounded-full px-3 text-xs font-semibold transition ${
-                selectedRange === range.label
-                  ? "bg-accent-violet text-bg-primary"
-                  : "text-text-secondary hover:bg-bg-elevated hover:text-text-primary"
-              }`}
-            >
-              {range.label}
-            </button>
-          ))}
+      <section className="dashboard-card overflow-hidden rounded-2xl border border-border-default bg-bg-card shadow-sm">
+        <div className="flex flex-col gap-2 border-b border-border-default px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+          <h2 className="font-display text-base font-semibold tracking-[-0.03em] text-text-primary">
+            Period Breakdown
+          </h2>
+          <div className="max-w-full overflow-x-auto">
+            <PeriodSelector selectedRange={selectedRange} onChange={setSelectedRange} />
+          </div>
         </div>
-      </div>
+        <div className="grid divide-y divide-border-default sm:grid-cols-2 sm:divide-x sm:divide-y-0 xl:grid-cols-4">
+          <BreakdownValue
+            label="Opening value"
+            value={
+              firstSnapshot
+                ? formatOrMask(firstSnapshot.totalValueAed, "AED", isAmountsVisible)
+                : "—"
+            }
+          />
+          <BreakdownValue
+            label="Net invested"
+            value={
+              performance.adjustedChangeAed !== null
+                ? formatSignedMoney(performance.estimatedContributionsAed, isAmountsVisible)
+                : "—"
+            }
+          />
+          <BreakdownValue
+            label="Market gain / loss"
+            value={
+              performance.adjustedChangeAed !== null
+                ? formatSignedMoney(performance.adjustedChangeAed, isAmountsVisible)
+                : "—"
+            }
+            detail={
+              performance.returnPercent !== null
+                ? formatSignedPercent(performance.returnPercent)
+                : "Not enough history"
+            }
+            tone={marketTone}
+          />
+          <BreakdownValue
+            label="Closing value"
+            value={
+              latestSnapshot
+                ? formatOrMask(latestSnapshot.totalValueAed, "AED", isAmountsVisible)
+                : "—"
+            }
+          />
+        </div>
+      </section>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <MetricCard
-          label="Range Return"
-          value={formatSignedPercent(historySummary.rangeReturnPercent)}
-          detail={formatSignedMoney(historySummary.rangeChangeAed, isAmountsVisible)}
-          tone={rangeTone}
-        />
-        <MetricCard
-          label="Max Drawdown"
-          value={formatSignedPercent(historySummary.maxDrawdownPercent)}
-          detail="Peak-to-trough portfolio value"
-          tone={historySummary.maxDrawdownPercent < 0 ? "negative" : "default"}
-        />
-        <MetricCard
-          label="Net Contributions"
-          value={formatSignedMoney(historySummary.investedChangeAed, isAmountsVisible)}
-          detail="Change in invested amount"
-          tone={historySummary.investedChangeAed >= 0 ? "default" : "negative"}
-        />
-        <MetricCard
-          label="Snapshots"
-          value={String(filteredSnapshots.length)}
-          detail={
-            historySummary.first && historySummary.latest
-              ? `${formatDate(historySummary.first.snapshotDate)} to ${formatDate(historySummary.latest.snapshotDate)}`
-              : "No history yet"
-          }
-        />
-      </div>
-
-      <PortfolioTrendChart chartData={trendChartData} isAmountsVisible={isAmountsVisible} />
-
-      <div className="grid gap-4 xl:grid-cols-3">
+      <div className="grid gap-4 lg:grid-cols-[0.8fr_1.2fr]">
         <section className="dashboard-card rounded-2xl border border-border-default bg-bg-card p-5 shadow-sm">
-          <h2 className="font-display text-lg font-semibold tracking-[-0.03em] text-text-primary">Daily Movement</h2>
-          <div className="mt-5 space-y-4">
-            <MoveRow label="Best day" move={bestMove} isAmountsVisible={isAmountsVisible} positive />
-            <MoveRow label="Worst day" move={worstMove} isAmountsVisible={isAmountsVisible} />
+          <h2 className="font-display text-base font-semibold tracking-[-0.03em] text-text-primary">
+            Market Movement
+          </h2>
+          <div className="mt-3 divide-y divide-border-default">
+            <MarketMoveRow label="Best day" move={marketMoves.best} isAmountsVisible={isAmountsVisible} />
+            <MarketMoveRow label="Worst day" move={marketMoves.worst} isAmountsVisible={isAmountsVisible} />
           </div>
         </section>
 
         <section className="dashboard-card rounded-2xl border border-border-default bg-bg-card p-5 shadow-sm">
-          <h2 className="font-display text-lg font-semibold tracking-[-0.03em] text-text-primary">Current Contributors</h2>
-          <div className="mt-5 space-y-4">
-            <HoldingContributor label="Top contributor" holding={bestContributor} isAmountsVisible={isAmountsVisible} />
-            <HoldingContributor label="Largest drag" holding={worstContributor} isAmountsVisible={isAmountsVisible} />
+          <h2 className="font-display text-base font-semibold tracking-[-0.03em] text-text-primary">
+            Current Contributors
+          </h2>
+          <div className="mt-3 grid gap-4 sm:grid-cols-2 sm:gap-0 sm:divide-x sm:divide-border-default">
+            <ContributorList
+              label="Top contributors"
+              holdings={contributors.positive}
+              isAmountsVisible={isAmountsVisible}
+              className="sm:pr-5"
+            />
+            <ContributorList
+              label="Largest drags"
+              holdings={contributors.negative}
+              isAmountsVisible={isAmountsVisible}
+              className="sm:pl-5"
+            />
           </div>
-        </section>
-
-        <section className="dashboard-card rounded-2xl border border-border-default bg-bg-card p-5 shadow-sm">
-          <h2 className="font-display text-lg font-semibold tracking-[-0.03em] text-text-primary">Latest Snapshot</h2>
-          {historySummary.latest ? (
-            <div className="mt-5 space-y-3 text-sm">
-              <SnapshotFact label="Date" value={formatDate(historySummary.latest.snapshotDate)} />
-              <SnapshotFact label="Portfolio value" value={formatOrMask(historySummary.latest.totalValueAed, "AED", isAmountsVisible)} />
-              <SnapshotFact label="Invested amount" value={formatOrMask(historySummary.latest.totalInvestedAed, "AED", isAmountsVisible)} />
-              <SnapshotFact label="Holdings" value={String(historySummary.latest.holdingsCount)} />
-            </div>
-          ) : (
-            <div className="mt-5 rounded-xl bg-bg-elevated px-4 py-6 text-sm text-text-secondary">
-              No snapshots have been recorded yet.
-            </div>
-          )}
         </section>
       </div>
 
       <section className="dashboard-card overflow-hidden rounded-2xl border border-border-default bg-bg-card shadow-sm">
         <div className="border-b border-border-default px-5 py-4">
-          <h2 className="font-display text-lg font-semibold tracking-[-0.03em] text-text-primary">Snapshot Ledger</h2>
+          <h2 className="font-display text-base font-semibold tracking-[-0.03em] text-text-primary">
+            Activity
+          </h2>
         </div>
-        <div className="overflow-x-auto">
+
+        <div className="divide-y divide-border-default sm:hidden">
+          {[...activity].reverse().map((point) => (
+            <MobileActivityRow
+              key={point.snapshot.snapshotDate}
+              point={point}
+              isAmountsVisible={isAmountsVisible}
+            />
+          ))}
+          {!activity.length ? (
+            <div className="px-5 py-8 text-center text-sm text-text-secondary">
+              No activity in this period.
+            </div>
+          ) : null}
+        </div>
+
+        <div className="hidden overflow-x-auto sm:block">
           <table className="min-w-full text-sm">
-            <thead className="bg-bg-elevated text-xs uppercase tracking-[0.12em] text-text-muted">
+            <thead className="bg-bg-elevated text-[11px] text-text-muted">
               <tr>
-                <th className="px-5 py-3 text-left font-semibold">Date</th>
-                <th className="px-5 py-3 text-right font-semibold">Value</th>
-                <th className="px-5 py-3 text-right font-semibold">Invested</th>
-                <th className="px-5 py-3 text-right font-semibold">Gain / Loss</th>
-                <th className="px-5 py-3 text-right font-semibold">Holdings</th>
+                <th className="px-5 py-2.5 text-left font-semibold">Date</th>
+                <th className="px-5 py-2.5 text-right font-semibold">Value</th>
+                <th className="px-5 py-2.5 text-right font-semibold">Invested</th>
+                <th className="px-5 py-2.5 text-right font-semibold">Capital flow</th>
+                <th className="px-5 py-2.5 text-right font-semibold">Market move</th>
+                <th className="px-5 py-2.5 text-right font-semibold">Total P/L</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border-default">
-              {[...filteredSnapshots].reverse().map((snapshot) => (
-                <tr key={snapshot.snapshotDate} className="text-text-secondary">
-                  <td className="whitespace-nowrap px-5 py-3 font-medium text-text-primary">{formatDate(snapshot.snapshotDate)}</td>
-                  <td className="whitespace-nowrap px-5 py-3 text-right font-mono">{formatOrMask(snapshot.totalValueAed, "AED", isAmountsVisible)}</td>
-                  <td className="whitespace-nowrap px-5 py-3 text-right font-mono">{formatOrMask(snapshot.totalInvestedAed, "AED", isAmountsVisible)}</td>
-                  <td className={`whitespace-nowrap px-5 py-3 text-right font-mono ${snapshot.totalGainLossAed >= 0 ? "text-accent-gain" : "text-accent-loss"}`}>
-                    {formatSignedMoney(snapshot.totalGainLossAed, isAmountsVisible)}
-                  </td>
-                  <td className="whitespace-nowrap px-5 py-3 text-right">{snapshot.holdingsCount}</td>
-                </tr>
+              {[...activity].reverse().map((point) => (
+                <ActivityTableRow
+                  key={point.snapshot.snapshotDate}
+                  point={point}
+                  isAmountsVisible={isAmountsVisible}
+                />
               ))}
-              {!filteredSnapshots.length ? (
+              {!activity.length ? (
                 <tr>
-                  <td className="px-5 py-8 text-center text-text-secondary" colSpan={5}>
-                    No snapshots in this range.
+                  <td className="px-5 py-8 text-center text-text-secondary" colSpan={6}>
+                    No activity in this period.
                   </td>
                 </tr>
               ) : null}
@@ -239,68 +308,157 @@ export default function DashboardHistoryContent({
   );
 }
 
-function MoveRow({
+function MarketMoveRow({
   label,
   move,
   isAmountsVisible,
-  positive = false,
 }: {
   label: string;
-  move: { snapshotDate: string; changeAed: number; changePercent: number } | null;
+  move: PortfolioActivityPoint | null;
   isAmountsVisible: boolean;
-  positive?: boolean;
 }) {
-  const toneClass = positive ? "text-accent-gain" : "text-accent-loss";
+  const change = move?.marketChangeAed ?? null;
+  const returnPercent = move?.marketReturnPercent ?? null;
 
   return (
-    <div className="rounded-xl border border-border-default bg-bg-elevated px-4 py-3">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <div className="text-xs font-medium uppercase tracking-[0.12em] text-text-muted">{label}</div>
-          <div className="mt-1 text-sm text-text-secondary">{move ? formatDate(move.snapshotDate) : "Not enough data"}</div>
+    <div className="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0">
+      <div>
+        <div className="text-sm font-medium text-text-primary">{label}</div>
+        <div className="mt-1 text-xs text-text-muted">
+          {move ? formatDate(move.snapshot.snapshotDate) : "Not enough history"}
         </div>
-        <div className={`text-right font-mono text-sm font-semibold ${move ? toneClass : "text-text-muted"}`}>
-          {move ? formatSignedPercent(move.changePercent) : "-"}
-          <div className="mt-1 text-xs font-normal">{move ? formatSignedMoney(move.changeAed, isAmountsVisible) : ""}</div>
+      </div>
+      <div className={`text-right font-mono text-sm font-semibold ${valueTone(change)}`}>
+        {returnPercent !== null ? formatSignedPercent(returnPercent) : "—"}
+        <div className="mt-1 text-xs font-normal">
+          {change !== null ? formatSignedMoney(change, isAmountsVisible) : ""}
         </div>
       </div>
     </div>
   );
 }
 
-function HoldingContributor({
+function ContributorList({
   label,
-  holding,
+  holdings,
+  isAmountsVisible,
+  className = "",
+}: {
+  label: string;
+  holdings: ComputedHolding[];
+  isAmountsVisible: boolean;
+  className?: string;
+}) {
+  return (
+    <div className={className}>
+      <div className="text-xs font-medium text-text-muted">{label}</div>
+      <div className="mt-2 divide-y divide-border-default">
+        {holdings.map((holding) => (
+          <div key={holding.id} className="flex items-center justify-between gap-4 py-2 first:pt-0 last:pb-0">
+            <div className="min-w-0">
+              <div className="truncate text-sm font-medium text-text-primary">{holding.assetName}</div>
+              <div className="mt-0.5 text-[11px] text-text-muted">{holding.ticker || holding.assetClass}</div>
+            </div>
+            <div className={`shrink-0 text-right font-mono text-xs font-semibold ${valueTone(holding.gainLossAed)}`}>
+              {formatSignedMoney(holding.gainLossAed, isAmountsVisible)}
+              <div className="mt-0.5 font-normal">{formatSignedPercent(holding.gainLossPct)}</div>
+            </div>
+          </div>
+        ))}
+        {!holdings.length ? (
+          <div className="py-3 text-sm text-text-muted">None</div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function ActivityTableRow({
+  point,
   isAmountsVisible,
 }: {
-  label: string;
-  holding: ComputedHolding | null;
+  point: PortfolioActivityPoint;
   isAmountsVisible: boolean;
 }) {
-  const toneClass = holding && holding.gainLossAed >= 0 ? "text-accent-gain" : "text-accent-loss";
+  const { snapshot, investedChangeAed, marketChangeAed } = point;
 
   return (
-    <div className="rounded-xl border border-border-default bg-bg-elevated px-4 py-3">
-      <div className="text-xs font-medium uppercase tracking-[0.12em] text-text-muted">{label}</div>
-      <div className="mt-2 flex items-start justify-between gap-4">
-        <div className="min-w-0">
-          <div className="truncate text-sm font-semibold text-text-primary">{holding?.assetName ?? "No holdings"}</div>
-          <div className="mt-1 text-xs text-text-secondary">{holding?.ticker || holding?.assetClass || ""}</div>
+    <tr className="text-text-secondary">
+      <td className="whitespace-nowrap px-5 py-2.5 font-medium text-text-primary">
+        {formatDate(snapshot.snapshotDate)}
+      </td>
+      <td className="whitespace-nowrap px-5 py-2.5 text-right font-mono">
+        {formatOrMask(snapshot.totalValueAed, "AED", isAmountsVisible)}
+      </td>
+      <td className="whitespace-nowrap px-5 py-2.5 text-right font-mono">
+        {formatOrMask(snapshot.totalInvestedAed, "AED", isAmountsVisible)}
+      </td>
+      <td className="whitespace-nowrap px-5 py-2.5 text-right font-mono text-text-primary">
+        {investedChangeAed === null || investedChangeAed === 0
+          ? "—"
+          : formatSignedMoney(investedChangeAed, isAmountsVisible)}
+      </td>
+      <td className={`whitespace-nowrap px-5 py-2.5 text-right font-mono ${valueTone(marketChangeAed)}`}>
+        {marketChangeAed === null ? "—" : formatSignedMoney(marketChangeAed, isAmountsVisible)}
+      </td>
+      <td className={`whitespace-nowrap px-5 py-2.5 text-right font-mono ${valueTone(snapshot.totalGainLossAed)}`}>
+        {formatSignedMoney(snapshot.totalGainLossAed, isAmountsVisible)}
+      </td>
+    </tr>
+  );
+}
+
+function MobileActivityRow({
+  point,
+  isAmountsVisible,
+}: {
+  point: PortfolioActivityPoint;
+  isAmountsVisible: boolean;
+}) {
+  const { snapshot, investedChangeAed, marketChangeAed } = point;
+
+  return (
+    <div className="p-4">
+      <div className="flex items-start justify-between gap-4">
+        <div className="text-sm font-semibold text-text-primary">{formatDate(snapshot.snapshotDate)}</div>
+        <div className={`text-right font-mono text-sm font-semibold ${valueTone(snapshot.totalGainLossAed)}`}>
+          {formatSignedMoney(snapshot.totalGainLossAed, isAmountsVisible)}
         </div>
-        <div className={`shrink-0 text-right font-mono text-sm font-semibold ${holding ? toneClass : "text-text-muted"}`}>
-          {holding ? formatSignedMoney(holding.gainLossAed, isAmountsVisible) : "-"}
-          <div className="mt-1 text-xs font-normal">{holding ? formatSignedPercent(holding.gainLossPct) : ""}</div>
-        </div>
+      </div>
+      <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 text-xs">
+        <ActivityValue label="Value" value={formatOrMask(snapshot.totalValueAed, "AED", isAmountsVisible)} />
+        <ActivityValue label="Invested" value={formatOrMask(snapshot.totalInvestedAed, "AED", isAmountsVisible)} />
+        <ActivityValue
+          label="Capital flow"
+          value={
+            investedChangeAed === null || investedChangeAed === 0
+              ? "—"
+              : formatSignedMoney(investedChangeAed, isAmountsVisible)
+          }
+        />
+        <ActivityValue
+          label="Market move"
+          value={marketChangeAed === null ? "—" : formatSignedMoney(marketChangeAed, isAmountsVisible)}
+          tone={valueTone(marketChangeAed)}
+        />
       </div>
     </div>
   );
 }
 
-function SnapshotFact({ label, value }: { label: string; value: string }) {
+function ActivityValue({
+  label,
+  value,
+  tone = "text-text-primary",
+}: {
+  label: string;
+  value: string;
+  tone?: string;
+}) {
   return (
-    <div className="flex items-center justify-between gap-4 rounded-xl border border-border-default bg-bg-elevated px-4 py-3">
-      <span className="text-text-secondary">{label}</span>
-      <span className="text-right font-mono font-semibold text-text-primary">{value}</span>
+    <div>
+      <div className="text-text-muted">{label}</div>
+      <div className={`mt-1 font-mono font-semibold ${tone}`}>{value}</div>
     </div>
   );
 }

@@ -22,18 +22,6 @@ export default function DashboardPage() {
     snapshots,
   } = useDashboardStateContext();
 
-  const trendChartData = useMemo(
-    () =>
-      snapshots.map((snapshot) => ({
-        date: snapshot.snapshotDate,
-        invested: snapshot.totalInvestedAed,
-        value: snapshot.totalValueAed,
-      })),
-    [snapshots]
-  );
-
-  const previousTrendPoint = trendChartData.length > 1 ? trendChartData[trendChartData.length - 2] : null;
-  const latestTrendPoint = trendChartData[trendChartData.length - 1] ?? null;
   const latestRefreshAt = useMemo(() => {
     const timestamps = computedHoldings
       .map((holding) => holding.lastPriceUpdate)
@@ -47,10 +35,33 @@ export default function DashboardPage() {
 
     return new Date(Math.max(...timestamps)).toISOString();
   }, [computedHoldings]);
-  const latestGainLoss = latestTrendPoint ? latestTrendPoint.value - latestTrendPoint.invested : 0;
-  const previousGainLoss = previousTrendPoint ? previousTrendPoint.value - previousTrendPoint.invested : 0;
-  const dailyChange = latestTrendPoint && previousTrendPoint ? latestGainLoss - previousGainLoss : 0;
-  const dailyChangePercent = previousTrendPoint?.value ? (dailyChange / previousTrendPoint.value) * 100 : 0;
+  const todayPerformance = useMemo(() => {
+    const reportingHoldings = computedHoldings.filter((holding) => holding.hasDayGain);
+
+    if (!reportingHoldings.length) {
+      return {
+        changeAed: null,
+        changePercent: null,
+      };
+    }
+
+    const changeAed = reportingHoldings.reduce(
+      (sum, holding) => sum + holding.dayGainAed,
+      0
+    );
+    const previousPortfolioValue = reportingHoldings.reduce(
+      (sum, holding) => sum + holding.currentValueAed - holding.dayGainAed,
+      0
+    );
+
+    return {
+      changeAed,
+      changePercent:
+        previousPortfolioValue > 0
+          ? (changeAed / previousPortfolioValue) * 100
+          : null,
+    };
+  }, [computedHoldings]);
 
   useEffect(() => {
     window.dispatchEvent(
@@ -102,10 +113,10 @@ export default function DashboardPage() {
           totalInvested={summary.totalInvested}
           totalGainLoss={summary.totalGainLoss}
           totalGainLossPercent={summary.totalGainLossPct}
-          dailyChange={dailyChange}
-          dailyChangePercent={dailyChangePercent}
+          todayChange={todayPerformance.changeAed}
+          todayChangePercent={todayPerformance.changePercent}
           isAmountsVisible={isAmountsVisible}
-          trendChartData={trendChartData}
+          snapshots={snapshots}
           refreshError={refreshError}
           refreshFailures={refreshFailures}
         />
