@@ -34,9 +34,12 @@ export default function CashAccountsCard({
       </div>
 
       {cash.accounts.length ? (
-        <div className="grid gap-px bg-border-default sm:grid-cols-2 xl:grid-cols-3">
+        <div className="flex flex-wrap gap-px bg-border-default">
           {cash.accounts.map((account) => (
-            <div key={account.key} className="bg-bg-card px-4 py-4 sm:px-5">
+            <div
+              key={account.key}
+              className="min-w-0 flex-1 basis-[min(100%,20rem)] bg-bg-card px-4 py-4 sm:px-5"
+            >
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
                   <div className="truncate text-sm font-semibold text-text-primary">{account.platform}</div>
