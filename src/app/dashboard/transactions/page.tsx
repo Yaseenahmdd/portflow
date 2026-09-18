@@ -300,14 +300,12 @@ export default function TransactionsPage() {
 
       {connectionLoaded && transactions.length ? (
         ledgerConnected ? (
-          <div className="flex flex-col gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <div className="text-sm font-semibold text-emerald-900">Holdings connected</div>
-              <p className="mt-1 text-xs text-emerald-700">
-                Linked asset activity automatically updates quantities and average costs.
-              </p>
-            </div>
-            {reconciliation.issues.length ? (
+          reconciliation.issues.length ? (
+            <div className="flex flex-col gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <div className="text-sm font-semibold text-amber-900">Holdings need attention</div>
+                <p className="mt-1 text-xs text-amber-700">Some Activity entries could not be synchronized.</p>
+              </div>
               <button
                 type="button"
                 onClick={() => setConnectionPreviewOpen(true)}
@@ -315,8 +313,8 @@ export default function TransactionsPage() {
               >
                 Review {reconciliation.issues.length} issue{reconciliation.issues.length === 1 ? "" : "s"}
               </button>
-            ) : null}
-          </div>
+            </div>
+          ) : null
         ) : (
           <div className="flex flex-col gap-3 rounded-2xl border border-violet-200 bg-violet-50 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
