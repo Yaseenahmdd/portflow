@@ -21,7 +21,6 @@ export default function DashboardPage() {
     summary,
     snapshots,
     transactionsMounted,
-    cash,
   } = useDashboardStateContext();
 
   const latestRefreshAt = useMemo(() => {
@@ -121,7 +120,6 @@ export default function DashboardPage() {
           snapshots={snapshots}
           refreshError={refreshError}
           refreshFailures={refreshFailures}
-          cash={cash}
         />
       </div>
     </div>
