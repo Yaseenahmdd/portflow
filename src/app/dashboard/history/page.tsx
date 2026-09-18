@@ -4,10 +4,13 @@ import DashboardHistoryContent from "@/components/dashboard/DashboardHistoryCont
 import DashboardPullToRefreshIndicator from "@/components/dashboard/DashboardPullToRefreshIndicator";
 import DashboardRefreshNotices from "@/components/dashboard/DashboardRefreshNotices";
 import { useDashboardStateContext } from "@/components/dashboard/DashboardStateProvider";
+import { useTransactions } from "@/hooks/useTransactions";
 
 export default function DashboardHistoryPage() {
   const {
     mounted,
+    userId,
+    inrToAedRate,
     isAmountsVisible,
     isRefreshing,
     isPullRefreshing,
@@ -17,8 +20,9 @@ export default function DashboardHistoryPage() {
     computedHoldings,
     snapshots,
   } = useDashboardStateContext();
+  const { transactions, mounted: transactionsMounted } = useTransactions(userId);
 
-  if (!mounted) {
+  if (!mounted || !transactionsMounted) {
     return (
       <div className="space-y-6">
         <div className="skeleton h-8 w-28" />
@@ -46,6 +50,8 @@ export default function DashboardHistoryPage() {
       <DashboardHistoryContent
         holdings={computedHoldings}
         snapshots={snapshots}
+        transactions={transactions}
+        inrToAedRate={inrToAedRate}
         isAmountsVisible={isAmountsVisible}
       />
     </div>

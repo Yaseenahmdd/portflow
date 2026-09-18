@@ -13,11 +13,15 @@ import {
   type PortfolioActivityPoint,
 } from "@/lib/portfolio-analytics";
 import type { PortfolioSnapshot } from "@/lib/portfolio-snapshots";
+import { getTransactionPerformance } from "@/lib/transaction-performance";
+import type { PortfolioTransaction } from "@/lib/transactions";
 import { formatMoney, formatOrMask } from "@/lib/utils";
 
 interface DashboardHistoryContentProps {
   holdings: ComputedHolding[];
   snapshots: PortfolioSnapshot[];
+  transactions: PortfolioTransaction[];
+  inrToAedRate: number;
   isAmountsVisible: boolean;
 }
 
@@ -115,6 +119,8 @@ function BreakdownValue({
 export default function DashboardHistoryContent({
   holdings,
   snapshots,
+  transactions,
+  inrToAedRate,
   isAmountsVisible,
 }: DashboardHistoryContentProps) {
   const [selectedRange, setSelectedRange] = useState<HistoryRange>("1M");
@@ -149,6 +155,25 @@ export default function DashboardHistoryContent({
 
   const firstSnapshot = filteredSnapshots[0] ?? null;
   const latestSnapshot = filteredSnapshots[filteredSnapshots.length - 1] ?? null;
+  const transactionPerformance = useMemo(
+    () =>
+      getTransactionPerformance(transactions, {
+        startDate: selectedRange === "ALL" ? null : firstSnapshot?.snapshotDate,
+        endDate: latestSnapshot?.snapshotDate,
+        inrToAedRate,
+      }),
+    [firstSnapshot?.snapshotDate, inrToAedRate, latestSnapshot?.snapshotDate, selectedRange, transactions]
+  );
+  const activityAdjustedReturn =
+    (performance.adjustedChangeAed || 0) +
+    transactionPerformance.realizedGainAed +
+    transactionPerformance.dividendIncomeAed -
+    transactionPerformance.standaloneFeesAed;
+  const activityReturnBase =
+    (latestSnapshot?.totalInvestedAed || 0) + transactionPerformance.soldCostBasisAed;
+  const activityReturnPercent = activityReturnBase > 0
+    ? (activityAdjustedReturn / activityReturnBase) * 100
+    : null;
   const dateSpan =
     firstSnapshot && latestSnapshot
       ? firstSnapshot.snapshotDate === latestSnapshot.snapshotDate
@@ -217,6 +242,87 @@ export default function DashboardHistoryContent({
             }
           />
         </div>
+      </section>
+
+      <section className="dashboard-card overflow-hidden rounded-2xl border border-border-default bg-bg-card shadow-sm">
+        <div className="border-b border-border-default px-4 py-3 sm:px-5">
+          <h2 className="font-display text-base font-semibold tracking-[-0.03em] text-text-primary">
+            Activity-adjusted Performance
+          </h2>
+          <p className="mt-1 text-xs text-text-muted">
+            Includes recorded sales, dividends, fees, deposits, and withdrawals in this period.
+          </p>
+        </div>
+        <div className="grid divide-y divide-border-default sm:grid-cols-2 sm:divide-x sm:divide-y-0 xl:grid-cols-5">
+          <BreakdownValue
+            label="Total return"
+            value={formatSignedMoney(activityAdjustedReturn, isAmountsVisible)}
+            detail={activityReturnPercent === null ? "No invested capital" : formatSignedPercent(activityReturnPercent)}
+            tone={valueTone(activityAdjustedReturn)}
+          />
+          <BreakdownValue
+            label="Realized P/L"
+            value={formatSignedMoney(transactionPerformance.realizedGainAed, isAmountsVisible)}
+            detail="Closed trades"
+            tone={valueTone(transactionPerformance.realizedGainAed)}
+          />
+          <BreakdownValue
+            label="Dividends"
+            value={formatSignedMoney(transactionPerformance.dividendIncomeAed, isAmountsVisible)}
+            detail={`${transactionPerformance.incomeSources.reduce((sum, source) => sum + source.count, 0)} payment${transactionPerformance.incomeSources.reduce((sum, source) => sum + source.count, 0) === 1 ? "" : "s"}`}
+            tone={valueTone(transactionPerformance.dividendIncomeAed)}
+          />
+          <BreakdownValue
+            label="Fees"
+            value={
+              transactionPerformance.totalFeesAed
+                ? `-${formatOrMask(transactionPerformance.totalFeesAed, "AED", isAmountsVisible)}`
+                : formatOrMask(0, "AED", isAmountsVisible)
+            }
+            detail="Trade and account fees"
+            tone={transactionPerformance.totalFeesAed ? "text-accent-loss" : "text-text-primary"}
+          />
+          <BreakdownValue
+            label="Net cash flow"
+            value={
+              transactionPerformance.depositsAed || transactionPerformance.withdrawalsAed
+                ? formatSignedMoney(transactionPerformance.netCashFlowAed, isAmountsVisible)
+                : "—"
+            }
+            detail={
+              transactionPerformance.depositsAed || transactionPerformance.withdrawalsAed
+                ? "Deposits less withdrawals"
+                : "No cash entries"
+            }
+          />
+        </div>
+
+        {transactionPerformance.incomeSources.length ? (
+          <div className="border-t border-border-default px-4 py-4 sm:px-5">
+            <div className="text-xs font-medium text-text-muted">Dividend income by asset</div>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {transactionPerformance.incomeSources.map((source) => (
+                <div key={source.key} className="flex items-center justify-between gap-3 rounded-xl bg-bg-elevated px-3 py-2.5">
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-medium text-text-primary">{source.name}</div>
+                    <div className="mt-0.5 text-[11px] text-text-muted">
+                      {source.count} payment{source.count === 1 ? "" : "s"}
+                    </div>
+                  </div>
+                  <div className="shrink-0 font-mono text-sm font-semibold text-accent-gain">
+                    {formatSignedMoney(source.amountAed, isAmountsVisible)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
+        {transactionPerformance.issues.length ? (
+          <div className="border-t border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800 sm:px-5">
+            {transactionPerformance.issues.length} Activity entr{transactionPerformance.issues.length === 1 ? "y needs" : "ies need"} review before all realized gains can be calculated.
+          </div>
+        ) : null}
       </section>
 
       <div className="grid gap-4 lg:grid-cols-[0.8fr_1.2fr]">
