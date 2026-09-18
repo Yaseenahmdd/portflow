@@ -9,3 +9,4 @@ import "./scheduled-price-updates.test.ts";
 import "./transactions.test.ts";
 import "./ledger-holdings.test.ts";
 import "./transaction-performance.test.ts";
+import "./cash-balances.test.ts";

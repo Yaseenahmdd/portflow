@@ -4,12 +4,10 @@ import DashboardHistoryContent from "@/components/dashboard/DashboardHistoryCont
 import DashboardPullToRefreshIndicator from "@/components/dashboard/DashboardPullToRefreshIndicator";
 import DashboardRefreshNotices from "@/components/dashboard/DashboardRefreshNotices";
 import { useDashboardStateContext } from "@/components/dashboard/DashboardStateProvider";
-import { useTransactions } from "@/hooks/useTransactions";
 
 export default function DashboardHistoryPage() {
   const {
     mounted,
-    userId,
     inrToAedRate,
     isAmountsVisible,
     isRefreshing,
@@ -19,8 +17,9 @@ export default function DashboardHistoryPage() {
     refreshError,
     computedHoldings,
     snapshots,
+    transactions,
+    transactionsMounted,
   } = useDashboardStateContext();
-  const { transactions, mounted: transactionsMounted } = useTransactions(userId);
 
   if (!mounted || !transactionsMounted) {
     return (

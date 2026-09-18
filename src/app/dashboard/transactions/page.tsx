@@ -2,8 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import TransactionModal from "@/components/TransactionModal";
+import CashAccountsCard from "@/components/dashboard/CashAccountsCard";
 import { useDashboardStateContext } from "@/components/dashboard/DashboardStateProvider";
-import { useTransactions } from "@/hooks/useTransactions";
 import { destructive as hapticDestructive, tap } from "@/lib/haptics";
 import {
   loadLedgerConnectionState,
@@ -61,15 +61,15 @@ export default function TransactionsPage() {
     setHoldings,
     inrToAedRate,
     isAmountsVisible,
-  } = useDashboardStateContext();
-  const {
     transactions,
-    mounted,
-    syncWarning,
+    transactionsMounted,
+    transactionSyncWarning,
     saveTransaction,
     deleteTransaction,
     importTransactions,
-  } = useTransactions(userId);
+    cash,
+    summary,
+  } = useDashboardStateContext();
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<PortfolioTransaction | null>(null);
   const [filter, setFilter] = useState<"all" | TransactionType>("all");
@@ -186,7 +186,7 @@ export default function TransactionsPage() {
       createdAt: transaction.createdAt || now,
       updatedAt: now,
       fxRateToAed:
-        transaction.type === "buy" && transaction.currency === "INR"
+        transaction.currency === "INR"
           ? transaction.fxRateToAed || inrToAedRate
           : transaction.fxRateToAed,
     };
@@ -245,7 +245,7 @@ export default function TransactionsPage() {
     deleteTransaction(transaction.id);
   }
 
-  if (!mounted) {
+  if (!transactionsMounted) {
     return <div className="skeleton h-[30rem] rounded-2xl" />;
   }
 
@@ -286,9 +286,9 @@ export default function TransactionsPage() {
         </div>
       </div>
 
-      {syncWarning ? (
+      {transactionSyncWarning ? (
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          {syncWarning}
+          {transactionSyncWarning}
         </div>
       ) : null}
 
@@ -342,6 +342,13 @@ export default function TransactionsPage() {
           note="Closed trades, after fees"
         />
       </div>
+
+      <CashAccountsCard
+        cash={cash}
+        portfolioValueAed={summary.totalValue}
+        isAmountsVisible={isAmountsVisible}
+        showNetWorth={false}
+      />
 
       <section className="overflow-hidden rounded-2xl border border-border-default bg-white">
         <div className="flex flex-col gap-3 border-b border-border-default px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">

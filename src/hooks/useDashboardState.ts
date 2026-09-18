@@ -1,13 +1,17 @@
 "use client";
 
+import { useMemo } from "react";
 import { useDashboardHoldings } from "@/hooks/useDashboardHoldings";
 import { useDashboardRefresh } from "@/hooks/useDashboardRefresh";
 import { usePortfolioSnapshots } from "@/hooks/usePortfolioSnapshots";
 import { useDashboardVisibility } from "@/hooks/useDashboardVisibility";
 import { usePortfolioSummary } from "@/hooks/usePortfolioSummary";
+import { useTransactions } from "@/hooks/useTransactions";
+import { getCashBalances } from "@/lib/cash-balances";
 
 export function useDashboardState(initialUserId: string) {
   const holdingsState = useDashboardHoldings(initialUserId);
+  const transactionState = useTransactions(holdingsState.userId);
   const refreshState = useDashboardRefresh({
     mounted: holdingsState.mounted,
     holdings: holdingsState.holdings,
@@ -17,6 +21,19 @@ export function useDashboardState(initialUserId: string) {
   });
   const visibilityState = useDashboardVisibility();
   const summaryState = usePortfolioSummary(holdingsState.holdings, holdingsState.inrToAedRate);
+  const cash = useMemo(
+    () =>
+      getCashBalances(
+        transactionState.transactions,
+        holdingsState.holdings,
+        holdingsState.inrToAedRate
+      ),
+    [
+      holdingsState.holdings,
+      holdingsState.inrToAedRate,
+      transactionState.transactions,
+    ]
+  );
   const snapshotsState = usePortfolioSnapshots({
     mounted: holdingsState.mounted,
     userId: holdingsState.userId,
@@ -34,5 +51,12 @@ export function useDashboardState(initialUserId: string) {
     ...visibilityState,
     ...summaryState,
     ...snapshotsState,
+    transactions: transactionState.transactions,
+    transactionsMounted: transactionState.mounted,
+    transactionSyncWarning: transactionState.syncWarning,
+    saveTransaction: transactionState.saveTransaction,
+    deleteTransaction: transactionState.deleteTransaction,
+    importTransactions: transactionState.importTransactions,
+    cash,
   };
 }

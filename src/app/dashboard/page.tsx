@@ -20,6 +20,8 @@ export default function DashboardPage() {
     computedHoldings,
     summary,
     snapshots,
+    transactionsMounted,
+    cash,
   } = useDashboardStateContext();
 
   const latestRefreshAt = useMemo(() => {
@@ -79,7 +81,7 @@ export default function DashboardPage() {
     };
   }, [fxUpdatedAt, inrToAedRate, isRefreshing, latestRefreshAt]);
 
-  if (!mounted) {
+  if (!mounted || !transactionsMounted) {
     return (
       <div className="space-y-6">
         <div className="skeleton h-10 w-56" />
@@ -119,6 +121,7 @@ export default function DashboardPage() {
           snapshots={snapshots}
           refreshError={refreshError}
           refreshFailures={refreshFailures}
+          cash={cash}
         />
       </div>
     </div>

@@ -4,9 +4,11 @@ import { useMemo, useState } from "react";
 import AllocationCharts from "@/components/AllocationCharts";
 import PortfolioSummaryStrip from "@/components/PortfolioSummaryStrip";
 import PortfolioTrendChart from "@/components/PortfolioTrendChart";
+import CashAccountsCard from "@/components/dashboard/CashAccountsCard";
 import DashboardRefreshNotices from "@/components/dashboard/DashboardRefreshNotices";
 import { tap } from "@/lib/haptics";
 import type { ComputedHolding } from "@/lib/constants";
+import type { CashBalanceSummary } from "@/lib/cash-balances";
 import type { RefreshFailure } from "@/lib/dashboard/refresh";
 import {
   filterSnapshotsByRange,
@@ -28,6 +30,7 @@ interface DashboardOverviewContentProps {
   snapshots: PortfolioSnapshot[];
   refreshError: string | null;
   refreshFailures: RefreshFailure[];
+  cash: CashBalanceSummary;
 }
 
 function formatDate(date: string) {
@@ -65,6 +68,7 @@ export default function DashboardOverviewContent({
   snapshots,
   refreshError,
   refreshFailures,
+  cash,
 }: DashboardOverviewContentProps) {
   const [selectedRange, setSelectedRange] = useState<HistoryRange>("1M");
   const filteredSnapshots = useMemo(
@@ -104,6 +108,12 @@ export default function DashboardOverviewContent({
       />
 
       <DashboardRefreshNotices refreshError={refreshError} refreshFailures={refreshFailures} />
+
+      <CashAccountsCard
+        cash={cash}
+        portfolioValueAed={totalValue}
+        isAmountsVisible={isAmountsVisible}
+      />
 
       <PortfolioTrendChart
         chartData={trendChartData}
