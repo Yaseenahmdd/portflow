@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import TransactionModal from "@/components/TransactionModal";
 import CashAccountsCard from "@/components/dashboard/CashAccountsCard";
 import { useDashboardStateContext } from "@/components/dashboard/DashboardStateProvider";
+import { PLATFORM_OPTIONS } from "@/lib/constants";
 import { destructive as hapticDestructive, tap } from "@/lib/haptics";
 import {
   loadLedgerConnectionState,
@@ -163,6 +164,15 @@ export default function TransactionsPage() {
     }
     return { buys, sells, income };
   }, [transactions]);
+
+  const accountOptions = useMemo(
+    () => [
+      ...PLATFORM_OPTIONS,
+      ...holdings.map((holding) => holding.platform),
+      ...transactions.map((transaction) => transaction.platform),
+    ],
+    [holdings, transactions]
+  );
 
   function closeModal() {
     setModalOpen(false);
@@ -577,6 +587,7 @@ export default function TransactionsPage() {
         <TransactionModal
           transaction={editing}
           holdings={holdings}
+          accountOptions={accountOptions}
           holdingsConnected={ledgerConnected}
           onSave={handleSaveTransaction}
           onClose={closeModal}

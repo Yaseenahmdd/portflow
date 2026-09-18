@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { CURRENCY_OPTIONS, type Currency, type Holding } from "@/lib/constants";
+import { useEffect, useMemo, useState } from "react";
+import { CURRENCY_OPTIONS, PLATFORM_OPTIONS, type Currency, type Holding } from "@/lib/constants";
 import { success as hapticSuccess } from "@/lib/haptics";
 import {
   TRANSACTION_TYPES,
@@ -15,6 +15,7 @@ import {
 interface TransactionModalProps {
   transaction: PortfolioTransaction | null;
   holdings: Holding[];
+  accountOptions?: string[];
   holdingsConnected?: boolean;
   onSave: (transaction: PortfolioTransaction) => string | null | undefined;
   onClose: () => void;
@@ -47,14 +48,40 @@ function parseOptionalNumber(value: string) {
   return Number.isFinite(parsed) ? parsed : undefined;
 }
 
+const CUSTOM_ACCOUNT_VALUE = "__custom_account__";
+
+function uniqueAccountOptions(options: string[]) {
+  const seen = new Set<string>();
+  return options.filter((option) => {
+    const normalized = option.trim();
+    const key = normalized.toLocaleLowerCase();
+    if (!normalized || normalized === "Custom" || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }).map((option) => option.trim());
+}
+
 export default function TransactionModal({
   transaction,
   holdings,
+  accountOptions = [],
   holdingsConnected = false,
   onSave,
   onClose,
 }: TransactionModalProps) {
+  const knownAccountOptions = useMemo(
+    () => uniqueAccountOptions([...PLATFORM_OPTIONS, ...accountOptions]),
+    [accountOptions]
+  );
+  const initialPlatform = transaction?.platform.trim() || "";
+  const initialPlatformIsCustom = Boolean(
+    initialPlatform && !knownAccountOptions.includes(initialPlatform)
+  );
   const [form, setForm] = useState<PortfolioTransaction>(() => transaction || emptyTransaction());
+  const [customAccountMode, setCustomAccountMode] = useState(initialPlatformIsCustom);
+  const [customAccountName, setCustomAccountName] = useState(
+    initialPlatformIsCustom ? initialPlatform : ""
+  );
   const [error, setError] = useState<string | null>(null);
   const isAssetTransaction = ["buy", "sell", "dividend", "split"].includes(form.type);
   const isTrade = form.type === "buy" || form.type === "sell";
@@ -81,7 +108,20 @@ export default function TransactionModal({
       return;
     }
     setForm((current) => transactionFromHolding(current, holding));
+    const usesCustomAccount = !knownAccountOptions.includes(holding.platform);
+    setCustomAccountMode(usesCustomAccount);
+    if (usesCustomAccount) setCustomAccountName(holding.platform);
     setError(null);
+  }
+
+  function selectAccount(value: string) {
+    if (value === CUSTOM_ACCOUNT_VALUE) {
+      setCustomAccountMode(true);
+      update({ platform: customAccountName });
+      return;
+    }
+    setCustomAccountMode(false);
+    update({ platform: value });
   }
 
   function handleSubmit(event: React.FormEvent) {
@@ -179,14 +219,36 @@ export default function TransactionModal({
             ) : null}
 
             <Field label="Platform / account">
-              <input
-                value={form.platform}
-                onChange={(event) => update({ platform: event.target.value })}
+              <select
+                value={customAccountMode ? CUSTOM_ACCOUNT_VALUE : form.platform}
+                onChange={(event) => selectAccount(event.target.value)}
                 className={inputClass}
-                placeholder="IBKR, Groww, bank account"
                 required
-              />
+              >
+                <option value="" disabled>Choose platform / account</option>
+                {knownAccountOptions.map((account) => (
+                  <option key={account} value={account}>{account}</option>
+                ))}
+                <option value={CUSTOM_ACCOUNT_VALUE}>Custom / new account</option>
+              </select>
             </Field>
+
+            {customAccountMode ? (
+              <Field label="Account name">
+                <input
+                  value={customAccountName}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    setCustomAccountName(value);
+                    update({ platform: value });
+                  }}
+                  className={inputClass}
+                  placeholder="e.g. Sarwa, eToro, bank account"
+                  required
+                  autoFocus
+                />
+              </Field>
+            ) : null}
 
             {isAssetTransaction && !form.holdingId ? (
               <>
