@@ -83,18 +83,31 @@ function preparePriceHistory(
 ) {
   const pointsByDate = new Map<string, number>();
 
+  const purchaseDates = new Set<string>();
+
   for (const purchase of getValidPurchases(holding, endDate)) {
     const price = toFinitePositiveNumber(purchase.price);
-    if (price && !pointsByDate.has(purchase.date)) {
-      pointsByDate.set(purchase.date, price);
+    if (price) {
+      purchaseDates.add(purchase.date);
+      if (!pointsByDate.has(purchase.date)) {
+        pointsByDate.set(purchase.date, price);
+      }
     }
   }
 
   for (const point of history) {
     const price = toFinitePositiveNumber(point.price);
-    if (price && isValidDateKey(point.date) && point.date <= endDate) {
-      // A market close or published NAV is preferred to an execution-price fallback.
-      pointsByDate.set(point.date, price);
+    const effectiveDate = purchaseDates.has(point.date) ? addDays(point.date, 1) : point.date;
+    if (
+      price &&
+      isValidDateKey(point.date) &&
+      effectiveDate <= endDate &&
+      !purchaseDates.has(effectiveDate)
+    ) {
+      // Keep the actual execution price on purchase dates so adding capital does
+      // not appear as an immediate market gain. That day's close becomes the
+      // carried market value on the following day unless a newer close replaces it.
+      pointsByDate.set(effectiveDate, price);
     }
   }
 

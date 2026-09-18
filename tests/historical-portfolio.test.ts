@@ -67,12 +67,37 @@ test("historical snapshots step invested capital and carry the latest market clo
 
   assert.equal(snapshots.length, 3);
   assert.equal(snapshots[0].totalInvestedAed, 20);
-  assert.equal(snapshots[0].totalValueAed, 22);
+  assert.equal(snapshots[0].totalValueAed, 20);
   assert.equal(snapshots[0].holdingsCount, 1);
   assert.equal(snapshots[1].totalInvestedAed, 20 + 5 * 3.6725);
-  assert.equal(snapshots[1].totalValueAed, 22 + 6 * 3.6725);
+  assert.equal(snapshots[1].totalValueAed, 22 + 5 * 3.6725);
   assert.equal(snapshots[1].holdingsCount, 2);
-  assert.equal(snapshots[2].totalValueAed, snapshots[1].totalValueAed);
+  assert.equal(snapshots[2].totalValueAed, 22 + 6 * 3.6725);
+});
+
+test("purchase price anchors performance on the transaction date", () => {
+  const purchasedHolding = holding({
+    purchases: [{ date: "2026-01-02", quantity: 2, price: 10 }],
+    quantity: 2,
+    avgBuyPrice: 10,
+  });
+
+  const snapshots = buildHistoricalPortfolioSnapshots(
+    [purchasedHolding],
+    {
+      "holding-1": [
+        { date: "2026-01-02", price: 13 },
+        { date: "2026-01-03", price: 14 },
+      ],
+    },
+    [],
+    { startDate: "2026-01-02", endDate: "2026-01-03", fallbackInrToAedRate: 0.044 }
+  );
+
+  assert.equal(snapshots[0].totalInvestedAed, 20);
+  assert.equal(snapshots[0].totalValueAed, 20);
+  assert.equal(snapshots[0].totalGainLossAed, 0);
+  assert.equal(snapshots[1].totalValueAed, 28);
 });
 
 test("INR investment cost uses purchase FX while valuation uses daily historical FX", () => {
@@ -95,7 +120,7 @@ test("INR investment cost uses purchase FX while valuation uses daily historical
   );
 
   assert.equal(snapshots[0].totalInvestedAed, 40);
-  assert.equal(snapshots[0].totalValueAed, 45.1);
+  assert.equal(snapshots[0].totalValueAed, 41);
   assert.equal(snapshots[1].totalInvestedAed, 40);
   assert.equal(snapshots[1].totalValueAed, 46.2);
 });
