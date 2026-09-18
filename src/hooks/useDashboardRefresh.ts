@@ -6,7 +6,9 @@ import { registerDashboardRefreshHandler } from "@/lib/dashboard/refresh-control
 import { refreshDashboardPrices, type RefreshFailure } from "@/lib/dashboard/refresh";
 import { threshold as hapticThreshold, success as hapticSuccess, destructive as hapticError } from "@/lib/haptics";
 
-const AUTO_REFRESH_INTERVAL_MS = 15 * 60 * 1000;
+const LIVE_REFRESH_INTERVAL_MS = 60 * 1000;
+const FULL_REFRESH_INTERVAL_MS = 15 * 60 * 1000;
+const FOREGROUND_REFRESH_STALE_MS = 30 * 1000;
 const MAX_PULL_DISTANCE = 96;
 const PULL_THRESHOLD = 72;
 
@@ -37,25 +39,37 @@ export function useDashboardRefresh({
   const touchStartYRef = useRef<number | null>(null);
   const pullingRef = useRef(false);
   const crossedThresholdRef = useRef(false);
+  const hasCompletedInitialRefreshRef = useRef(false);
+  const lastRefreshAttemptAtRef = useRef(0);
+  const lastFullRefreshAttemptAtRef = useRef(0);
 
   holdingsRef.current = holdings;
   isRefreshingRef.current = isRefreshing;
   pullDistanceRef.current = pullDistance;
 
-  const refreshPrices = useCallback(async () => {
+  const refreshPrices = useCallback(async (
+    scope: "all" | "live" = "all",
+    provideFeedback = true
+  ) => {
     if (isRefreshingRef.current) {
       return;
     }
 
     isRefreshingRef.current = true;
+    lastRefreshAttemptAtRef.current = Date.now();
+    if (scope === "all") {
+      lastFullRefreshAttemptAtRef.current = lastRefreshAttemptAtRef.current;
+    }
     setIsRefreshing(true);
 
     try {
-      const refreshedState = await refreshDashboardPrices(holdingsRef.current);
+      const refreshedState = await refreshDashboardPrices(holdingsRef.current, scope);
       setHoldings(refreshedState.holdings);
       setRefreshFailures(refreshedState.failures);
       setRefreshError(null);
-      hapticSuccess();
+      if (provideFeedback) {
+        hapticSuccess();
+      }
 
       if (refreshedState.inrToAedRate) {
         setInrToAedRate(refreshedState.inrToAedRate);
@@ -66,7 +80,9 @@ export function useDashboardRefresh({
       }
     } catch (error) {
       setRefreshError(error instanceof Error ? error.message : "Refresh failed");
-      hapticError();
+      if (provideFeedback) {
+        hapticError();
+      }
       console.error("Price refresh error:", error);
     } finally {
       isRefreshingRef.current = false;
@@ -74,6 +90,15 @@ export function useDashboardRefresh({
       setIsPullRefreshing(false);
     }
   }, [setFxUpdatedAt, setHoldings, setInrToAedRate]);
+
+  useEffect(() => {
+    if (!mounted || holdings.length === 0 || hasCompletedInitialRefreshRef.current) {
+      return;
+    }
+
+    hasCompletedInitialRefreshRef.current = true;
+    void refreshPrices("all", false);
+  }, [holdings.length, mounted, refreshPrices]);
 
   useEffect(() => {
     if (!mounted) {
@@ -94,7 +119,17 @@ export function useDashboardRefresh({
   }, [isRefreshing]);
 
   useEffect(() => {
+    if (!mounted || holdings.length === 0) {
+      return;
+    }
+
     let intervalId: number | null = null;
+
+    function getAutomaticRefreshScope() {
+      return Date.now() - lastFullRefreshAttemptAtRef.current >= FULL_REFRESH_INTERVAL_MS
+        ? "all"
+        : "live";
+    }
 
     function startInterval() {
       if (intervalId) {
@@ -103,9 +138,9 @@ export function useDashboardRefresh({
 
       intervalId = window.setInterval(() => {
         if (!document.hidden) {
-          void refreshPrices();
+          void refreshPrices(getAutomaticRefreshScope(), false);
         }
-      }, AUTO_REFRESH_INTERVAL_MS);
+      }, LIVE_REFRESH_INTERVAL_MS);
     }
 
     function handleVisibility() {
@@ -117,6 +152,9 @@ export function useDashboardRefresh({
         return;
       }
 
+      if (Date.now() - lastRefreshAttemptAtRef.current >= FOREGROUND_REFRESH_STALE_MS) {
+        void refreshPrices(getAutomaticRefreshScope(), false);
+      }
       startInterval();
     }
 
@@ -129,7 +167,7 @@ export function useDashboardRefresh({
       }
       document.removeEventListener("visibilitychange", handleVisibility);
     };
-  }, [refreshPrices]);
+  }, [holdings.length, mounted, refreshPrices]);
 
   useEffect(() => {
     function handleTouchStart(event: TouchEvent) {

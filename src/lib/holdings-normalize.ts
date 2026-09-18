@@ -1,4 +1,4 @@
-import type { Holding } from "@/lib/constants";
+import { CRYPTO_IDS, type Holding } from "@/lib/constants";
 
 const KNOWN_FUND_SCHEME_CODES: Array<{ pattern: RegExp; schemeCode: string }> = [
   { pattern: /bandhan\s+small\s+cap\s+fund/i, schemeCode: "147946" },
@@ -63,7 +63,11 @@ export function normalizeHolding(holding: Holding): Holding {
     }
   }
 
-  if (normalized.assetClass === "Crypto" && normalized.ticker === "BTC") {
+  if (normalized.assetClass === "Crypto") {
+    normalized.ticker = normalized.ticker.trim().toUpperCase();
+  }
+
+  if (normalized.assetClass === "Crypto" && CRYPTO_IDS[normalized.ticker]) {
     normalized.priceSource = "coingecko";
   }
 

@@ -45,12 +45,12 @@ export const INDIAN_STOCK_TICKERS: Record<string, string> = {
 };
 
 // ──────────────────────────────────────────────
-// US ETFs — Twelve Data symbols
+// US ETFs — Yahoo Finance symbols
 // ──────────────────────────────────────────────
 export const US_ETF_TICKERS = ['IBIT', 'IAU', 'BRRR', 'ETHA', 'GLD'];
 
 // ──────────────────────────────────────────────
-// UAE Stocks — Twelve Data (DFM exchange)
+// UAE Stocks — DFM delayed quote symbols
 // ──────────────────────────────────────────────
 export const UAE_STOCK_TICKERS = ['SALIK', 'EMAAR'];
 
@@ -59,6 +59,17 @@ export const UAE_STOCK_TICKERS = ['SALIK', 'EMAAR'];
 // ──────────────────────────────────────────────
 export const CRYPTO_IDS: Record<string, string> = {
   BTC: 'bitcoin',
+  ETH: 'ethereum',
+  SOL: 'solana',
+  BNB: 'binancecoin',
+  XRP: 'ripple',
+  ADA: 'cardano',
+  DOGE: 'dogecoin',
+  AVAX: 'avalanche-2',
+  LINK: 'chainlink',
+  DOT: 'polkadot',
+  MATIC: 'matic-network',
+  LTC: 'litecoin',
 };
 
 // ──────────────────────────────────────────────

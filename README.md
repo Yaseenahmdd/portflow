@@ -16,10 +16,12 @@ It is built with Next.js and Supabase and supports authenticated users, live mar
 - Import/export holdings as JSON
 - Price refresh across:
   - Yahoo Finance for Indian stocks and ETFs
-  - Twelve Data for US ETFs and UAE stocks
+  - Yahoo Finance for US stocks and ETFs
+  - DFM delayed quotes for UAE stocks
   - CoinGecko for crypto
   - Frankfurter for FX
-  - MFAPI for Indian mutual funds
+  - AMFI with MFAPI fallback for Indian mutual funds
+- Near-live dashboard updates every minute for supported stocks, ETFs, gold funds, crypto, and delayed DFM quotes while the app is open
 - Mobile-friendly holdings view
 - Installable PWA with manifest, icons, and a lightweight service worker
 
@@ -75,14 +77,7 @@ CRON_SECRET=...
 Keep both values server-only. The service-role key must never use the
 `NEXT_PUBLIC_` prefix.
 
-Optional/market-data specific:
-
-```bash
-TWELVE_DATA_API_KEY=...
-ALPHA_VANTAGE_API_KEY=...
-```
-
-Note: the app now uses Yahoo Finance for Indian equity pricing, so `ALPHA_VANTAGE_API_KEY` is no longer required for the current dashboard flow.
+The current market-data integrations do not require additional API keys.
 
 ## Local Development
 
@@ -144,12 +139,8 @@ npm run dev
 npm run build
 npm run start
 npm run lint
+npm test
 ```
-
-## Current Notes
-
-- `npm run build` passes
-- `npm run lint` is still affected by the archived `investment-portfolio-app` directory, which is outside the active app
 
 ## Deployment
 

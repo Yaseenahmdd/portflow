@@ -1,5 +1,6 @@
 import type { Holding } from "@/lib/constants";
-import { fetchAllPriceResults } from "@/lib/prices/refresh-all";
+import { isHolding } from "@/lib/holding-validation";
+import { fetchAllPriceResults, type PriceRefreshScope } from "@/lib/prices/refresh-all";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -12,10 +13,22 @@ export async function POST(request: Request) {
   }
 
   try {
-    const body = await request.json();
-    const holdings = (body?.holdings || []) as Holding[];
+    const body = (await request.json()) as { holdings?: unknown; scope?: unknown };
+    if (
+      !Array.isArray(body.holdings) ||
+      body.holdings.length > 100 ||
+      !body.holdings.every(isHolding)
+    ) {
+      return Response.json(
+        { success: false, error: "Invalid holdings data" },
+        { status: 400 }
+      );
+    }
 
-    const results = await fetchAllPriceResults(holdings);
+    const holdings: Holding[] = body.holdings;
+    const scope: PriceRefreshScope = body.scope === "live" ? "live" : "all";
+
+    const results = await fetchAllPriceResults(holdings, scope);
 
     return Response.json({
       success: true,

@@ -1,6 +1,7 @@
 import { computeInrToAed, type ExchangeRates } from "@/lib/api/frankfurter";
 import type { CryptoPrice } from "@/lib/api/coingecko";
-import type { Holding } from "@/lib/constants";
+import { CRYPTO_IDS, type Holding } from "@/lib/constants";
+import type { PriceRefreshScope } from "@/lib/prices/refresh-all";
 import {
   buildHoldingPriceIndexes,
   getPriceIndexes,
@@ -124,15 +125,18 @@ export function applyRefreshResults(holdings: Holding[], results: PriceResult[])
 
       case "crypto": {
         const prices = result.data as Record<string, CryptoPrice>;
-        if (prices.bitcoin) {
+        for (const [ticker, coinGeckoId] of Object.entries(CRYPTO_IDS)) {
+          const price = prices[coinGeckoId];
+          if (!price) continue;
+
           updateHoldingsAtIndexes(
             updated,
-            getPriceIndexes(priceIndexes.crypto, "BTC"),
+            getPriceIndexes(priceIndexes.crypto, ticker),
             (holding) => ({
               ...holding,
-              currentPrice: holding.currency === "AED" ? prices.bitcoin.aed : prices.bitcoin.usd,
+              currentPrice: holding.currency === "AED" ? price.aed : price.usd,
               previousClose: undefined,
-              dayChangePercent: prices.bitcoin.usd_24h_change,
+              dayChangePercent: price.usd_24h_change,
               lastPriceUpdate: now,
             })
           );
@@ -145,14 +149,17 @@ export function applyRefreshResults(holdings: Holding[], results: PriceResult[])
   return { holdings: updated, inrToAedRate, fxUpdatedAt };
 }
 
-export async function refreshDashboardPrices(holdings: Holding[]) {
+export async function refreshDashboardPrices(
+  holdings: Holding[],
+  scope: PriceRefreshScope = "all"
+) {
   const { normalized: normalizedHoldings } = normalizeHoldings(holdings);
   const response = await fetch("/api/prices/refresh-all", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ holdings: normalizedHoldings }),
+    body: JSON.stringify({ holdings: normalizedHoldings, scope }),
   });
 
   const contentType = response.headers.get("content-type") || "";
