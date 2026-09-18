@@ -116,7 +116,7 @@ export default function TransactionsPage() {
           </p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row">
-          {purchaseImport.total ? (
+          {purchaseImport.additions.length ? (
             <button
               type="button"
               onClick={() => {
