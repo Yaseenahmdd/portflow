@@ -15,7 +15,8 @@ import {
 interface TransactionModalProps {
   transaction: PortfolioTransaction | null;
   holdings: Holding[];
-  onSave: (transaction: PortfolioTransaction) => void;
+  holdingsConnected?: boolean;
+  onSave: (transaction: PortfolioTransaction) => string | null | undefined;
   onClose: () => void;
 }
 
@@ -49,6 +50,7 @@ function parseOptionalNumber(value: string) {
 export default function TransactionModal({
   transaction,
   holdings,
+  holdingsConnected = false,
   onSave,
   onClose,
 }: TransactionModalProps) {
@@ -57,6 +59,7 @@ export default function TransactionModal({
   const isAssetTransaction = ["buy", "sell", "dividend", "split"].includes(form.type);
   const isTrade = form.type === "buy" || form.type === "sell";
   const isCashAmount = ["dividend", "deposit", "withdrawal", "fee"].includes(form.type);
+  const requiresLinkedHolding = holdingsConnected && ["buy", "sell", "split"].includes(form.type);
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;
@@ -88,8 +91,12 @@ export default function TransactionModal({
       setError(validationError);
       return;
     }
+    const saveError = onSave(form);
+    if (saveError) {
+      setError(saveError);
+      return;
+    }
     hapticSuccess();
-    onSave(form);
   }
 
   return (
@@ -109,7 +116,9 @@ export default function TransactionModal({
                 {transaction ? "Edit transaction" : "Add transaction"}
               </h2>
               <p className="mt-1 text-sm text-text-secondary">
-                This records activity without changing your holdings yet.
+                {holdingsConnected
+                  ? "Linked buys, sells, and splits automatically update Holdings."
+                  : "This records activity without changing your holdings yet."}
               </p>
             </div>
             <button
@@ -157,7 +166,9 @@ export default function TransactionModal({
                   onChange={(event) => selectHolding(event.target.value)}
                   className={inputClass}
                 >
-                  <option value="">Manual asset</option>
+                  <option value="" disabled={requiresLinkedHolding}>
+                    {requiresLinkedHolding ? "Choose a holding" : "Manual asset"}
+                  </option>
                   {holdings.map((holding) => (
                     <option key={holding.id} value={holding.id}>
                       {holding.assetName}{holding.ticker ? ` (${holding.ticker})` : ""}

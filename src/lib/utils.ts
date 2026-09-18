@@ -68,12 +68,19 @@ export function computeHolding(holding: Holding, inrToAedRate: number): Computed
   const currentValueAed = currentValue * rateToAed;
 
   if (holding.purchases && holding.purchases.length > 0 && holding.currency === 'INR') {
-    investedAmountAed = holding.purchases.reduce((sum, p) => {
+    const totalPurchaseQuantity = holding.purchases.reduce(
+      (sum, purchase) => sum + toNumber(purchase.quantity),
+      0
+    );
+    const totalPurchaseCostAed = holding.purchases.reduce((sum, p) => {
       const q = toNumber(p.quantity);
       const pr = toNumber(p.price);
       const batchFxRate = p.fxRate ? toNumber(p.fxRate) : rateToAed;
       return sum + q * pr * batchFxRate;
     }, 0);
+    investedAmountAed = totalPurchaseQuantity > 0
+      ? quantity * (totalPurchaseCostAed / totalPurchaseQuantity)
+      : investedAmount * rateToAed;
   }
 
   const gainLossAed = currentValueAed - investedAmountAed;

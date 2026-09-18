@@ -7,3 +7,4 @@ import "./crypto-price-mapping.test.ts";
 import "./historical-portfolio.test.ts";
 import "./scheduled-price-updates.test.ts";
 import "./transactions.test.ts";
+import "./ledger-holdings.test.ts";
