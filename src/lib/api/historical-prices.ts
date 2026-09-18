@@ -141,8 +141,7 @@ async function fetchMutualFundHistory(
   );
 }
 
-async function fetchYahooHistory(holding: Holding, startDate: string, endDate: string) {
-  const symbol = getYahooSymbol(holding);
+async function fetchYahooSymbolHistory(symbol: string, startDate: string, endDate: string) {
   if (!symbol) return [];
 
   const params = new URLSearchParams({
@@ -179,6 +178,14 @@ async function fetchYahooHistory(holding: Holding, startDate: string, endDate: s
       return price ? [{ date, price }] : [];
     })
   );
+}
+
+async function fetchYahooHistory(holding: Holding, startDate: string, endDate: string) {
+  return fetchYahooSymbolHistory(getYahooSymbol(holding), startDate, endDate);
+}
+
+export function fetchSp500History(startDate: string, endDate: string) {
+  return fetchYahooSymbolHistory("^GSPC", startDate, endDate);
 }
 
 async function fetchBitcoinHistory(startDate: string, endDate: string) {

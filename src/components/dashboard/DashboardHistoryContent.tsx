@@ -1,6 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import {
+  getBenchmarkPerformance,
+  type BenchmarkPoint,
+} from "@/lib/benchmark-performance";
 import type { ComputedHolding } from "@/lib/constants";
 import { tap } from "@/lib/haptics";
 import {
@@ -23,6 +27,20 @@ interface DashboardHistoryContentProps {
   transactions: PortfolioTransaction[];
   inrToAedRate: number;
   isAmountsVisible: boolean;
+}
+
+interface BenchmarkApiResponse {
+  success?: boolean;
+  data?: {
+    points?: BenchmarkPoint[];
+  };
+  error?: string;
+}
+
+interface BenchmarkLoadState {
+  rangeKey: string;
+  points: BenchmarkPoint[];
+  error: string | null;
 }
 
 function formatSignedMoney(value: number, isVisible: boolean) {
@@ -124,6 +142,57 @@ export default function DashboardHistoryContent({
   isAmountsVisible,
 }: DashboardHistoryContentProps) {
   const [selectedRange, setSelectedRange] = useState<HistoryRange>("1M");
+  const [benchmarkState, setBenchmarkState] = useState<BenchmarkLoadState>({
+    rangeKey: "",
+    points: [],
+    error: null,
+  });
+  const benchmarkDateRange = useMemo(() => {
+    const dates = snapshots
+      .map((snapshot) => snapshot.snapshotDate)
+      .filter((date) => /^\d{4}-\d{2}-\d{2}$/.test(date))
+      .sort((a, b) => a.localeCompare(b));
+
+    if (!dates.length) return null;
+    return { startDate: dates[0], endDate: dates[dates.length - 1] };
+  }, [snapshots]);
+  const benchmarkRangeKey = benchmarkDateRange
+    ? `${benchmarkDateRange.startDate}:${benchmarkDateRange.endDate}`
+    : "";
+  const benchmarkStateIsCurrent = benchmarkState.rangeKey === benchmarkRangeKey;
+  const benchmarkError = benchmarkStateIsCurrent ? benchmarkState.error : null;
+  const benchmarkLoading = Boolean(benchmarkRangeKey && !benchmarkStateIsCurrent);
+
+  useEffect(() => {
+    if (!benchmarkDateRange) return;
+
+    const controller = new AbortController();
+    const params = new URLSearchParams({
+      start: benchmarkDateRange.startDate,
+      end: benchmarkDateRange.endDate,
+    });
+
+    fetch(`/api/prices/benchmark?${params}`, { signal: controller.signal })
+      .then(async (response) => {
+        const result = (await response.json()) as BenchmarkApiResponse;
+        if (!response.ok || !result.success || !Array.isArray(result.data?.points)) {
+          throw new Error(result.error || "S&P 500 data is unavailable");
+        }
+        return result.data.points;
+      })
+      .then((points) => setBenchmarkState({ rangeKey: benchmarkRangeKey, points, error: null }))
+      .catch((error: unknown) => {
+        if (controller.signal.aborted) return;
+        setBenchmarkState({
+          rangeKey: benchmarkRangeKey,
+          points: [],
+          error: error instanceof Error ? error.message : "S&P 500 data is unavailable",
+        });
+      });
+
+    return () => controller.abort();
+  }, [benchmarkDateRange, benchmarkRangeKey]);
+
   const filteredSnapshots = useMemo(
     () => filterSnapshotsByRange(snapshots, selectedRange),
     [selectedRange, snapshots]
@@ -174,6 +243,24 @@ export default function DashboardHistoryContent({
   const activityReturnPercent = activityReturnBase > 0
     ? (activityAdjustedReturn / activityReturnBase) * 100
     : null;
+  const benchmarkPerformance = useMemo(
+    () =>
+      getBenchmarkPerformance(
+        benchmarkStateIsCurrent ? benchmarkState.points : [],
+        firstSnapshot?.snapshotDate,
+        latestSnapshot?.snapshotDate
+      ),
+    [
+      benchmarkState.points,
+      benchmarkStateIsCurrent,
+      firstSnapshot?.snapshotDate,
+      latestSnapshot?.snapshotDate,
+    ]
+  );
+  const relativePerformance =
+    activityReturnPercent !== null && benchmarkPerformance
+      ? activityReturnPercent - benchmarkPerformance.returnPercent
+      : null;
   const dateSpan =
     firstSnapshot && latestSnapshot
       ? firstSnapshot.snapshotDate === latestSnapshot.snapshotDate
@@ -323,6 +410,53 @@ export default function DashboardHistoryContent({
             {transactionPerformance.issues.length} Activity entr{transactionPerformance.issues.length === 1 ? "y needs" : "ies need"} review before all realized gains can be calculated.
           </div>
         ) : null}
+      </section>
+
+      <section className="dashboard-card overflow-hidden rounded-2xl border border-border-default bg-bg-card shadow-sm">
+        <div className="border-b border-border-default px-4 py-3 sm:px-5">
+          <h2 className="font-display text-base font-semibold tracking-[-0.03em] text-text-primary">
+            S&amp;P 500 Benchmark
+          </h2>
+          <p className="mt-1 text-xs text-text-muted">
+            {benchmarkPerformance
+              ? `${formatDate(benchmarkPerformance.startDate)} – ${formatDate(benchmarkPerformance.endDate)} · Price return, excluding dividends.`
+              : benchmarkLoading
+                ? "Loading market comparison…"
+                : benchmarkError || "Not enough overlapping market history for this period."}
+          </p>
+        </div>
+        <div className="grid divide-y divide-border-default sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+          <BreakdownValue
+            label="Your portfolio"
+            value={activityReturnPercent === null ? "—" : formatSignedPercent(activityReturnPercent)}
+            detail="Activity-adjusted return"
+            tone={valueTone(activityReturnPercent)}
+          />
+          <BreakdownValue
+            label="S&P 500"
+            value={
+              benchmarkLoading
+                ? "Loading…"
+                : benchmarkPerformance
+                  ? formatSignedPercent(benchmarkPerformance.returnPercent)
+                  : "—"
+            }
+            detail="Index price return"
+            tone={valueTone(benchmarkPerformance?.returnPercent ?? null)}
+          />
+          <BreakdownValue
+            label="Ahead / behind"
+            value={relativePerformance === null ? "—" : formatSignedPercent(relativePerformance)}
+            detail={
+              relativePerformance === null
+                ? "Waiting for comparable data"
+                : relativePerformance >= 0
+                  ? "Ahead of the S&P 500"
+                  : "Behind the S&P 500"
+            }
+            tone={valueTone(relativePerformance)}
+          />
+        </div>
       </section>
 
       <div className="grid gap-4 lg:grid-cols-[0.8fr_1.2fr]">
