@@ -14,6 +14,7 @@ It is built with Next.js and Supabase and supports authenticated users, live mar
 - Auth with Supabase
 - Holdings stored per user in Supabase, with local fallback for demo mode
 - Import/export holdings as JSON
+- Record buys, sells, dividends, cash movements, fees, splits, and currency exchanges in a transaction ledger
 - Price refresh across:
   - Yahoo Finance for Indian stocks and ETFs
   - Yahoo Finance for US stocks and ETFs
@@ -50,6 +51,7 @@ src/
     api/                  Market data helpers
     supabase/             Supabase browser/server setup
     holdings-store.ts     Supabase holdings persistence helpers
+    transactions-store.ts Supabase transaction persistence helpers
 supabase/
   migrations/             SQL migrations
 public/
@@ -97,15 +99,18 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ## Database Setup
 
-Apply the holdings migration to your Supabase project:
+Apply the migrations in `supabase/migrations/` to your Supabase project. The transaction ledger requires:
 
 ```sql
-supabase/migrations/20260407_create_holdings_table.sql
+supabase/migrations/20260918_create_transactions_table.sql
 ```
 
-This creates:
+The migrations create:
 
 - `public.holdings`
+- `public.portfolio_snapshots`
+- `public.market_rates`
+- `public.transactions`
 - updated-at trigger
 - row-level security policies for per-user access
 

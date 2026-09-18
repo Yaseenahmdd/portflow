@@ -13,6 +13,7 @@ const THEME_STORAGE_KEY = "portflow-theme";
 const DASHBOARD_NAV_ITEMS = [
   { href: "/dashboard", label: "Overview" },
   { href: "/dashboard/holdings", label: "Holdings" },
+  { href: "/dashboard/transactions", label: "Activity" },
   { href: "/dashboard/history", label: "History" },
 ];
 
@@ -332,7 +333,7 @@ export default function DashboardShell({
 
             {showDashboardNav ? (
               <nav aria-label="Dashboard">
-                <div className="grid grid-cols-3 border-b border-border-default sm:flex sm:gap-8">
+                <div className="grid grid-cols-4 border-b border-border-default sm:flex sm:gap-8">
                   {DASHBOARD_NAV_ITEMS.map((item) => {
                     const active = pathname === item.href;
 
