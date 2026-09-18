@@ -8,6 +8,7 @@ import { destructive as hapticDestructive, tap } from "@/lib/haptics";
 import {
   getTransactionAmount,
   TRANSACTION_TYPE_LABELS,
+  transactionsFromHoldingPurchases,
   type PortfolioTransaction,
   type TransactionType,
 } from "@/lib/transactions";
@@ -49,10 +50,29 @@ function transactionDetail(transaction: PortfolioTransaction) {
 
 export default function TransactionsPage() {
   const { userId, holdings, isAmountsVisible } = useDashboardStateContext();
-  const { transactions, mounted, syncWarning, saveTransaction, deleteTransaction } = useTransactions(userId);
+  const {
+    transactions,
+    mounted,
+    syncWarning,
+    saveTransaction,
+    deleteTransaction,
+    importTransactions,
+  } = useTransactions(userId);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<PortfolioTransaction | null>(null);
   const [filter, setFilter] = useState<"all" | TransactionType>("all");
+  const [importPreviewOpen, setImportPreviewOpen] = useState(false);
+  const [importMessage, setImportMessage] = useState<string | null>(null);
+
+  const purchaseImport = useMemo(() => {
+    const existingIds = new Set(transactions.map((transaction) => transaction.id));
+    const all = transactionsFromHoldingPurchases(holdings);
+    return {
+      additions: all.filter((transaction) => !existingIds.has(transaction.id)),
+      alreadyImported: all.filter((transaction) => existingIds.has(transaction.id)).length,
+      total: all.length,
+    };
+  }, [holdings, transactions]);
 
   const filteredTransactions = useMemo(() => {
     if (filter === "all") return transactions;
@@ -95,22 +115,42 @@ export default function TransactionsPage() {
             Record portfolio activity now. Holdings will be derived from this ledger in the next phase.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => {
-            tap();
-            setEditing(null);
-            setModalOpen(true);
-          }}
-          className="inline-flex min-h-11 items-center justify-center rounded-full bg-accent-violet px-5 py-3 text-sm font-semibold text-white hover:brightness-105"
-        >
-          Add transaction
-        </button>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          {purchaseImport.total ? (
+            <button
+              type="button"
+              onClick={() => {
+                tap();
+                setImportPreviewOpen(true);
+              }}
+              className="inline-flex min-h-11 items-center justify-center rounded-full border border-border-default bg-white px-5 py-3 text-sm font-semibold text-text-primary hover:bg-bg-elevated"
+            >
+              Import existing purchases
+            </button>
+          ) : null}
+          <button
+            type="button"
+            onClick={() => {
+              tap();
+              setEditing(null);
+              setModalOpen(true);
+            }}
+            className="inline-flex min-h-11 items-center justify-center rounded-full bg-accent-violet px-5 py-3 text-sm font-semibold text-white hover:brightness-105"
+          >
+            Add transaction
+          </button>
+        </div>
       </div>
 
       {syncWarning ? (
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
           {syncWarning}
+        </div>
+      ) : null}
+
+      {importMessage ? (
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+          {importMessage}
         </div>
       ) : null}
 
@@ -198,11 +238,74 @@ export default function TransactionsPage() {
           <div className="px-5 py-16 text-center">
             <div className="text-sm font-semibold text-text-primary">No transactions yet</div>
             <p className="mx-auto mt-2 max-w-md text-sm text-text-muted">
-              Add your first entry to begin building an auditable portfolio history.
+              {purchaseImport.total
+                ? "Import your existing purchase history or add your first entry manually."
+                : "Add your first entry to begin building an auditable portfolio history."}
             </p>
+            {purchaseImport.total ? (
+              <button
+                type="button"
+                onClick={() => setImportPreviewOpen(true)}
+                className="mt-5 inline-flex min-h-11 items-center justify-center rounded-full bg-accent-violet px-5 py-3 text-sm font-semibold text-white hover:brightness-105"
+              >
+                Preview {purchaseImport.additions.length} purchase{purchaseImport.additions.length === 1 ? "" : "s"}
+              </button>
+            ) : null}
           </div>
         )}
       </section>
+
+      {importPreviewOpen ? (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/40 p-0 sm:items-center sm:p-4">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="purchase-import-title"
+            className="w-full rounded-t-3xl bg-white p-5 shadow-2xl sm:max-w-md sm:rounded-3xl sm:p-6"
+          >
+            <h2 id="purchase-import-title" className="text-xl font-semibold text-text-primary">
+              Import existing purchases?
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-text-secondary">
+              This will add {purchaseImport.additions.length} new Buy entr{purchaseImport.additions.length === 1 ? "y" : "ies"}
+              {purchaseImport.alreadyImported
+                ? ` and skip ${purchaseImport.alreadyImported} already imported.`
+                : "."}
+            </p>
+            <div className="mt-4 rounded-2xl bg-bg-elevated p-4 text-sm text-text-secondary">
+              Your holdings and quantities will not change. Running this import again is safe.
+            </div>
+            <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={() => setImportPreviewOpen(false)}
+                className="min-h-11 rounded-full border border-border-default px-5 py-2.5 text-sm font-semibold text-text-secondary hover:bg-bg-elevated"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={!purchaseImport.additions.length}
+                onClick={() => {
+                  const count = purchaseImport.additions.length;
+                  importTransactions(purchaseImport.additions);
+                  setImportPreviewOpen(false);
+                  setImportMessage(
+                    count
+                      ? `Imported ${count} purchase${count === 1 ? "" : "s"} into Activity.`
+                      : "All existing purchases are already imported."
+                  );
+                }}
+                className="min-h-11 rounded-full bg-accent-violet px-5 py-2.5 text-sm font-semibold text-white hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {purchaseImport.additions.length
+                  ? `Import ${purchaseImport.additions.length}`
+                  : "Already imported"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {modalOpen ? (
         <TransactionModal

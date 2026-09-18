@@ -94,5 +94,42 @@ export function useTransactions(userId: string) {
     });
   }, [userId]);
 
-  return { transactions, mounted, syncWarning, saveTransaction, deleteTransaction };
+  const importTransactions = useCallback((newTransactions: PortfolioTransaction[]) => {
+    if (!newTransactions.length) return;
+
+    const now = new Date().toISOString();
+    const normalizedTransactions = newTransactions.map((transaction) =>
+      normalizeTransaction({
+        ...transaction,
+        createdAt: transaction.createdAt || now,
+        updatedAt: now,
+      })
+    );
+
+    setTransactions((current) => {
+      const existingIds = new Set(current.map((transaction) => transaction.id));
+      const additions = normalizedTransactions.filter(
+        (transaction) => !existingIds.has(transaction.id)
+      );
+      const next = sortTransactions([...current, ...additions]);
+      persistLocalTransactions(userId, next);
+      return next;
+    });
+
+    void upsertRemoteTransactions(userId, normalizedTransactions)
+      .then(() => setSyncWarning(null))
+      .catch((error) => {
+        setSyncWarning("Imported on this device, but the cloud copy could not be updated.");
+        console.error("Failed to import transactions remotely:", error);
+      });
+  }, [userId]);
+
+  return {
+    transactions,
+    mounted,
+    syncWarning,
+    saveTransaction,
+    deleteTransaction,
+    importTransactions,
+  };
 }

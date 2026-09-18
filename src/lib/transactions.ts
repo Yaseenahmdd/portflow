@@ -154,3 +154,69 @@ export function transactionFromHolding(
     currency: holding.currency,
   };
 }
+
+function deterministicImportHash(value: string) {
+  let first = 0x811c9dc5;
+  let second = 0x9e3779b9;
+
+  for (let index = 0; index < value.length; index += 1) {
+    const code = value.charCodeAt(index);
+    first = Math.imul(first ^ code, 0x01000193);
+    second = Math.imul(second ^ code, 0x85ebca6b);
+  }
+
+  return `${(first >>> 0).toString(16).padStart(8, "0")}${(second >>> 0)
+    .toString(16)
+    .padStart(8, "0")}`;
+}
+
+function isImportablePurchase(purchase: NonNullable<Holding["purchases"]>[number]) {
+  return (
+    DATE_PATTERN.test(purchase.date) &&
+    Number.isFinite(purchase.quantity) &&
+    purchase.quantity > 0 &&
+    Number.isFinite(purchase.price) &&
+    purchase.price >= 0 &&
+    (purchase.fxRate === undefined ||
+      (Number.isFinite(purchase.fxRate) && purchase.fxRate > 0))
+  );
+}
+
+export function transactionsFromHoldingPurchases(holdings: Holding[]) {
+  const transactions: PortfolioTransaction[] = [];
+
+  for (const holding of holdings) {
+    const signatureOccurrences = new Map<string, number>();
+
+    for (const purchase of holding.purchases || []) {
+      if (!isImportablePurchase(purchase)) continue;
+
+      const signature = [
+        holding.id,
+        purchase.date,
+        purchase.quantity,
+        purchase.price,
+        holding.currency === "INR" ? purchase.fxRate || "" : "",
+      ].join("|");
+      const occurrence = signatureOccurrences.get(signature) || 0;
+      signatureOccurrences.set(signature, occurrence + 1);
+
+      transactions.push({
+        id: `holding-import-${deterministicImportHash(`${signature}|${occurrence}`)}`,
+        type: "buy",
+        date: purchase.date,
+        holdingId: holding.id,
+        platform: holding.platform,
+        assetName: holding.assetName,
+        ticker: holding.ticker,
+        currency: holding.currency,
+        quantity: purchase.quantity,
+        price: purchase.price,
+        fxRateToAed: holding.currency === "INR" ? purchase.fxRate : undefined,
+        notes: "Imported from existing holding purchase history.",
+      });
+    }
+  }
+
+  return transactions;
+}
