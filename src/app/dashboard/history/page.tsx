@@ -19,9 +19,10 @@ export default function DashboardHistoryPage() {
     snapshots,
     transactions,
     transactionsMounted,
+    activityEngineReady,
   } = useDashboardStateContext();
 
-  if (!mounted || !transactionsMounted) {
+  if (!mounted || !transactionsMounted || !activityEngineReady) {
     return (
       <div className="space-y-6">
         <div className="skeleton h-8 w-28" />

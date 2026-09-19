@@ -1,17 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import TransactionModal from "@/components/TransactionModal";
 import CashAccountsCard from "@/components/dashboard/CashAccountsCard";
 import { useDashboardStateContext } from "@/components/dashboard/DashboardStateProvider";
 import { PLATFORM_OPTIONS } from "@/lib/constants";
 import { destructive as hapticDestructive, tap } from "@/lib/haptics";
-import {
-  loadLedgerConnectionState,
-  persistLedgerConnectionState,
-  reconcileHoldingsFromLedger,
-  type LedgerHoldingsReconciliation,
-} from "@/lib/ledger-holdings";
+import { reconcileHoldingsFromLedger } from "@/lib/ledger-holdings";
 import {
   getTransactionAmount,
   TRANSACTION_TYPE_LABELS,
@@ -57,7 +52,6 @@ function transactionDetail(transaction: PortfolioTransaction) {
 
 export default function TransactionsPage() {
   const {
-    userId,
     holdings,
     setHoldings,
     inrToAedRate,
@@ -68,6 +62,9 @@ export default function TransactionsPage() {
     saveTransaction,
     deleteTransaction,
     importTransactions,
+    activityEngineReady,
+    activityManagedHoldingIds,
+    activityReconciliation: reconciliation,
     cash,
     summary,
   } = useDashboardStateContext();
@@ -76,21 +73,6 @@ export default function TransactionsPage() {
   const [filter, setFilter] = useState<"all" | TransactionType>("all");
   const [importPreviewOpen, setImportPreviewOpen] = useState(false);
   const [importMessage, setImportMessage] = useState<string | null>(null);
-  const [connectionPreviewOpen, setConnectionPreviewOpen] = useState(false);
-  const [connectionLoaded, setConnectionLoaded] = useState(false);
-  const [ledgerConnected, setLedgerConnected] = useState(false);
-  const [managedHoldingIds, setManagedHoldingIds] = useState<string[]>([]);
-
-  useEffect(() => {
-    const timeoutId = window.setTimeout(() => {
-      const connection = loadLedgerConnectionState(userId);
-      setLedgerConnected(connection.enabled);
-      setManagedHoldingIds(connection.managedHoldingIds);
-      setConnectionLoaded(true);
-    }, 0);
-
-    return () => window.clearTimeout(timeoutId);
-  }, [userId]);
 
   const purchaseImport = useMemo(() => {
     const existingIds = new Set(transactions.map((transaction) => transaction.id));
@@ -101,47 +83,6 @@ export default function TransactionsPage() {
       total: all.length,
     };
   }, [holdings, transactions]);
-
-  const reconciliation = useMemo(
-    () =>
-      reconcileHoldingsFromLedger(
-        holdings,
-        transactions,
-        inrToAedRate,
-        ledgerConnected ? managedHoldingIds : []
-      ),
-    [holdings, inrToAedRate, ledgerConnected, managedHoldingIds, transactions]
-  );
-
-  useEffect(() => {
-    if (!connectionLoaded || !ledgerConnected || reconciliation.issues.length) return;
-
-    const currentIds = [...managedHoldingIds].sort().join("|");
-    const nextIds = [...reconciliation.managedHoldingIds].sort().join("|");
-    if (!reconciliation.changes.length && currentIds === nextIds) return;
-
-    const timeoutId = window.setTimeout(() => {
-      if (reconciliation.changes.length) {
-        setHoldings(reconciliation.nextHoldings);
-      }
-      if (currentIds !== nextIds) {
-        setManagedHoldingIds(reconciliation.managedHoldingIds);
-        persistLedgerConnectionState(userId, {
-          enabled: true,
-          managedHoldingIds: reconciliation.managedHoldingIds,
-        });
-      }
-    }, 0);
-
-    return () => window.clearTimeout(timeoutId);
-  }, [
-    connectionLoaded,
-    ledgerConnected,
-    managedHoldingIds,
-    reconciliation,
-    setHoldings,
-    userId,
-  ]);
 
   const filteredTransactions = useMemo(() => {
     if (filter === "all") return transactions;
@@ -179,15 +120,6 @@ export default function TransactionsPage() {
     setEditing(null);
   }
 
-  function persistConnection(result: LedgerHoldingsReconciliation) {
-    setLedgerConnected(true);
-    setManagedHoldingIds(result.managedHoldingIds);
-    persistLedgerConnectionState(userId, {
-      enabled: true,
-      managedHoldingIds: result.managedHoldingIds,
-    });
-  }
-
   function prepareTransaction(transaction: PortfolioTransaction) {
     const now = new Date().toISOString();
     return {
@@ -207,7 +139,7 @@ export default function TransactionsPage() {
     const nextTransactions = transactions.some((item) => item.id === prepared.id)
       ? transactions.map((item) => (item.id === prepared.id ? prepared : item))
       : [...transactions, prepared];
-    const nextManagedIds = new Set(managedHoldingIds);
+    const nextManagedIds = new Set(activityManagedHoldingIds);
     const previous = transactions.find((item) => item.id === prepared.id);
     if (prepared.holdingId) nextManagedIds.add(prepared.holdingId);
     if (previous?.holdingId) nextManagedIds.add(previous.holdingId);
@@ -215,18 +147,15 @@ export default function TransactionsPage() {
       holdings,
       nextTransactions,
       inrToAedRate,
-      ledgerConnected ? nextManagedIds : []
+      nextManagedIds
     );
 
-    if (ledgerConnected && nextReconciliation.issues.length) {
+    if (nextReconciliation.issues.length) {
       return nextReconciliation.issues[0].message;
     }
 
     saveTransaction(prepared);
-    if (ledgerConnected) {
-      setHoldings(nextReconciliation.nextHoldings);
-      persistConnection(nextReconciliation);
-    }
+    setHoldings(nextReconciliation.nextHoldings);
     closeModal();
     return null;
   }
@@ -234,28 +163,25 @@ export default function TransactionsPage() {
   function handleDeleteTransaction(transaction: PortfolioTransaction) {
     if (!window.confirm("Delete this transaction?")) return;
 
-    if (ledgerConnected) {
-      const nextManagedIds = new Set(managedHoldingIds);
-      if (transaction.holdingId) nextManagedIds.add(transaction.holdingId);
-      const nextReconciliation = reconcileHoldingsFromLedger(
-        holdings,
-        transactions.filter((item) => item.id !== transaction.id),
-        inrToAedRate,
-        nextManagedIds
-      );
-      if (nextReconciliation.issues.length) {
-        window.alert(nextReconciliation.issues[0].message);
-        return;
-      }
-      setHoldings(nextReconciliation.nextHoldings);
-      persistConnection(nextReconciliation);
+    const nextManagedIds = new Set(activityManagedHoldingIds);
+    if (transaction.holdingId) nextManagedIds.add(transaction.holdingId);
+    const nextReconciliation = reconcileHoldingsFromLedger(
+      holdings,
+      transactions.filter((item) => item.id !== transaction.id),
+      inrToAedRate,
+      nextManagedIds
+    );
+    if (nextReconciliation.issues.length) {
+      window.alert(nextReconciliation.issues[0].message);
+      return;
     }
+    setHoldings(nextReconciliation.nextHoldings);
 
     hapticDestructive();
     deleteTransaction(transaction.id);
   }
 
-  if (!transactionsMounted) {
+  if (!transactionsMounted || !activityEngineReady) {
     return <div className="skeleton h-[30rem] rounded-2xl" />;
   }
 
@@ -266,7 +192,7 @@ export default function TransactionsPage() {
           <div className="text-xs font-semibold uppercase tracking-[0.2em] text-text-muted">Activity ledger</div>
           <h1 className="mt-2 text-2xl font-semibold tracking-tight text-text-primary sm:text-3xl">Transactions</h1>
           <p className="mt-2 max-w-2xl text-sm text-text-secondary">
-            Buys, sells, and splits can now keep your Holdings quantities and average costs up to date.
+            Buys, sells, and splits automatically control Holdings quantities and average costs.
           </p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row">
@@ -308,38 +234,16 @@ export default function TransactionsPage() {
         </div>
       ) : null}
 
-      {connectionLoaded && transactions.length ? (
-        ledgerConnected ? (
-          reconciliation.issues.length ? (
-            <div className="flex flex-col gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <div className="text-sm font-semibold text-amber-900">Holdings need attention</div>
-                <p className="mt-1 text-xs text-amber-700">Some Activity entries could not be synchronized.</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setConnectionPreviewOpen(true)}
-                className="min-h-10 rounded-full border border-amber-300 bg-white px-4 text-xs font-semibold text-amber-800"
-              >
-                Review {reconciliation.issues.length} issue{reconciliation.issues.length === 1 ? "" : "s"}
-              </button>
-            </div>
-          ) : null
-        ) : (
-          <div className="flex flex-col gap-3 rounded-2xl border border-violet-200 bg-violet-50 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <div className="text-sm font-semibold text-violet-950">Ready to connect Activity to Holdings</div>
-              <p className="mt-1 text-xs text-violet-700">Preview every change before anything is applied.</p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setConnectionPreviewOpen(true)}
-              className="min-h-10 rounded-full bg-accent-violet px-4 text-xs font-semibold text-white"
-            >
-              Review connection
-            </button>
-          </div>
-        )
+      {activityEngineReady && reconciliation.issues.length ? (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4">
+          <div className="text-sm font-semibold text-amber-900">Holdings need attention</div>
+          <p className="mt-1 text-xs text-amber-700">Some Activity entries could not be synchronized.</p>
+          <ul className="mt-3 space-y-1.5 text-xs text-amber-800">
+            {reconciliation.issues.map((issue) => (
+              <li key={`${issue.transactionId}-${issue.message}`}>• {issue.message}</li>
+            ))}
+          </ul>
+        </div>
       ) : null}
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -450,87 +354,6 @@ export default function TransactionsPage() {
         )}
       </section>
 
-      {connectionPreviewOpen ? (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/40 p-0 sm:items-center sm:p-4">
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="ledger-connection-title"
-            className="max-h-[90dvh] w-full overflow-y-auto rounded-t-3xl bg-white p-5 shadow-2xl sm:max-w-2xl sm:rounded-3xl sm:p-6"
-          >
-            <h2 id="ledger-connection-title" className="text-xl font-semibold text-text-primary">
-              {ledgerConnected ? "Holdings connection" : "Connect Activity to Holdings?"}
-            </h2>
-            <p className="mt-2 text-sm leading-6 text-text-secondary">
-              {reconciliation.changes.length
-                ? `${reconciliation.changes.length} holding${reconciliation.changes.length === 1 ? "" : "s"} will be updated.`
-                : `${reconciliation.managedHoldingIds.length} linked holding${reconciliation.managedHoldingIds.length === 1 ? "" : "s"} verified with no value changes.`}
-            </p>
-
-            {reconciliation.issues.length ? (
-              <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4">
-                <div className="text-sm font-semibold text-amber-900">Fix these before connecting</div>
-                <ul className="mt-2 space-y-2 text-sm text-amber-800">
-                  {reconciliation.issues.map((issue) => (
-                    <li key={`${issue.transactionId}-${issue.message}`}>• {issue.message}</li>
-                  ))}
-                </ul>
-              </div>
-            ) : null}
-
-            {reconciliation.changes.length ? (
-              <div className="mt-4 divide-y divide-border-default overflow-hidden rounded-2xl border border-border-default">
-                {reconciliation.changes.map((change) => (
-                  <div key={change.holdingId} className="p-4">
-                    <div className="text-sm font-semibold text-text-primary">{change.assetName}</div>
-                    <div className="mt-2 grid grid-cols-2 gap-3 text-xs text-text-secondary">
-                      <div>
-                        <div className="text-text-muted">Quantity</div>
-                        <div className="mt-1 font-mono">{change.currentQuantity} → {change.nextQuantity}</div>
-                      </div>
-                      <div>
-                        <div className="text-text-muted">Average price</div>
-                        <div className="mt-1 font-mono">
-                          {formatOrMask(change.currentAveragePrice, change.currency, isAmountsVisible)} → {formatOrMask(change.nextAveragePrice, change.currency, isAmountsVisible)}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : null}
-
-            <div className="mt-4 rounded-2xl bg-bg-elevated p-4 text-sm text-text-secondary">
-              Market prices and asset details stay unchanged. You can still review every transaction in Activity.
-            </div>
-            <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-              <button
-                type="button"
-                onClick={() => setConnectionPreviewOpen(false)}
-                className="min-h-11 rounded-full border border-border-default px-5 py-2.5 text-sm font-semibold text-text-secondary hover:bg-bg-elevated"
-              >
-                Close
-              </button>
-              {!ledgerConnected ? (
-                <button
-                  type="button"
-                  disabled={Boolean(reconciliation.issues.length) || !reconciliation.managedHoldingIds.length}
-                  onClick={() => {
-                    setHoldings(reconciliation.nextHoldings);
-                    persistConnection(reconciliation);
-                    setConnectionPreviewOpen(false);
-                    setImportMessage("Activity is now connected to Holdings.");
-                  }}
-                  className="min-h-11 rounded-full bg-accent-violet px-5 py-2.5 text-sm font-semibold text-white hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  Connect holdings
-                </button>
-              ) : null}
-            </div>
-          </div>
-        </div>
-      ) : null}
-
       {importPreviewOpen ? (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/40 p-0 sm:items-center sm:p-4">
           <div
@@ -588,7 +411,7 @@ export default function TransactionsPage() {
           transaction={editing}
           holdings={holdings}
           accountOptions={accountOptions}
-          holdingsConnected={ledgerConnected}
+          holdingsConnected
           onSave={handleSaveTransaction}
           onClose={closeModal}
         />

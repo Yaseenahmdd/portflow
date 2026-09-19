@@ -21,6 +21,7 @@ export default function DashboardPage() {
     summary,
     snapshots,
     transactionsMounted,
+    activityEngineReady,
   } = useDashboardStateContext();
 
   const latestRefreshAt = useMemo(() => {
@@ -80,7 +81,7 @@ export default function DashboardPage() {
     };
   }, [fxUpdatedAt, inrToAedRate, isRefreshing, latestRefreshAt]);
 
-  if (!mounted || !transactionsMounted) {
+  if (!mounted || !transactionsMounted || !activityEngineReady) {
     return (
       <div className="space-y-6">
         <div className="skeleton h-10 w-56" />

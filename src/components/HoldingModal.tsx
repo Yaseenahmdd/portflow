@@ -8,6 +8,7 @@ import { computeHolding, formatMoney, toNumber } from "@/lib/utils";
 interface Props {
   holding: Holding | null;
   inrToAedRate: number;
+  activityManaged?: boolean;
   onSave: (holding: Holding) => void;
   onClose: () => void;
 }
@@ -30,7 +31,13 @@ const emptyForm: Holding = {
   priceSource: "manual",
 };
 
-export default function HoldingModal({ holding, inrToAedRate, onSave, onClose }: Props) {
+export default function HoldingModal({
+  holding,
+  inrToAedRate,
+  activityManaged = false,
+  onSave,
+  onClose,
+}: Props) {
   const [form, setForm] = useState<Holding>(() => {
     if (holding) {
       if (!holding.purchases && holding.quantity > 0) {
@@ -90,7 +97,18 @@ export default function HoldingModal({ holding, inrToAedRate, onSave, onClose }:
     const platform = usesCustomPlatform ? customPlatformName.trim() : form.platform.trim();
     if (!platform) return;
     hapticSuccess();
-    onSave({ ...form, platform });
+    onSave({
+      ...form,
+      platform,
+      ...(activityManaged && holding
+        ? {
+            quantity: holding.quantity,
+            avgBuyPrice: holding.avgBuyPrice,
+            purchases: holding.purchases,
+            currency: holding.currency,
+          }
+        : {}),
+    });
   };
 
   const update = (patch: Partial<Holding>) => setForm((current) => ({ ...current, ...patch }));
@@ -120,7 +138,9 @@ export default function HoldingModal({ holding, inrToAedRate, onSave, onClose }:
             <div>
               <h2 className="text-lg font-semibold text-slate-900">{holding ? "Edit Holding" : "Add Holding"}</h2>
               <p className="mt-1 text-sm text-slate-500">
-                Portfolio values are normalised to AED. USD uses the AED peg and INR uses the global INR to AED rate from the top of the page.
+                {activityManaged
+                  ? "Quantity, average cost, and purchase history are controlled by Activity."
+                  : "Portfolio values are normalised to AED. USD uses the AED peg and INR uses the global INR to AED rate from the top of the page."}
               </p>
             </div>
 
@@ -200,7 +220,13 @@ export default function HoldingModal({ holding, inrToAedRate, onSave, onClose }:
             <FormSelect label="Geography" value={form.geography} options={GEOGRAPHY_OPTIONS} onChange={(value) => update({ geography: value as Holding["geography"] })} />
             <FormSelect label="Risk" value={form.risk} options={RISK_OPTIONS} onChange={(value) => update({ risk: value as Holding["risk"] })} />
             <FormNumber label="Current Market Price" value={form.currentPrice} onChange={(value) => update({ currentPrice: value })} />
-            <FormSelect label="Currency" value={form.currency} options={CURRENCY_OPTIONS} onChange={(value) => update({ currency: value as Currency })} />
+            <FormSelect
+              label="Currency"
+              value={form.currency}
+              options={CURRENCY_OPTIONS}
+              onChange={(value) => update({ currency: value as Currency })}
+              disabled={activityManaged}
+            />
             {showsSchemeCodeField ? (
               <FormInput label="Scheme Code" value={form.schemeCode || ""} onChange={(value) => update({ schemeCode: value })} placeholder="AMFI code" />
             ) : null}
@@ -212,6 +238,26 @@ export default function HoldingModal({ holding, inrToAedRate, onSave, onClose }:
           </label>
 
           {/* Purchase History Editor */}
+          {activityManaged ? (
+            <div className="rounded-xl border border-violet-200 bg-violet-50 p-4 sm:p-5">
+              <h3 className="text-sm font-semibold text-violet-950">Position managed by Activity</h3>
+              <p className="mt-1 text-sm leading-6 text-violet-800">
+                Add, edit, or delete buys, sells, and splits in Activity. Holdings will update automatically.
+              </p>
+              <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+                <div className="rounded-lg bg-white px-3 py-2 text-center ring-1 ring-violet-200">
+                  <div className="text-xs text-violet-600">Current quantity</div>
+                  <div className="font-semibold text-violet-950">
+                    {form.quantity < 1 ? form.quantity.toFixed(7) : form.quantity.toLocaleString()}
+                  </div>
+                </div>
+                <div className="rounded-lg bg-white px-3 py-2 text-center ring-1 ring-violet-200">
+                  <div className="text-xs text-violet-600">Average cost</div>
+                  <div className="font-semibold text-violet-950">{formatMoney(form.avgBuyPrice, form.currency)}</div>
+                </div>
+              </div>
+            </div>
+          ) : (
           <div className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-sm font-semibold text-slate-900">Purchase History</h3>
@@ -481,6 +527,7 @@ export default function HoldingModal({ holding, inrToAedRate, onSave, onClose }:
               </div>
             </div>
           </div>
+          )}
 
           <div className="flex items-center justify-end gap-3">
             <button type="button" onClick={() => { tap(); onClose(); }} className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700">
@@ -531,16 +578,23 @@ function FormSelect({
   value,
   options,
   onChange,
+  disabled = false,
 }: {
   label: string;
   value: string;
   options: readonly string[];
   onChange: (value: string) => void;
+  disabled?: boolean;
 }) {
   return (
     <label className="text-sm">
       <span className="mb-1 block text-slate-600">{label}</span>
-      <select className="w-full rounded-xl border border-slate-200 px-3 py-2" value={value} onChange={(event) => onChange(event.target.value)}>
+      <select
+        className="w-full rounded-xl border border-slate-200 px-3 py-2 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500"
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        disabled={disabled}
+      >
         {options.map((option) => (
           <option key={option} value={option}>
             {option}

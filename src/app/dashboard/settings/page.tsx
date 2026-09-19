@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { type Holding } from "@/lib/constants";
 import { tap, success as hapticSuccess, destructive as hapticDestructive, medium } from "@/lib/haptics";
-import { DEFAULT_INR_TO_AED_RATE, getRateStorageKey } from "@/lib/dashboard/persistence";
+import { DEFAULT_INR_TO_AED_RATE } from "@/lib/dashboard/persistence";
 import { useDashboardStateContext } from "@/components/dashboard/DashboardStateProvider";
 import { normalizeHoldings } from "@/lib/holdings-normalize";
 import { replaceRemoteHoldings } from "@/lib/holdings-store";
@@ -57,7 +57,7 @@ const apiStatuses: ApiStatus[] = [
 
 export default function SettingsPage() {
   const router = useRouter();
-  const { userId, setHoldings } = useDashboardStateContext();
+  const { userId, holdings, transactions, inrToAedRate, setHoldings } = useDashboardStateContext();
   const [testResults, setTestResults] = useState<Record<string, string>>({});
   const [testing, setTesting] = useState(false);
   const [rebuildingHistory, setRebuildingHistory] = useState(false);
@@ -68,7 +68,6 @@ export default function SettingsPage() {
 
 
   const storageKey = `portflow-holdings-${userId}`;
-  const rateStorageKey = getRateStorageKey(userId);
 
   const testEndpoint = async (path: string) => {
     try {
@@ -112,17 +111,20 @@ export default function SettingsPage() {
     setHistoryStatus(null);
 
     try {
-      const rawHoldings = localStorage.getItem(storageKey);
-      const parsed = rawHoldings ? (JSON.parse(rawHoldings) as Holding[]) : [];
-      const { normalized } = normalizeHoldings(parsed);
-      const storedRate = Number(localStorage.getItem(rateStorageKey));
-      const inrToAedRate =
-        Number.isFinite(storedRate) && storedRate > 0 ? storedRate : DEFAULT_INR_TO_AED_RATE;
+      const { normalized } = normalizeHoldings(holdings);
+      const fallbackInrToAedRate =
+        Number.isFinite(inrToAedRate) && inrToAedRate > 0
+          ? inrToAedRate
+          : DEFAULT_INR_TO_AED_RATE;
 
       const response = await fetch("/api/prices/history", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ holdings: normalized, fallbackInrToAedRate: inrToAedRate }),
+        body: JSON.stringify({
+          holdings: normalized,
+          transactions,
+          fallbackInrToAedRate,
+        }),
       });
       const payload = (await response.json()) as HistoryApiResponse;
 
@@ -313,7 +315,7 @@ export default function SettingsPage() {
               <div>
                 <h3 className="text-sm font-semibold text-text-primary">Historical snapshots</h3>
                 <p className="mt-1 text-sm leading-6 text-text-secondary">
-                  Rebuild the graph from purchase dates, historical closing prices and NAVs, and daily INR/AED rates. Dividends are excluded.
+                  Rebuild the graph from Activity, historical closing prices and NAVs, and daily INR/AED rates. Dividends are excluded.
                 </p>
               </div>
               <button

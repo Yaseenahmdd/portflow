@@ -14,6 +14,7 @@ import { normalizeTransaction, type PortfolioTransaction } from "@/lib/transacti
 export function useTransactions(userId: string) {
   const [transactions, setTransactions] = useState<PortfolioTransaction[]>([]);
   const [mounted, setMounted] = useState(false);
+  const [initialSyncUserId, setInitialSyncUserId] = useState("");
   const [syncWarning, setSyncWarning] = useState<string | null>(null);
 
   useEffect(() => {
@@ -43,6 +44,8 @@ export function useTransactions(userId: string) {
           setSyncWarning("Transactions are saved on this device until the database migration is applied.");
           console.error("Failed to sync transactions:", error);
         }
+      } finally {
+        if (active) setInitialSyncUserId(userId);
       }
     })();
 
@@ -127,6 +130,7 @@ export function useTransactions(userId: string) {
   return {
     transactions,
     mounted,
+    initialSyncComplete: initialSyncUserId === userId,
     syncWarning,
     saveTransaction,
     deleteTransaction,

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { Holding } from "../src/lib/constants.ts";
+import type { PortfolioTransaction } from "../src/lib/transactions.ts";
 import {
   buildHistoricalPortfolioSnapshots,
   getHistoricalPortfolioStartDate,
@@ -123,4 +124,78 @@ test("INR investment cost uses purchase FX while valuation uses daily historical
   assert.equal(snapshots[0].totalValueAed, 41);
   assert.equal(snapshots[1].totalInvestedAed, 40);
   assert.equal(snapshots[1].totalValueAed, 46.2);
+});
+
+test("historical snapshots replay Activity buys, sells, and splits", () => {
+  const activityHolding = holding({
+    quantity: 12,
+    avgBuyPrice: 5,
+    currentPrice: 11,
+    purchases: [{ date: "2025-01-01", quantity: 99, price: 1 }],
+  });
+  const baseTransaction = {
+    platform: "Custom",
+    assetName: "Example",
+    ticker: "EXAMPLE",
+    currency: "AED" as const,
+    notes: "",
+    holdingId: activityHolding.id,
+  };
+  const transactions: PortfolioTransaction[] = [
+    {
+      ...baseTransaction,
+      id: "buy-1",
+      type: "buy",
+      date: "2026-01-02",
+      quantity: 10,
+      price: 10,
+    },
+    {
+      ...baseTransaction,
+      id: "sell-1",
+      type: "sell",
+      date: "2026-01-03",
+      quantity: 4,
+      price: 20,
+    },
+    {
+      ...baseTransaction,
+      id: "split-1",
+      type: "split",
+      date: "2026-01-04",
+      splitRatio: 2,
+    },
+  ];
+
+  assert.equal(
+    getHistoricalPortfolioStartDate([activityHolding], "2026-01-04", transactions),
+    "2026-01-02"
+  );
+
+  const snapshots = buildHistoricalPortfolioSnapshots(
+    [activityHolding],
+    {
+      "holding-1": [
+        { date: "2026-01-02", price: 10 },
+        { date: "2026-01-03", price: 20 },
+        { date: "2026-01-04", price: 11 },
+      ],
+    },
+    [],
+    { startDate: "2026-01-02", endDate: "2026-01-04", fallbackInrToAedRate: 0.044 },
+    transactions
+  );
+
+  assert.deepEqual(
+    snapshots.map((snapshot) => ({
+      date: snapshot.snapshotDate,
+      invested: snapshot.totalInvestedAed,
+      value: snapshot.totalValueAed,
+    })),
+    [
+      { date: "2026-01-02", invested: 100, value: 100 },
+      { date: "2026-01-03", invested: 60, value: 120 },
+      { date: "2026-01-04", invested: 60, value: 132 },
+    ]
+  );
 });

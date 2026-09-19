@@ -23,10 +23,21 @@ export default function DashboardHoldingsPage() {
     refreshFailures,
     refreshError,
     computedHoldings,
+    transactions,
+    activityEngineReady,
+    activityManagedHoldingIds,
     saveHolding,
     deleteHolding,
     updatePrice,
   } = useDashboardStateContext();
+
+  const handleDeleteHolding = (holdingId: string) => {
+    if (transactions.some((transaction) => transaction.holdingId === holdingId)) {
+      window.alert("Delete this holding's Activity entries first. Its position is managed by Activity.");
+      return;
+    }
+    deleteHolding(holdingId);
+  };
 
   const handleSaveHolding = (holding: Holding) => {
     saveHolding(holding);
@@ -34,7 +45,7 @@ export default function DashboardHoldingsPage() {
     setEditingHolding(null);
   };
 
-  if (!mounted) {
+  if (!mounted || !activityEngineReady) {
     return (
       <div className="space-y-6">
         <div className="skeleton h-[28rem] rounded-2xl" />
@@ -61,7 +72,7 @@ export default function DashboardHoldingsPage() {
             setEditingHolding(holding);
             setModalOpen(true);
           }}
-          onDelete={deleteHolding}
+          onDelete={handleDeleteHolding}
           onPriceUpdate={updatePrice}
           onAddHolding={() => {
             setEditingHolding(null);
@@ -74,6 +85,9 @@ export default function DashboardHoldingsPage() {
         <HoldingModal
           holding={editingHolding}
           inrToAedRate={inrToAedRate}
+          activityManaged={Boolean(
+            editingHolding && activityManagedHoldingIds.includes(editingHolding.id)
+          )}
           onSave={handleSaveHolding}
           onClose={() => {
             setModalOpen(false);

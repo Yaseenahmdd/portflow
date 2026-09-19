@@ -9,12 +9,14 @@ import {
 } from "@/lib/historical-portfolio";
 import { normalizeHoldings } from "@/lib/holdings-normalize";
 import { createClient } from "@/lib/supabase/server";
+import { isPortfolioTransaction, normalizeTransaction } from "@/lib/transactions";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 interface HistoryRequestBody {
   holdings?: unknown;
+  transactions?: unknown;
   fallbackInrToAedRate?: unknown;
 }
 
@@ -57,10 +59,21 @@ export async function POST(request: Request) {
     if (!Array.isArray(body.holdings) || body.holdings.length > 100 || !body.holdings.every(isHolding)) {
       return Response.json({ success: false, error: "Invalid holdings data" }, { status: 400 });
     }
+    if (
+      body.transactions !== undefined &&
+      (!Array.isArray(body.transactions) ||
+        body.transactions.length > 10_000 ||
+        !body.transactions.every(isPortfolioTransaction))
+    ) {
+      return Response.json({ success: false, error: "Invalid transactions data" }, { status: 400 });
+    }
 
     const holdings = normalizeHoldings(body.holdings).normalized;
+    const transactions = Array.isArray(body.transactions)
+      ? body.transactions.filter(isPortfolioTransaction).map(normalizeTransaction)
+      : [];
     const endDate = getDubaiTodayDateKey();
-    const startDate = getHistoricalPortfolioStartDate(holdings, endDate);
+    const startDate = getHistoricalPortfolioStartDate(holdings, endDate, transactions);
 
     if (!startDate) {
       return Response.json(
@@ -95,7 +108,8 @@ export async function POST(request: Request) {
           Number.isFinite(fallbackInrToAedRate) && fallbackInrToAedRate > 0
             ? fallbackInrToAedRate
             : 0.044,
-      }
+      },
+      transactions
     );
 
     return Response.json({
