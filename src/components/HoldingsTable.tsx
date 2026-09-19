@@ -378,7 +378,10 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
       </div>
 
       <div className="mt-3 mb-2 sm:hidden">
-        <div className="flex min-h-[25px] items-center justify-between gap-4 border-b border-slate-100/80 px-4 py-[2px]">
+        <div
+          className="flex min-h-[25px] items-center justify-between gap-4 px-4 py-[2px]"
+          style={{ borderBottom: "0.5px solid color-mix(in srgb, var(--color-text-muted) 18%, transparent)" }}
+        >
           <div className="flex items-center gap-3">
             <button
               type="button"
@@ -589,10 +592,16 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
         ) : null}
       </div>
 
-      <div className="divide-y divide-slate-100 sm:hidden">
+      <div className="sm:hidden">
         {mobileSortedHoldings.length ? (
-          mobileSortedHoldings.map((holding) => (
-            <div key={holding.id} className="bg-white">
+          mobileSortedHoldings.map((holding, holdingIndex) => (
+            <div
+              key={holding.id}
+              className="bg-white"
+              style={holdingIndex === 0 ? undefined : {
+                borderTop: "0.5px solid color-mix(in srgb, var(--color-text-muted) 18%, transparent)",
+              }}
+            >
               <div className="flex items-center justify-between gap-3 px-4 py-[14px]">
                 <button type="button" className="min-w-0 flex-1 pr-3 text-left" onClick={() => { tap(); onView(holding); }}>
                   <div className="truncate text-[12px] font-semibold leading-[1.2] text-slate-900">{getMobileAssetName(holding.assetName)}</div>
