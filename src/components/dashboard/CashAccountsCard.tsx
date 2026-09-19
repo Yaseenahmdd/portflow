@@ -1,24 +1,57 @@
 "use client";
 
+import { useState } from "react";
 import type { CashBalanceSummary } from "@/lib/cash-balances";
 import { formatOrMask } from "@/lib/utils";
+import { tap } from "@/lib/haptics";
 
 export default function CashAccountsCard({
   cash,
   portfolioValueAed,
   isAmountsVisible,
   showNetWorth = true,
+  collapsibleOnMobile = false,
 }: {
   cash: CashBalanceSummary;
   portfolioValueAed: number;
   isAmountsVisible: boolean;
   showNetWorth?: boolean;
+  collapsibleOnMobile?: boolean;
 }) {
+  const [mobileOpen, setMobileOpen] = useState(false);
   const netWorthAed = portfolioValueAed + cash.totalCashAed;
 
   return (
     <section className="dashboard-card overflow-hidden rounded-2xl border border-border-default bg-bg-card shadow-sm">
-      <div className="flex flex-col gap-3 border-b border-border-default px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+      {collapsibleOnMobile ? (
+        <button
+          type="button"
+          onClick={() => {
+            tap();
+            setMobileOpen((current) => !current);
+          }}
+          className={`flex min-h-16 w-full items-center justify-between gap-4 px-4 py-3 text-left sm:hidden ${mobileOpen ? "border-b border-border-default" : ""}`}
+          aria-expanded={mobileOpen}
+        >
+          <span>
+            <span className="block text-sm font-semibold text-text-primary">Cash accounts</span>
+            <span className="mt-0.5 block text-[11px] text-text-muted">{cash.accounts.length} active account{cash.accounts.length === 1 ? "" : "s"}</span>
+          </span>
+          <span className="flex items-center gap-3">
+            <span className="text-right">
+              <span className="block text-[11px] text-text-muted">Available</span>
+              <span className={`mt-1 block font-mono text-sm font-semibold ${cash.totalCashAed < 0 ? "text-accent-loss" : "text-text-primary"}`}>
+                {formatOrMask(cash.totalCashAed, "AED", isAmountsVisible)}
+              </span>
+            </span>
+            <svg className={`h-4 w-4 text-text-muted transition-transform ${mobileOpen ? "rotate-180" : ""}`} viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+              <path fillRule="evenodd" d="M5.22 7.22a.75.75 0 011.06 0L10 10.94l3.72-3.72a.75.75 0 111.06 1.06l-4.25 4.25a.75.75 0 01-1.06 0L5.22 8.28a.75.75 0 010-1.06z" clipRule="evenodd" />
+            </svg>
+          </span>
+        </button>
+      ) : null}
+
+      <div className={`${collapsibleOnMobile ? "hidden sm:flex" : "flex"} flex-col gap-3 border-b border-border-default px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5`}>
         <div>
           <h2 className="font-display text-base font-semibold tracking-[-0.03em] text-text-primary">
             Cash accounts
@@ -33,7 +66,8 @@ export default function CashAccountsCard({
         </div>
       </div>
 
-      {cash.accounts.length ? (
+      <div className={collapsibleOnMobile && !mobileOpen ? "hidden sm:block" : "block"}>
+        {cash.accounts.length ? (
         <div className="flex flex-wrap gap-px bg-border-default">
           {cash.accounts.map((account) => (
             <div
@@ -59,17 +93,18 @@ export default function CashAccountsCard({
             </div>
           ))}
         </div>
-      ) : (
-        <div className="px-5 py-8 text-center text-sm text-text-muted">
-          Add a deposit, dividend, withdrawal, trade, fee, or currency exchange to begin tracking cash.
-        </div>
-      )}
+        ) : (
+          <div className="px-5 py-8 text-center text-sm text-text-muted">
+            Add a deposit, dividend, withdrawal, trade, fee, or currency exchange to begin tracking cash.
+          </div>
+        )}
 
-      {cash.excludedHistoricalBuys ? (
-        <div className="border-t border-border-default px-4 py-3 text-[11px] text-text-muted sm:px-5">
-          Imported historical purchases are treated as previously funded.
-        </div>
-      ) : null}
+        {cash.excludedHistoricalBuys ? (
+          <div className="border-t border-border-default px-4 py-3 text-[11px] text-text-muted sm:px-5">
+            Imported historical purchases are treated as previously funded.
+          </div>
+        ) : null}
+      </div>
     </section>
   );
 }

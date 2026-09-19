@@ -59,6 +59,7 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
     filters.geography !== "All",
     filters.risk !== "All",
   ].filter(Boolean).length;
+  const hasActiveFilters = activeFilterCount > 0 || Boolean(filters.search.trim());
   const activeFilterChips = [
     filters.platform !== "All" ? { key: "platform", label: filters.platform } : null,
     filters.assetClass !== "All" ? { key: "assetClass", label: filters.assetClass } : null,
@@ -305,6 +306,12 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
     }
   }
 
+  function getMobileModeShortLabel(mode: "value" | "price" | "return") {
+    if (mode === "price") return "Price";
+    if (mode === "return") return "Return";
+    return "Value";
+  }
+
   function getMobileValueTone(value: number) {
     if (value > 0) return "text-green-600";
     if (value < 0) return "text-red-600";
@@ -329,23 +336,46 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
     setFilters((current) => ({ ...current, [key]: "All" }));
   }
 
+  function clearAllFilters() {
+    tap();
+    setFilters({ ...DEFAULT_MOBILE_FILTERS, search: "" });
+  }
+
   return (
     <section className="dashboard-card rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
-      <div className="border-b border-slate-200 p-4 sm:p-5">
+      <div className="border-b border-slate-200 p-4 sm:p-4">
         <div className="flex items-center justify-between gap-3">
-          <h2 className="text-xl font-semibold text-slate-900">Holdings</h2>
+          <div className="flex min-w-0 items-baseline gap-2.5">
+            <h2 className="text-xl font-semibold text-slate-900">Holdings</h2>
+            <span className="hidden text-sm text-text-muted sm:inline">{holdings.length} holdings</span>
+          </div>
           <div className="flex items-center gap-2 sm:gap-3">
-            <div className="text-xs text-slate-500 sm:text-sm">
+            <div className="text-xs text-slate-500 sm:hidden">
               {filteredHoldings.length} of {holdings.length}
             </div>
+            {hasActiveFilters ? (
+              <>
+                <div className="hidden text-sm text-text-muted sm:block">
+                  {filteredHoldings.length} of {holdings.length}
+                </div>
+                <button
+                  type="button"
+                  onClick={clearAllFilters}
+                  className="hidden min-h-10 items-center px-1 text-sm font-medium text-text-secondary hover:text-text-primary sm:inline-flex"
+                >
+                  Clear filters
+                </button>
+              </>
+            ) : null}
             <button
               onClick={() => { tap(); onAddHolding(); }}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-accent-violet text-bg-primary shadow-sm transition hover:brightness-105"
+              className="inline-flex h-9 w-9 items-center justify-center gap-2 rounded-xl bg-accent-violet text-bg-primary shadow-sm transition hover:brightness-105 sm:h-10 sm:w-auto sm:px-4"
               aria-label="Add holding"
             >
-              <svg className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
+              <svg className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2} aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14M5 12h14" />
               </svg>
+              <span className="hidden text-sm font-semibold sm:inline">Add holding</span>
             </button>
           </div>
         </div>
@@ -368,7 +398,7 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
           ) : null}
         </div>
 
-        <div className="mt-4 hidden gap-3 md:grid-cols-2 xl:grid-cols-5 sm:grid">
+        <div className="mt-3 hidden gap-2.5 sm:grid sm:grid-cols-2 lg:grid-cols-[minmax(240px,1.5fr)_repeat(4,minmax(130px,1fr))]">
           <FilterInput label="Search" value={filters.search} onChange={(value) => setFilters({ ...filters, search: value })} placeholder="Asset, ticker, sector" />
           <FilterSelect label="Platform" value={filters.platform} options={platforms} onChange={(value) => setFilters({ ...filters, platform: value })} />
           <FilterSelect label="Class" value={filters.assetClass} options={["All", ...ASSET_CLASS_OPTIONS]} onChange={(value) => setFilters({ ...filters, assetClass: value })} />
@@ -377,15 +407,12 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
         </div>
       </div>
 
-      <div className="mt-3 mb-2 sm:hidden">
-        <div
-          className="flex min-h-[25px] items-center justify-between gap-4 px-4 py-[2px]"
-          style={{ borderBottom: "0.5px solid color-mix(in srgb, var(--color-text-muted) 18%, transparent)" }}
-        >
-          <div className="flex items-center gap-3">
+      <div className="mb-2 mt-3 px-3 sm:hidden">
+        <div className="grid grid-cols-3 gap-0.5 rounded-lg border border-border-subtle bg-bg-elevated p-0.5">
             <button
               type="button"
               onClick={() => {
+                tap();
                 if (mobileSortMenuOpen) {
                   closeMobileSortMenu();
                   return;
@@ -393,12 +420,12 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
 
                 openMobileSortMenu();
               }}
-              className="inline-flex h-[20px] shrink-0 scale-[0.65] origin-left items-center gap-1 rounded-[4px] px-0 text-left text-[11px] font-normal leading-[1] tracking-[0.02em] text-slate-500 transition-colors hover:text-slate-700"
+              className={`inline-flex min-h-9 items-center justify-center gap-1 rounded-md px-1.5 text-[11px] font-medium transition-colors ${mobileSortMenuOpen ? "bg-bg-card text-text-primary shadow-sm" : "text-text-secondary hover:text-text-primary"}`}
               aria-expanded={mobileSortMenuOpen}
               aria-label="Open mobile sort options"
             >
               <span>Sort</span>
-              <svg className="h-[17px] w-[17px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M3 6h18M3 12h12M3 18h6" />
               </svg>
             </button>
@@ -406,6 +433,7 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
             <button
               type="button"
               onClick={() => {
+                tap();
                 if (mobileFiltersOpen) {
                   closeMobileFiltersMenu();
                   return;
@@ -413,29 +441,27 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
 
                 openMobileFiltersMenu();
               }}
-              className="inline-flex h-[20px] shrink-0 scale-[0.65] origin-left items-center gap-1 rounded-[4px] px-0 text-left text-[11px] font-normal leading-[1] tracking-[0.02em] text-slate-500 transition-colors hover:text-slate-700"
+              className={`inline-flex min-h-9 items-center justify-center gap-1 rounded-md px-1.5 text-[11px] font-medium transition-colors ${mobileFiltersOpen || activeFilterCount ? "bg-bg-card text-text-primary shadow-sm" : "text-text-secondary hover:text-text-primary"}`}
               aria-expanded={mobileFiltersOpen}
               aria-label="Open mobile filter options"
             >
               <span>Filter{activeFilterCount ? ` (${activeFilterCount})` : ""}</span>
-              <svg className="h-[17px] w-[17px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M7 12h10M10 18h4" />
               </svg>
             </button>
-          </div>
-          <div className="flex min-w-0 justify-end">
+
             <button
               type="button"
               onClick={cycleMobileMode}
-              className="inline-flex h-[20px] min-w-[110px] max-w-[130px] scale-[0.65] origin-right items-center justify-end gap-1 rounded-[4px] px-0 text-[11px] font-normal leading-[1] tracking-[0.02em] text-slate-500 transition-colors hover:text-slate-700 active:text-slate-700"
+              className="inline-flex min-h-9 items-center justify-center gap-1 rounded-md bg-bg-card px-1.5 text-[11px] font-medium text-text-primary shadow-sm transition-colors hover:bg-bg-card-hover"
               aria-label={`Change holding display mode. Current mode: ${getMobileModeLabel(mobileColumn3Mode)}`}
             >
-              <svg className="h-[17px] w-[17px] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+              <svg className="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M8 7h8m0 0l-3-3m3 3l-3 3m3 7H8m0 0l3-3m-3 3l3 3" />
               </svg>
-              <span className="whitespace-nowrap text-right">{getMobileModeLabel(mobileColumn3Mode)}</span>
+              <span className="whitespace-nowrap">{getMobileModeShortLabel(mobileColumn3Mode)}</span>
             </button>
-          </div>
         </div>
 
         {mobileSortMenuOpen ? (
@@ -915,12 +941,12 @@ function FilterInput({
 }) {
   return (
     <label className="text-sm">
-      <span className="mb-1 block text-slate-600">{label}</span>
+      <span className="mb-1 block text-xs font-medium text-slate-600">{label}</span>
       <input
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
-        className="w-full rounded-xl border border-slate-200 px-3 py-2"
+        className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm"
       />
     </label>
   );
@@ -939,8 +965,8 @@ function FilterSelect({
 }) {
   return (
     <label className="text-sm">
-      <span className="mb-1 block text-slate-600">{label}</span>
-      <select value={value} onChange={(event) => onChange(event.target.value)} className="w-full rounded-xl border border-slate-200 px-3 py-2">
+      <span className="mb-1 block text-xs font-medium text-slate-600">{label}</span>
+      <select value={value} onChange={(event) => onChange(event.target.value)} className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm">
         {options.map((option) => (
           <option key={option} value={option}>
             {option}

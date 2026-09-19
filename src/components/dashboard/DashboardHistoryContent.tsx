@@ -117,19 +117,23 @@ function BreakdownValue({
   value,
   detail,
   tone = "text-text-primary",
+  className = "",
+  hideDetailOnMobile = false,
 }: {
   label: string;
   value: string;
   detail?: string;
   tone?: string;
+  className?: string;
+  hideDetailOnMobile?: boolean;
 }) {
   return (
-    <div className="min-w-0 px-4 py-3.5 sm:px-5 sm:py-4">
+    <div className={`min-w-0 bg-bg-card px-3 py-3 sm:px-5 sm:py-4 ${className}`}>
       <div className="text-[13px] font-medium text-text-muted">
         {label}
       </div>
-      <div className={`mt-1.5 truncate font-mono text-lg font-semibold ${tone}`}>{value}</div>
-      {detail ? <div className={`mt-1 text-xs ${tone}`}>{detail}</div> : null}
+      <div className={`mt-1.5 truncate font-mono text-base font-semibold sm:text-lg ${tone}`}>{value}</div>
+      {detail ? <div className={`mt-1 text-[11px] sm:text-xs ${hideDetailOnMobile ? "hidden sm:block" : ""} ${tone}`}>{detail}</div> : null}
     </div>
   );
 }
@@ -142,6 +146,8 @@ export default function DashboardHistoryContent({
   isAmountsVisible,
 }: DashboardHistoryContentProps) {
   const [selectedRange, setSelectedRange] = useState<HistoryRange>("1M");
+  const [activityBreakdownOpen, setActivityBreakdownOpen] = useState(false);
+  const [mobileActivityLimit, setMobileActivityLimit] = useState(10);
   const [benchmarkState, setBenchmarkState] = useState<BenchmarkLoadState>({
     rangeKey: "",
     points: [],
@@ -205,6 +211,7 @@ export default function DashboardHistoryContent({
     () => getPortfolioActivity(filteredSnapshots),
     [filteredSnapshots]
   );
+  const reversedActivity = useMemo(() => [...activity].reverse(), [activity]);
   const marketMoves = useMemo(
     () => getBestAndWorstMarketMoves(activity),
     [activity]
@@ -280,16 +287,22 @@ export default function DashboardHistoryContent({
         </div>
       </header>
 
-      <section className="dashboard-card overflow-hidden rounded-2xl border border-border-default bg-bg-card shadow-sm">
-        <div className="flex flex-col gap-2 border-b border-border-default px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
-          <h2 className="font-display text-base font-semibold tracking-[-0.03em] text-text-primary">
+      <section className="dashboard-card overflow-visible rounded-2xl border border-border-default bg-bg-card shadow-sm sm:overflow-hidden">
+        <div className="sticky top-0 z-20 flex flex-col gap-2 rounded-t-2xl border-b border-border-default bg-bg-card px-3 py-2 sm:static sm:flex-row sm:items-center sm:justify-between sm:px-5 sm:py-3">
+          <h2 className="hidden font-display text-base font-semibold tracking-[-0.03em] text-text-primary sm:block">
             Period Breakdown
           </h2>
           <div className="max-w-full overflow-x-auto">
-            <PeriodSelector selectedRange={selectedRange} onChange={setSelectedRange} />
+            <PeriodSelector
+              selectedRange={selectedRange}
+              onChange={(range) => {
+                setSelectedRange(range);
+                setMobileActivityLimit(10);
+              }}
+            />
           </div>
         </div>
-        <div className="grid divide-y divide-border-default sm:grid-cols-2 sm:divide-x sm:divide-y-0 xl:grid-cols-4">
+        <div className="grid grid-cols-2 gap-px bg-border-subtle sm:gap-0 sm:bg-transparent sm:divide-x sm:divide-border-default xl:grid-cols-4">
           <BreakdownValue
             label="Opening value"
             value={
@@ -332,60 +345,79 @@ export default function DashboardHistoryContent({
       </section>
 
       <section className="dashboard-card overflow-hidden rounded-2xl border border-border-default bg-bg-card shadow-sm">
-        <div className="border-b border-border-default px-4 py-3 sm:px-5">
-          <h2 className="font-display text-base font-semibold tracking-[-0.03em] text-text-primary">
-            Activity-adjusted Performance
-          </h2>
-          <p className="mt-1 text-xs text-text-muted">
-            Includes recorded sales, dividends, fees, deposits, and withdrawals in this period.
-          </p>
+        <div className="flex items-center justify-between gap-4 border-b border-border-default px-4 py-3 sm:block sm:px-5">
+          <div>
+            <h2 className="font-display text-base font-semibold tracking-[-0.03em] text-text-primary">
+              Activity-adjusted Performance
+            </h2>
+            <p className="mt-1 hidden text-xs text-text-muted sm:block">
+              Includes recorded sales, dividends, fees, deposits, and withdrawals in this period.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              tap();
+              setActivityBreakdownOpen((current) => !current);
+            }}
+            className="inline-flex min-h-10 shrink-0 items-center gap-1.5 text-xs font-semibold text-text-secondary sm:hidden"
+            aria-expanded={activityBreakdownOpen}
+          >
+            {activityBreakdownOpen ? "Less" : "Details"}
+            <svg className={`h-3.5 w-3.5 transition-transform ${activityBreakdownOpen ? "rotate-180" : ""}`} viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+              <path fillRule="evenodd" d="M5.22 7.22a.75.75 0 011.06 0L10 10.94l3.72-3.72a.75.75 0 111.06 1.06l-4.25 4.25a.75.75 0 01-1.06 0L5.22 8.28a.75.75 0 010-1.06z" clipRule="evenodd" />
+            </svg>
+          </button>
         </div>
-        <div className="grid divide-y divide-border-default sm:grid-cols-2 sm:divide-x sm:divide-y-0 xl:grid-cols-5">
+        <div className="grid grid-cols-2 gap-px bg-border-subtle sm:gap-0 sm:bg-transparent sm:divide-x sm:divide-border-default xl:grid-cols-5">
           <BreakdownValue
             label="Total return"
             value={formatSignedMoney(activityAdjustedReturn, isAmountsVisible)}
             detail={activityReturnPercent === null ? "No invested capital" : formatSignedPercent(activityReturnPercent)}
             tone={valueTone(activityAdjustedReturn)}
+            className="col-span-2 sm:col-span-1"
           />
-          <BreakdownValue
-            label="Realized P/L"
-            value={formatSignedMoney(transactionPerformance.realizedGainAed, isAmountsVisible)}
-            detail="Closed trades"
-            tone={valueTone(transactionPerformance.realizedGainAed)}
-          />
-          <BreakdownValue
-            label="Dividends"
-            value={formatSignedMoney(transactionPerformance.dividendIncomeAed, isAmountsVisible)}
-            detail={`${transactionPerformance.incomeSources.reduce((sum, source) => sum + source.count, 0)} payment${transactionPerformance.incomeSources.reduce((sum, source) => sum + source.count, 0) === 1 ? "" : "s"}`}
-            tone={valueTone(transactionPerformance.dividendIncomeAed)}
-          />
-          <BreakdownValue
-            label="Fees"
-            value={
-              transactionPerformance.totalFeesAed
-                ? `-${formatOrMask(transactionPerformance.totalFeesAed, "AED", isAmountsVisible)}`
-                : formatOrMask(0, "AED", isAmountsVisible)
-            }
-            detail="Trade and account fees"
-            tone={transactionPerformance.totalFeesAed ? "text-accent-loss" : "text-text-primary"}
-          />
-          <BreakdownValue
-            label="Net cash flow"
-            value={
-              transactionPerformance.depositsAed || transactionPerformance.withdrawalsAed
-                ? formatSignedMoney(transactionPerformance.netCashFlowAed, isAmountsVisible)
-                : "—"
-            }
-            detail={
-              transactionPerformance.depositsAed || transactionPerformance.withdrawalsAed
-                ? "Deposits less withdrawals"
-                : "No cash entries"
-            }
-          />
+          <div className={activityBreakdownOpen ? "contents" : "hidden sm:contents"}>
+            <BreakdownValue
+              label="Realized P/L"
+              value={formatSignedMoney(transactionPerformance.realizedGainAed, isAmountsVisible)}
+              detail="Closed trades"
+              tone={valueTone(transactionPerformance.realizedGainAed)}
+            />
+            <BreakdownValue
+              label="Dividends"
+              value={formatSignedMoney(transactionPerformance.dividendIncomeAed, isAmountsVisible)}
+              detail={`${transactionPerformance.incomeSources.reduce((sum, source) => sum + source.count, 0)} payment${transactionPerformance.incomeSources.reduce((sum, source) => sum + source.count, 0) === 1 ? "" : "s"}`}
+              tone={valueTone(transactionPerformance.dividendIncomeAed)}
+            />
+            <BreakdownValue
+              label="Fees"
+              value={
+                transactionPerformance.totalFeesAed
+                  ? `-${formatOrMask(transactionPerformance.totalFeesAed, "AED", isAmountsVisible)}`
+                  : formatOrMask(0, "AED", isAmountsVisible)
+              }
+              detail="Trade and account fees"
+              tone={transactionPerformance.totalFeesAed ? "text-accent-loss" : "text-text-primary"}
+            />
+            <BreakdownValue
+              label="Net cash flow"
+              value={
+                transactionPerformance.depositsAed || transactionPerformance.withdrawalsAed
+                  ? formatSignedMoney(transactionPerformance.netCashFlowAed, isAmountsVisible)
+                  : "—"
+              }
+              detail={
+                transactionPerformance.depositsAed || transactionPerformance.withdrawalsAed
+                  ? "Deposits less withdrawals"
+                  : "No cash entries"
+              }
+            />
+          </div>
         </div>
 
         {transactionPerformance.incomeSources.length ? (
-          <div className="border-t border-border-default px-4 py-4 sm:px-5">
+          <div className={`${activityBreakdownOpen ? "block" : "hidden sm:block"} border-t border-border-default px-4 py-4 sm:px-5`}>
             <div className="text-xs font-medium text-text-muted">Dividend income by asset</div>
             <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
               {transactionPerformance.incomeSources.map((source) => (
@@ -425,12 +457,13 @@ export default function DashboardHistoryContent({
                 : benchmarkError || "Not enough overlapping market history for this period."}
           </p>
         </div>
-        <div className="grid divide-y divide-border-default sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+        <div className="grid grid-cols-3 gap-px bg-border-subtle sm:gap-0 sm:bg-transparent sm:divide-x sm:divide-border-default">
           <BreakdownValue
             label="Your portfolio"
             value={activityReturnPercent === null ? "—" : formatSignedPercent(activityReturnPercent)}
             detail="Activity-adjusted return"
             tone={valueTone(activityReturnPercent)}
+            hideDetailOnMobile
           />
           <BreakdownValue
             label="S&P 500"
@@ -443,6 +476,7 @@ export default function DashboardHistoryContent({
             }
             detail="Index price return"
             tone={valueTone(benchmarkPerformance?.returnPercent ?? null)}
+            hideDetailOnMobile
           />
           <BreakdownValue
             label="Ahead / behind"
@@ -455,6 +489,7 @@ export default function DashboardHistoryContent({
                   : "Behind the S&P 500"
             }
             tone={valueTone(relativePerformance)}
+            hideDetailOnMobile
           />
         </div>
       </section>
@@ -499,7 +534,7 @@ export default function DashboardHistoryContent({
         </div>
 
         <div className="divide-y divide-border-default sm:hidden">
-          {[...activity].reverse().map((point) => (
+          {reversedActivity.slice(0, mobileActivityLimit).map((point) => (
             <MobileActivityRow
               key={point.snapshot.snapshotDate}
               point={point}
@@ -509,6 +544,20 @@ export default function DashboardHistoryContent({
           {!activity.length ? (
             <div className="px-5 py-8 text-center text-sm text-text-secondary">
               No activity in this period.
+            </div>
+          ) : null}
+          {reversedActivity.length > mobileActivityLimit ? (
+            <div className="px-4 py-3">
+              <button
+                type="button"
+                onClick={() => {
+                  tap();
+                  setMobileActivityLimit((current) => current + 10);
+                }}
+                className="inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-bg-elevated px-4 py-2.5 text-sm font-semibold text-text-secondary"
+              >
+                Show older activity
+              </button>
             </div>
           ) : null}
         </div>
@@ -526,7 +575,7 @@ export default function DashboardHistoryContent({
               </tr>
             </thead>
             <tbody className="divide-y divide-border-default">
-              {[...activity].reverse().map((point) => (
+              {reversedActivity.map((point) => (
                 <ActivityTableRow
                   key={point.snapshot.snapshotDate}
                   point={point}

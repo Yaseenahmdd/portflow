@@ -141,13 +141,14 @@ export default function TransactionModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-950/20 p-4 backdrop-blur-sm sm:items-center"
+      className="fixed inset-0 z-50 flex items-end justify-center overflow-y-auto bg-slate-950/30 p-0 backdrop-blur-sm sm:items-center sm:p-4"
       onClick={onClose}
     >
       <div
-        className="my-6 max-h-[calc(100dvh-3rem)] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white p-5 shadow-xl ring-1 ring-slate-200 sm:p-6"
+        className="mt-12 max-h-[calc(100dvh-3rem)] w-full max-w-3xl overflow-y-auto rounded-t-3xl bg-white p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] shadow-xl ring-1 ring-slate-200 sm:my-6 sm:rounded-2xl sm:p-6"
         onClick={(event) => event.stopPropagation()}
       >
+        <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-border-default sm:hidden" aria-hidden="true" />
         <form onSubmit={handleSubmit} className="space-y-5">
           <div className="flex items-start justify-between gap-4">
             <div>
