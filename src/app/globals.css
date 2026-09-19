@@ -234,12 +234,12 @@ body {
 }
 
 .portfolio-summary-scroll {
-  overflow-x: auto;
+  overflow-x: hidden;
 }
 
 .portfolio-summary-grid {
   display: grid;
-  grid-template-columns: minmax(400px, 2fr) repeat(2, minmax(210px, 1fr));
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .portfolio-summary-value-row {
@@ -251,10 +251,24 @@ body {
 }
 
 .portfolio-summary-sparkline {
-  width: 132px;
+  width: 96px;
   height: 40px;
   flex-shrink: 0;
   overflow: visible;
+}
+
+@media (min-width: 640px) {
+  .portfolio-summary-scroll {
+    overflow-x: auto;
+  }
+
+  .portfolio-summary-grid {
+    grid-template-columns: minmax(400px, 2fr) repeat(2, minmax(210px, 1fr));
+  }
+
+  .portfolio-summary-sparkline {
+    width: 132px;
+  }
 }
 
 .portfolio-summary-live-dot {

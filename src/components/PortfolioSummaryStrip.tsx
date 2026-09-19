@@ -115,7 +115,7 @@ export default function PortfolioSummaryStrip({
           </p>
         </div>
 
-          <div className="min-w-0 border-l border-border-subtle p-4 sm:p-6">
+          <div className="min-w-0 border-t border-border-subtle p-4 sm:border-l sm:border-t-0 sm:p-6">
             <div className="flex min-h-8 items-center gap-3" role="group" aria-label="Gain period">
               {(["today", "overall"] as const).map((option) => (
                 <button
@@ -136,14 +136,18 @@ export default function PortfolioSummaryStrip({
               {gainChange === null ? "Price data unavailable" : gainPercent === null ? "—" : formatSignedPercent(gainPercent)}
             </p>
           </div>
-          <div className="min-w-0 border-l border-border-subtle p-4 sm:p-6">
-            <div className="flex min-h-8 items-center text-[13px] text-text-secondary">{periodLabel} performance</div>
-            <div className={`mt-2 min-h-10 break-words text-lg font-semibold leading-10 tabular-nums sm:text-2xl ${valueTone(periodChange)}`}>
-              {periodChange === null ? "—" : formatSignedMoney(periodChange, isAmountsVisible)}
+          <div className="min-w-0 border-t border-border-subtle px-4 py-3 sm:border-l sm:border-t-0 sm:p-6">
+            <div className="flex items-center justify-between gap-4 sm:block">
+              <div className="flex min-h-8 items-center text-[13px] text-text-secondary">{periodLabel} performance</div>
+              <div className="min-w-0 text-right sm:text-left">
+                <div className={`break-words text-base font-semibold leading-6 tabular-nums sm:mt-2 sm:min-h-10 sm:text-2xl sm:leading-10 ${valueTone(periodChange)}`}>
+                  {periodChange === null ? "—" : formatSignedMoney(periodChange, isAmountsVisible)}
+                </div>
+                <p className="mt-0.5 text-[12px] leading-4 text-text-muted sm:mt-2 sm:text-[13px] sm:leading-5">
+                  {periodChange === null || periodReturnPercent === null ? "Not enough history" : formatSignedPercent(periodReturnPercent)}
+                </p>
+              </div>
             </div>
-            <p className="mt-2 text-[13px] leading-5 text-text-muted">
-              {periodChange === null || periodReturnPercent === null ? "Not enough history" : formatSignedPercent(periodReturnPercent)}
-            </p>
           </div>
       </div>
     </section>
