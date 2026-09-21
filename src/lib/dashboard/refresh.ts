@@ -48,18 +48,33 @@ export function applyRefreshResults(holdings: Holding[], results: PriceResult[])
       }
 
       case "indian-mf": {
-        const navData = result.data as { schemeCode: string; nav: number }[];
+        const navData = result.data as { schemeCode: string; nav: number; previousNav?: number }[];
         for (const nav of navData) {
           updateHoldingsAtIndexes(
             updated,
             getPriceIndexes(priceIndexes.mutualFunds, nav.schemeCode),
-            (holding) => ({
-              ...holding,
-              currentPrice: nav.nav,
-              previousClose: undefined,
-              dayChangePercent: undefined,
-              lastPriceUpdate: now,
-            })
+            (holding) => {
+              const existingPrice = Number(holding.currentPrice);
+              const priceChanged =
+                Number.isFinite(existingPrice) && existingPrice > 0 && existingPrice !== nav.nav;
+              const previousClose =
+                nav.previousNav && nav.previousNav > 0
+                  ? nav.previousNav
+                  : priceChanged
+                    ? existingPrice
+                    : holding.previousClose;
+
+              return {
+                ...holding,
+                currentPrice: nav.nav,
+                previousClose,
+                dayChangePercent:
+                  previousClose && previousClose > 0
+                    ? ((nav.nav - previousClose) / previousClose) * 100
+                    : undefined,
+                lastPriceUpdate: now,
+              };
+            }
           );
         }
         break;
@@ -132,13 +147,24 @@ export function applyRefreshResults(holdings: Holding[], results: PriceResult[])
           updateHoldingsAtIndexes(
             updated,
             getPriceIndexes(priceIndexes.crypto, ticker),
-            (holding) => ({
-              ...holding,
-              currentPrice: holding.currency === "AED" ? price.aed : price.usd,
-              previousClose: undefined,
-              dayChangePercent: price.usd_24h_change,
-              lastPriceUpdate: now,
-            })
+            (holding) => {
+              const currentPrice = holding.currency === "AED" ? price.aed : price.usd;
+              const previousClose =
+                holding.currency === "AED"
+                  ? price.previousCloseAed
+                  : price.previousCloseUsd;
+
+              return {
+                ...holding,
+                currentPrice,
+                previousClose,
+                dayChangePercent:
+                  previousClose && previousClose > 0
+                    ? ((currentPrice - previousClose) / previousClose) * 100
+                    : undefined,
+                lastPriceUpdate: now,
+              };
+            }
           );
         }
         break;

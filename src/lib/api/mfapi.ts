@@ -14,6 +14,7 @@ export interface MFNavResult {
   schemeName: string;
   nav: number;
   date: string;
+  previousNav?: number;
 }
 
 function errorMessage(error: unknown) {
@@ -22,6 +23,71 @@ function errorMessage(error: unknown) {
 
 function uniqueSchemeCodes(schemeCodes: string[]) {
   return [...new Set(schemeCodes.map((code) => code.trim()).filter(Boolean))];
+}
+
+function parseNavDate(value: string) {
+  const match = /^(\d{1,2})-([A-Za-z]{3}|\d{1,2})-(\d{4})$/.exec(value.trim());
+  if (!match) return null;
+
+  const monthNames = [
+    "jan", "feb", "mar", "apr", "may", "jun",
+    "jul", "aug", "sep", "oct", "nov", "dec",
+  ];
+  const numericMonth = Number(match[2]);
+  const month = Number.isFinite(numericMonth)
+    ? numericMonth - 1
+    : monthNames.indexOf(match[2].toLowerCase());
+  const timestamp = Date.UTC(Number(match[3]), month, Number(match[1]));
+
+  return month >= 0 && month <= 11 && Number.isFinite(timestamp) ? timestamp : null;
+}
+
+export function selectPreviousNav(
+  entries: Array<{ date?: unknown; nav?: unknown }>,
+  latestDate: string
+) {
+  const latestTimestamp = parseNavDate(latestDate);
+  if (latestTimestamp === null) return undefined;
+
+  return entries
+    .map((entry) => ({
+      timestamp: typeof entry.date === "string" ? parseNavDate(entry.date) : null,
+      nav: Number.parseFloat(String(entry.nav ?? "")),
+    }))
+    .filter(
+      (entry) =>
+        entry.timestamp !== null &&
+        entry.timestamp < latestTimestamp &&
+        Number.isFinite(entry.nav) &&
+        entry.nav > 0
+    )
+    .sort((left, right) => (right.timestamp ?? 0) - (left.timestamp ?? 0))[0]?.nav;
+}
+
+function formatIsoDate(timestamp: number) {
+  return new Date(timestamp).toISOString().slice(0, 10);
+}
+
+async function fetchPreviousMfapiNav(schemeCode: string, latestDate: string) {
+  const latestTimestamp = parseNavDate(latestDate);
+  if (latestTimestamp === null) return undefined;
+
+  const startDate = formatIsoDate(latestTimestamp - 14 * 24 * 60 * 60 * 1000);
+  const endDate = formatIsoDate(latestTimestamp);
+  const response = await fetch(
+    `${MFAPI_BASE_URL}/${schemeCode}?startDate=${startDate}&endDate=${endDate}`,
+    {
+      next: { revalidate: 30 * 60 },
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(`MFAPI history error: ${response.status}`);
+  }
+
+  const data = await response.json();
+  return selectPreviousNav(Array.isArray(data?.data) ? data.data : [], latestDate);
 }
 
 /** Parse both AMFI's current feed and its legacy six-column format. */
@@ -153,6 +219,22 @@ export async function fetchMutualFundNav(schemeCodes: string[]): Promise<MFNavRe
   if (!results.length) {
     throw new Error("Unable to fetch mutual-fund NAVs from AMFI or MFAPI");
   }
+
+  results = await Promise.all(
+    results.map(async (result) => {
+      try {
+        return {
+          ...result,
+          previousNav: await fetchPreviousMfapiNav(result.schemeCode, result.date),
+        };
+      } catch (error) {
+        console.warn(
+          `[prices/indian-mf] Previous NAV unavailable for scheme ${result.schemeCode}: ${errorMessage(error)}`
+        );
+        return result;
+      }
+    })
+  );
 
   const resultsByCode = new Map(results.map((result) => [result.schemeCode, result]));
   return requestedCodes.flatMap((code) => {

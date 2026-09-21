@@ -6,6 +6,7 @@ import { formatOrMask } from "@/lib/utils";
 import { tap, toggle } from "@/lib/haptics";
 
 type GainView = "today" | "overall";
+type DisplayCurrency = "AED" | "USD";
 
 interface Props {
   holdingsCount: number;
@@ -20,22 +21,27 @@ interface Props {
   periodChange: number | null;
   periodReturnPercent: number | null;
   isAmountsVisible: boolean;
+  displayCurrency: DisplayCurrency;
 }
 
-function formatSignedMoney(value: number, isVisible: boolean) {
+function formatSignedMoney(value: number, currency: DisplayCurrency, isVisible: boolean) {
   const sign = value > 0 ? "+" : value < 0 ? "−" : "";
-  return `${sign}${formatOrMask(Math.abs(value), "AED", isVisible)}`;
+  return `${sign}${formatOrMask(Math.abs(value), currency, isVisible)}`;
 }
 
 function formatSignedPercent(value: number) {
   return `${value >= 0 ? "+" : ""}${value.toFixed(2)}%`;
 }
 
-function formatAmountWithoutCurrency(value: number, isVisible: boolean) {
-  return formatOrMask(value, "AED", isVisible).replace(/^AED\s*/, "");
+function formatAmountWithoutCurrency(value: number, currency: DisplayCurrency, isVisible: boolean) {
+  return formatOrMask(value, currency, isVisible).replace(currency === "AED" ? /^AED\s*/ : /^\$\s*/, "");
 }
 
-function DirhamSymbol({ className }: { className: string }) {
+function CurrencySymbol({ currency, className }: { currency: DisplayCurrency; className: string }) {
+  if (currency === "USD") {
+    return <span className={className} aria-hidden="true">$</span>;
+  }
+
   return (
     <span className={`inline-flex items-center justify-center leading-none ${className}`} dir="rtl" lang="ar" aria-hidden="true">
       د.إ
@@ -47,18 +53,20 @@ function MobileReturnValue({
   value,
   percent,
   isVisible,
+  currency,
 }: {
   value: number;
   percent: number | null;
   isVisible: boolean;
+  currency: DisplayCurrency;
 }) {
   const sign = value > 0 ? "+" : value < 0 ? "−" : "";
 
   return (
     <span className="inline-flex flex-wrap items-center justify-end gap-x-1 whitespace-nowrap">
       <span>{sign}</span>
-      <DirhamSymbol className="shrink-0 text-[11px] font-medium" />
-      <span>{formatAmountWithoutCurrency(Math.abs(value), isVisible)}</span>
+      <CurrencySymbol currency={currency} className="shrink-0 text-[11px] font-medium" />
+      <span>{formatAmountWithoutCurrency(Math.abs(value), currency, isVisible)}</span>
       {percent === null ? null : <span>({formatSignedPercent(percent)})</span>}
     </span>
   );
@@ -105,11 +113,12 @@ export default function PortfolioSummaryStrip({
   periodChange,
   periodReturnPercent,
   isAmountsVisible,
+  displayCurrency,
 }: Props) {
   const [gainView, setGainView] = useState<GainView>("today");
   const gainChange = gainView === "today" ? todayChange : totalGainLoss;
   const gainPercent = gainView === "today" ? todayChangePercent : totalGainLossPercent;
-  const portfolioAmount = formatOrMask(portfolioValue, "AED", isAmountsVisible).replace(/^AED\s*/, "");
+  const portfolioAmount = formatAmountWithoutCurrency(portfolioValue, displayCurrency, isAmountsVisible);
 
   return (
     <>
@@ -127,7 +136,7 @@ export default function PortfolioSummaryStrip({
               </svg>
             </Link>
             <div className="mt-2 flex min-w-0 items-baseline gap-2 whitespace-nowrap font-semibold tracking-[-0.035em]">
-              <DirhamSymbol className="shrink-0 text-base font-medium text-text-muted" />
+              <CurrencySymbol currency={displayCurrency} className="shrink-0 text-base font-medium text-text-muted" />
               <span className="truncate text-[2rem] leading-tight tabular-nums">{portfolioAmount}</span>
             </div>
           </div>
@@ -173,22 +182,22 @@ export default function PortfolioSummaryStrip({
             <span className="text-sm text-text-muted">Today returns</span>
             <span className={`text-right text-sm font-semibold tabular-nums ${valueTone(todayChange)}`}>
               {todayChange === null ? "—" : (
-                <MobileReturnValue value={todayChange} percent={todayChangePercent} isVisible={isAmountsVisible} />
+                <MobileReturnValue value={todayChange} percent={todayChangePercent} isVisible={isAmountsVisible} currency={displayCurrency} />
               )}
             </span>
           </div>
           <div className="flex items-baseline justify-between gap-4">
             <span className="text-sm text-text-muted">Total returns</span>
             <span className={`text-right text-sm font-semibold tabular-nums ${valueTone(totalGainLoss)}`}>
-              <MobileReturnValue value={totalGainLoss} percent={totalGainLossPercent} isVisible={isAmountsVisible} />
+              <MobileReturnValue value={totalGainLoss} percent={totalGainLossPercent} isVisible={isAmountsVisible} currency={displayCurrency} />
             </span>
           </div>
           <div className="flex items-baseline justify-between gap-4">
             <span className="text-sm text-text-muted">Invested</span>
             <span className="text-right text-sm font-semibold tabular-nums text-text-primary">
               <span className="inline-flex items-center justify-end gap-x-1 whitespace-nowrap">
-                <DirhamSymbol className="shrink-0 text-[11px] font-medium" />
-                <span>{formatAmountWithoutCurrency(investedAmount, isAmountsVisible)}</span>
+                <CurrencySymbol currency={displayCurrency} className="shrink-0 text-[11px] font-medium" />
+                <span>{formatAmountWithoutCurrency(investedAmount, displayCurrency, isAmountsVisible)}</span>
               </span>
             </span>
           </div>
@@ -222,13 +231,13 @@ export default function PortfolioSummaryStrip({
           </div>
           <div className="portfolio-summary-value-row mt-2 font-semibold tracking-[-0.03em]">
             <div className="flex items-baseline gap-x-2 whitespace-nowrap">
-            <span className="text-sm font-normal tracking-normal text-text-muted sm:text-base">AED</span>
+            <span className="text-sm font-normal tracking-normal text-text-muted sm:text-base">{displayCurrency}</span>
             <span className="text-[1.75rem] leading-10 tabular-nums sm:text-[2rem]">{portfolioAmount}</span>
             </div>
             <PortfolioValueSparkline points={portfolioHistory} />
           </div>
           <p className="mt-2 text-[13px] leading-5 text-text-muted">
-            Invested <span className="ml-1 tabular-nums text-text-secondary">{formatOrMask(investedAmount, "AED", isAmountsVisible)}</span>
+            Invested <span className="ml-1 tabular-nums text-text-secondary">{formatOrMask(investedAmount, displayCurrency, isAmountsVisible)}</span>
           </p>
         </div>
 
@@ -247,7 +256,7 @@ export default function PortfolioSummaryStrip({
               ))}
             </div>
             <div className={`mt-2 min-h-10 break-words text-lg font-semibold leading-10 tabular-nums sm:text-2xl ${valueTone(gainChange)}`}>
-              {gainChange === null ? "—" : formatSignedMoney(gainChange, isAmountsVisible)}
+              {gainChange === null ? "—" : formatSignedMoney(gainChange, displayCurrency, isAmountsVisible)}
             </div>
             <p className="mt-2 text-[13px] leading-5 text-text-muted">
               {gainChange === null ? "Price data unavailable" : gainPercent === null ? "—" : formatSignedPercent(gainPercent)}
@@ -258,7 +267,7 @@ export default function PortfolioSummaryStrip({
               <div className="flex min-h-8 items-center text-[13px] text-text-secondary">{periodLabel} performance</div>
               <div className="min-w-0 text-right sm:text-left">
                 <div className={`break-words text-base font-semibold leading-6 tabular-nums sm:mt-2 sm:min-h-10 sm:text-2xl sm:leading-10 ${valueTone(periodChange)}`}>
-                  {periodChange === null ? "—" : formatSignedMoney(periodChange, isAmountsVisible)}
+                  {periodChange === null ? "—" : formatSignedMoney(periodChange, displayCurrency, isAmountsVisible)}
                 </div>
                 <p className="mt-0.5 text-[12px] leading-4 text-text-muted sm:mt-2 sm:text-[13px] sm:leading-5">
                   {periodChange === null || periodReturnPercent === null ? "Not enough history" : formatSignedPercent(periodReturnPercent)}

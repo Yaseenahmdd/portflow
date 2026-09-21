@@ -15,6 +15,7 @@ import {
   type TransactionType,
 } from "@/lib/transactions";
 import { formatOrMask } from "@/lib/utils";
+import { useDisplayCurrency } from "@/components/dashboard/DisplayCurrencyProvider";
 
 const FILTERS: Array<{ label: string; value: "all" | TransactionType }> = [
   { label: "All", value: "all" },
@@ -91,6 +92,7 @@ function formatActivityGroupDate(date: string) {
 }
 
 export default function TransactionsPage() {
+  const { displayCurrency, convertAed } = useDisplayCurrency();
   const {
     holdings,
     setHoldings,
@@ -339,7 +341,7 @@ export default function TransactionsPage() {
         <SummaryCard label="Income entries" value={String(totals.income)} note="Dividends and distributions" />
         <SummaryCard
           label="Realized P/L"
-          value={formatOrMask(reconciliation.realizedGainAed, "AED", isAmountsVisible)}
+          value={formatOrMask(convertAed(reconciliation.realizedGainAed), displayCurrency, isAmountsVisible)}
           note="Closed trades, after fees"
         />
       </div>

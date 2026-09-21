@@ -4,6 +4,7 @@ import { useEffect, useMemo } from "react";
 import DashboardOverviewContent from "@/components/dashboard/DashboardOverviewContent";
 import DashboardPullToRefreshIndicator from "@/components/dashboard/DashboardPullToRefreshIndicator";
 import { useDashboardStateContext } from "@/components/dashboard/DashboardStateProvider";
+import { getOvernightTotalReturnChange } from "@/lib/portfolio-analytics";
 import { timeAgo } from "@/lib/utils";
 
 export default function DashboardPage() {
@@ -38,32 +39,8 @@ export default function DashboardPage() {
     return new Date(Math.max(...timestamps)).toISOString();
   }, [computedHoldings]);
   const todayPerformance = useMemo(() => {
-    const reportingHoldings = computedHoldings.filter((holding) => holding.hasDayGain);
-
-    if (!reportingHoldings.length) {
-      return {
-        changeAed: null,
-        changePercent: null,
-      };
-    }
-
-    const changeAed = reportingHoldings.reduce(
-      (sum, holding) => sum + holding.dayGainAed,
-      0
-    );
-    const previousPortfolioValue = reportingHoldings.reduce(
-      (sum, holding) => sum + holding.currentValueAed - holding.dayGainAed,
-      0
-    );
-
-    return {
-      changeAed,
-      changePercent:
-        previousPortfolioValue > 0
-          ? (changeAed / previousPortfolioValue) * 100
-          : null,
-    };
-  }, [computedHoldings]);
+    return getOvernightTotalReturnChange(snapshots, summary.totalGainLoss);
+  }, [snapshots, summary.totalGainLoss]);
 
   useEffect(() => {
     window.dispatchEvent(

@@ -5,6 +5,7 @@ import AllocationCharts from "@/components/AllocationCharts";
 import PortfolioSummaryStrip from "@/components/PortfolioSummaryStrip";
 import PortfolioTrendChart from "@/components/PortfolioTrendChart";
 import DashboardRefreshNotices from "@/components/dashboard/DashboardRefreshNotices";
+import { useDisplayCurrency } from "@/components/dashboard/DisplayCurrencyProvider";
 import { tap } from "@/lib/haptics";
 import type { ComputedHolding } from "@/lib/constants";
 import type { RefreshFailure } from "@/lib/dashboard/refresh";
@@ -67,6 +68,7 @@ export default function DashboardOverviewContent({
   refreshFailures,
 }: DashboardOverviewContentProps) {
   const [selectedRange, setSelectedRange] = useState<HistoryRange>("1M");
+  const { displayCurrency, displayRate, convertAed } = useDisplayCurrency();
   const filteredSnapshots = useMemo(
     () => filterSnapshotsByRange(snapshots, selectedRange),
     [selectedRange, snapshots]
@@ -79,10 +81,10 @@ export default function DashboardOverviewContent({
     () =>
       filteredSnapshots.map((snapshot) => ({
         date: snapshot.snapshotDate,
-        invested: snapshot.totalInvestedAed,
-        value: snapshot.totalValueAed,
+        invested: snapshot.totalInvestedAed * displayRate,
+        value: snapshot.totalValueAed * displayRate,
       })),
-    [filteredSnapshots]
+    [displayRate, filteredSnapshots]
   );
   const periodLabel = selectedRange === "ALL" ? "All-time" : selectedRange;
 
@@ -90,17 +92,22 @@ export default function DashboardOverviewContent({
     <>
       <PortfolioSummaryStrip
         holdingsCount={holdings.length}
-        portfolioValue={totalValue}
+        portfolioValue={convertAed(totalValue)}
         portfolioHistory={trendChartData}
-        investedAmount={totalInvested}
-        totalGainLoss={totalGainLoss}
+        investedAmount={convertAed(totalInvested)}
+        totalGainLoss={convertAed(totalGainLoss)}
         totalGainLossPercent={totalGainLossPercent}
-        todayChange={todayChange}
+        todayChange={todayChange === null ? null : convertAed(todayChange)}
         todayChangePercent={todayChangePercent}
         periodLabel={periodLabel}
-        periodChange={periodPerformance.adjustedChangeAed}
+        periodChange={
+          periodPerformance.adjustedChangeAed === null
+            ? null
+            : convertAed(periodPerformance.adjustedChangeAed)
+        }
         periodReturnPercent={periodPerformance.returnPercent}
         isAmountsVisible={isAmountsVisible}
+        displayCurrency={displayCurrency}
       />
 
       <DashboardRefreshNotices refreshError={refreshError} refreshFailures={refreshFailures} />
@@ -108,6 +115,7 @@ export default function DashboardOverviewContent({
       <PortfolioTrendChart
         chartData={trendChartData}
         isAmountsVisible={isAmountsVisible}
+        displayCurrency={displayCurrency}
         subtitle={getDateSpan(filteredSnapshots)}
         minimumDataPoints={2}
         emptyMessage={`Not enough history for ${periodLabel}.`}
@@ -145,7 +153,13 @@ export default function DashboardOverviewContent({
         }
       />
 
-      <AllocationCharts holdings={holdings} totalValue={totalValue} totalInvested={totalInvested} />
+      <AllocationCharts
+        holdings={holdings}
+        totalValue={totalValue}
+        totalInvested={totalInvested}
+        displayCurrency={displayCurrency}
+        displayRate={displayRate}
+      />
     </>
   );
 }

@@ -4,6 +4,7 @@ import { useEffect, useMemo } from "react";
 import type { Holding } from "@/lib/constants";
 import { tap } from "@/lib/haptics";
 import { computeHolding, formatMoney, timeAgo, toNumber } from "@/lib/utils";
+import { useDisplayCurrency } from "@/components/dashboard/DisplayCurrencyProvider";
 
 interface Props {
   holding: Holding | null;
@@ -12,6 +13,7 @@ interface Props {
 }
 
 export default function HoldingDetailsModal({ holding, inrToAedRate, onClose }: Props) {
+  const { displayCurrency, convertAed } = useDisplayCurrency();
   const computed = useMemo(() => (holding ? computeHolding(holding, inrToAedRate) : null), [holding, inrToAedRate]);
 
   useEffect(() => {
@@ -70,7 +72,7 @@ export default function HoldingDetailsModal({ holding, inrToAedRate, onClose }: 
         <div className="mt-6 space-y-5 sm:hidden">
           <section className="grid grid-cols-2 gap-3">
             <MetricCard label="Current Value" value={formatMoney(computed.currentValue, holding.currency)} />
-            <MetricCard label="Investor Return" value={formatMoney(computed.gainLossAed, "AED")} detail={`${computed.gainLossPct.toFixed(2)}%`} tone={computed.gainLossAed >= 0 ? "positive" : "negative"} />
+            <MetricCard label="Investor Return" value={formatMoney(convertAed(computed.gainLossAed), displayCurrency)} detail={`${computed.gainLossPct.toFixed(2)}%`} tone={computed.gainLossAed >= 0 ? "positive" : "negative"} />
             <MetricCard label="Current Price" value={formatMoney(holding.currentPrice, holding.currency)} />
             <MetricCard label="Last Updated" value={timeAgo(holding.lastPriceUpdate)} />
           </section>
@@ -81,9 +83,9 @@ export default function HoldingDetailsModal({ holding, inrToAedRate, onClose }: 
               <MobileInfoRow label="Invested" value={formatMoney(computed.investedAmount, holding.currency)} />
               <MobileInfoRow label="Current Value" value={formatMoney(computed.currentValue, holding.currency)} />
               <MobileInfoRow label="AED Rate Used" value={computed.rateToAed.toFixed(4)} />
-              <MobileInfoRow label="Current Value in AED" value={formatMoney(computed.currentValueAed, "AED")} />
+              <MobileInfoRow label={`Current Value in ${displayCurrency}`} value={formatMoney(convertAed(computed.currentValueAed), displayCurrency)} />
               <MobileInfoRow label="Local Return" value={formatMoney(computed.gainLoss, holding.currency)} detail={`${computed.localGainLossPct.toFixed(2)}%`} />
-              <MobileInfoRow label="Investor Return (AED)" value={formatMoney(computed.gainLossAed, "AED")} detail={`${computed.gainLossPct.toFixed(2)}%`} />
+              <MobileInfoRow label={`Investor Return (${displayCurrency})`} value={formatMoney(convertAed(computed.gainLossAed), displayCurrency)} detail={`${computed.gainLossPct.toFixed(2)}%`} />
             </div>
           </section>
 
@@ -152,9 +154,9 @@ export default function HoldingDetailsModal({ holding, inrToAedRate, onClose }: 
               <PreviewRow label="Invested" value={formatMoney(computed.investedAmount, holding.currency)} />
               <PreviewRow label="Current Value" value={formatMoney(computed.currentValue, holding.currency)} />
               <PreviewRow label="AED Rate Used" value={computed.rateToAed.toFixed(4)} />
-              <PreviewRow label="Current Value in AED" value={formatMoney(computed.currentValueAed, "AED")} />
+              <PreviewRow label={`Current Value in ${displayCurrency}`} value={formatMoney(convertAed(computed.currentValueAed), displayCurrency)} />
               <PreviewRow label="Local Return" value={`${formatMoney(computed.gainLoss, holding.currency)} (${computed.localGainLossPct.toFixed(2)}%)`} />
-              <PreviewRow label="Investor Return (AED)" value={`${formatMoney(computed.gainLossAed, "AED")} (${computed.gainLossPct.toFixed(2)}%)`} />
+              <PreviewRow label={`Investor Return (${displayCurrency})`} value={`${formatMoney(convertAed(computed.gainLossAed), displayCurrency)} (${computed.gainLossPct.toFixed(2)}%)`} />
             </div>
           </div>
 

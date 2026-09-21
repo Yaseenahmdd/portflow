@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ALLOCATION_CLASS_OPTIONS, ASSET_CLASS_OPTIONS, CURRENCY_OPTIONS, GEOGRAPHY_OPTIONS, PLATFORM_OPTIONS, RISK_OPTIONS, type Currency, type Holding } from "@/lib/constants";
 import { tap, success as hapticSuccess } from "@/lib/haptics";
 import { computeHolding, formatMoney, toNumber } from "@/lib/utils";
+import { useDisplayCurrency } from "@/components/dashboard/DisplayCurrencyProvider";
 
 interface Props {
   holding: Holding | null;
@@ -38,6 +39,7 @@ export default function HoldingModal({
   onSave,
   onClose,
 }: Props) {
+  const { displayCurrency, convertAed } = useDisplayCurrency();
   const [form, setForm] = useState<Holding>(() => {
     if (holding) {
       if (!holding.purchases && holding.quantity > 0) {
@@ -148,9 +150,9 @@ export default function HoldingModal({
               <PreviewRow label="Invested" value={formatMoney(preview.investedAmount, form.currency || "AED")} />
               <PreviewRow label="Current Value" value={formatMoney(preview.currentValue, form.currency || "AED")} />
               <PreviewRow label="AED Rate Used" value={preview.rateToAed.toFixed(4)} />
-              <PreviewRow label="Current Value in AED" value={formatMoney(preview.currentValueAed, "AED")} />
+              <PreviewRow label={`Current Value in ${displayCurrency}`} value={formatMoney(convertAed(preview.currentValueAed), displayCurrency)} />
               <PreviewRow label="Local Return" value={`${formatMoney(preview.gainLoss, form.currency || "AED")} (${preview.localGainLossPct.toFixed(2)}%)`} />
-              <PreviewRow label="Investor Return (AED)" value={`${formatMoney(preview.gainLossAed, "AED")} (${preview.gainLossPct.toFixed(2)}%)`} />
+              <PreviewRow label={`Investor Return (${displayCurrency})`} value={`${formatMoney(convertAed(preview.gainLossAed), displayCurrency)} (${preview.gainLossPct.toFixed(2)}%)`} />
             </div>
           </div>
 

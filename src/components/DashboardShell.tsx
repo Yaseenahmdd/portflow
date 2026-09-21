@@ -8,6 +8,7 @@ import { requestDashboardRefresh } from "@/lib/dashboard/refresh-controller";
 import { useIsCompactViewport } from "@/hooks/useIsCompactViewport";
 import { usePathname, useRouter } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
+import { useDisplayCurrency } from "@/components/dashboard/DisplayCurrencyProvider";
 
 const THEME_STORAGE_KEY = "portflow-theme";
 const DASHBOARD_NAV_ITEMS = [
@@ -27,6 +28,7 @@ export default function DashboardShell({
   const router = useRouter();
   const pathname = usePathname();
   const isCompactViewport = useIsCompactViewport();
+  const { displayCurrency, setDisplayCurrency } = useDisplayCurrency();
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [isAmountsVisible, setIsAmountsVisible] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -220,6 +222,31 @@ export default function DashboardShell({
                 Portflow
               </Link>
               <div className="flex items-center gap-2 sm:gap-2.5">
+                <div
+                  className="inline-flex rounded-lg border border-border-subtle bg-bg-elevated p-0.5"
+                  role="group"
+                  aria-label="Display currency"
+                >
+                  {(["AED", "USD"] as const).map((currency) => (
+                    <button
+                      key={currency}
+                      type="button"
+                      aria-pressed={displayCurrency === currency}
+                      onClick={() => {
+                        tap();
+                        setDisplayCurrency(currency);
+                      }}
+                      className={`rounded-md px-2 py-1.5 text-[11px] font-semibold transition sm:px-2.5 ${
+                        displayCurrency === currency
+                          ? "bg-bg-card text-text-primary shadow-sm"
+                          : "text-text-muted hover:text-text-primary"
+                      }`}
+                    >
+                      {currency}
+                    </button>
+                  ))}
+                </div>
+
                 {statusMeta ? (
                   <div className="hidden items-center text-xs text-text-muted xl:flex">
                     <span>{statusMeta.lastRefresh}</span>

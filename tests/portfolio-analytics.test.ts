@@ -6,6 +6,7 @@ import {
   getContributionAdjustedPerformance,
   getHistorySummary,
   getMaxDrawdown,
+  getOvernightTotalReturnChange,
   getPortfolioActivity,
   type HistoryRange,
 } from "../src/lib/portfolio-analytics.ts";
@@ -89,6 +90,34 @@ test("getContributionAdjustedPerformance reports growth when invested capital is
   assert.equal(performance.adjustedChangeAed, 100);
   assert.ok(Math.abs((performance.returnPercent ?? 0) - 10) < 1e-9);
   assert.equal(performance.estimatedContributionsAed, 0);
+});
+
+test("getOvernightTotalReturnChange subtracts yesterday night's total return", () => {
+  const performance = getOvernightTotalReturnChange(
+    [
+      snapshot("2026-09-19", 1050, 1000),
+      snapshot("2026-09-20", 1080, 1000),
+      snapshot("2026-09-21", 1100, 1000),
+    ],
+    100,
+    new Date("2026-09-21T08:00:00.000Z")
+  );
+
+  assert.equal(performance.changeAed, 20);
+  assert.ok(Math.abs((performance.changePercent ?? 0) - (20 / 1080) * 100) < 1e-9);
+  assert.equal(performance.baselineDate, "2026-09-20");
+});
+
+test("getOvernightTotalReturnChange does not substitute an older snapshot for yesterday", () => {
+  const performance = getOvernightTotalReturnChange(
+    [snapshot("2026-09-19", 1050, 1000)],
+    100,
+    new Date("2026-09-21T08:00:00.000Z")
+  );
+
+  assert.equal(performance.changeAed, null);
+  assert.equal(performance.changePercent, null);
+  assert.equal(performance.baselineDate, "2026-09-20");
 });
 
 test("getContributionAdjustedPerformance excludes added capital and uses closing invested cost", () => {

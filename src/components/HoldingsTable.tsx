@@ -5,6 +5,7 @@ import { useIsCompactViewport } from "@/hooks/useIsCompactViewport";
 import { ASSET_CLASS_OPTIONS, GEOGRAPHY_OPTIONS, RISK_OPTIONS, type ComputedHolding, type Holding } from "@/lib/constants";
 import { tap, toggle, medium, destructive as hapticDestructive } from "@/lib/haptics";
 import { formatOrMask, timeAgo } from "@/lib/utils";
+import { useDisplayCurrency } from "@/components/dashboard/DisplayCurrencyProvider";
 
 interface Props {
   holdings: ComputedHolding[];
@@ -35,6 +36,11 @@ const DEFAULT_MOBILE_FILTERS: MobileFilterState = {
 
 export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEdit, onDelete, onPriceUpdate, onAddHolding }: Props) {
   const isCompactViewport = useIsCompactViewport();
+  const { displayCurrency, convertAed } = useDisplayCurrency();
+  const formatPortfolioAmount = (value: number) =>
+    formatOrMask(convertAed(value), displayCurrency, isAmountsVisible);
+  const formatPortfolioAmountWithoutCurrency = (value: number) =>
+    formatPortfolioAmount(value).replace(displayCurrency === "AED" ? /^AED\s*/ : /^\$\s*/, "");
   const [filters, setFilters] = useState<FilterState>({
     ...DEFAULT_MOBILE_FILTERS,
     search: "",
@@ -646,10 +652,10 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
                   {mobileColumn3Mode === "value" ? (
                     <>
                       <div className="font-mono text-[12px] font-semibold leading-[1.15] text-slate-900">
-                        {formatOrMask(holding.currentValueAed, "AED", isAmountsVisible)}
+                        {formatPortfolioAmount(holding.currentValueAed)}
                       </div>
                       <div className="mt-[3px] font-mono text-[9px] font-normal leading-[1.15] text-slate-400">
-                        ({formatOrMask(holding.investedAmountAed, "AED", isAmountsVisible).replace("AED", "").trim()})
+                        ({formatPortfolioAmountWithoutCurrency(holding.investedAmountAed)})
                       </div>
                     </>
                   ) : mobileColumn3Mode === "price" ? (
@@ -664,7 +670,7 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
                   ) : (
                     <>
                       <div className={`font-mono text-[12px] font-semibold leading-[1.15] ${getMobileValueTone(holding.gainLossAed)}`}>
-                        {formatOrMask(holding.gainLossAed, "AED", isAmountsVisible)}
+                        {formatPortfolioAmount(holding.gainLossAed)}
                       </div>
                       <div className="mt-[3px] text-[9px] font-normal leading-[1.15] text-slate-500">
                         {formatSignedPercent(holding.gainLossPct)}
@@ -743,7 +749,7 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
                 <div>(Invested)</div>
               </SortHeader>
               <SortHeader label="Day Gain" sortKey="dayGain" currentKey={sortKey} dir={sortDir} onSort={handleSort} />
-              <SortHeader label="P/L (AED)" sortKey="pl" currentKey={sortKey} dir={sortDir} onSort={handleSort} />
+              <SortHeader label={`P/L (${displayCurrency})`} sortKey="pl" currentKey={sortKey} dir={sortDir} onSort={handleSort} />
               <th className="px-3 py-3">Updated</th>
               <th className="px-3 py-3" />
             </tr>
@@ -788,17 +794,17 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
                   </td>
                   <td className="px-3 py-3">
                     <div className="font-mono text-slate-900">
-                      {formatOrMask(holding.currentValueAed, "AED", isAmountsVisible)}
+                      {formatPortfolioAmount(holding.currentValueAed)}
                     </div>
                     <div className="mt-0.5 font-mono text-xs text-slate-500">
-                      ({formatOrMask(holding.investedAmountAed, "AED", isAmountsVisible).replace("AED", "").trim()})
+                      ({formatPortfolioAmountWithoutCurrency(holding.investedAmountAed)})
                     </div>
                   </td>
                   <td className="px-3 py-3">
                     {holding.hasDayGain ? (
                       <>
                         <div className={`font-mono font-medium ${holding.dayGainAed >= 0 ? "text-green-600" : "text-red-600"}`}>
-                          {formatOrMask(holding.dayGainAed, "AED", isAmountsVisible)}
+                          {formatPortfolioAmount(holding.dayGainAed)}
                         </div>
                         <div className={`mt-0.5 text-xs ${holding.dayGainAed >= 0 ? "text-green-600/80" : "text-red-600/80"}`}>
                           {holding.dayGainPct === null ? "—" : formatSignedPercent(holding.dayGainPct)}
@@ -813,7 +819,7 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
                   </td>
                   <td className="px-3 py-3">
                     <div className={`font-mono font-medium ${holding.gainLossAed >= 0 ? "text-green-600" : "text-red-600"}`}>
-                      {formatOrMask(holding.gainLossAed, "AED", isAmountsVisible)}
+                      {formatPortfolioAmount(holding.gainLossAed)}
                     </div>
                     <div className="mt-0.5 text-xs text-slate-500">
                       {formatSignedPercent(holding.gainLossPct)}

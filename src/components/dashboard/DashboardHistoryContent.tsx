@@ -20,6 +20,7 @@ import type { PortfolioSnapshot } from "@/lib/portfolio-snapshots";
 import { getTransactionPerformance } from "@/lib/transaction-performance";
 import type { PortfolioTransaction } from "@/lib/transactions";
 import { formatMoney, formatOrMask } from "@/lib/utils";
+import { useDisplayCurrency, type DisplayCurrency } from "@/components/dashboard/DisplayCurrencyProvider";
 
 interface DashboardHistoryContentProps {
   holdings: ComputedHolding[];
@@ -43,13 +44,13 @@ interface BenchmarkLoadState {
   error: string | null;
 }
 
-function formatSignedMoney(value: number, isVisible: boolean) {
+function formatSignedMoney(value: number, currency: DisplayCurrency, isVisible: boolean) {
   if (!isVisible) {
     const sign = value > 0 ? "+" : value < 0 ? "-" : "";
-    return `${sign}${formatOrMask(Math.abs(value), "AED", false)}`;
+    return `${sign}${formatOrMask(Math.abs(value), currency, false)}`;
   }
 
-  const formatted = formatMoney(Math.abs(value), "AED");
+  const formatted = formatMoney(Math.abs(value), currency);
   if (value > 0) return `+${formatted}`;
   if (value < 0) return `-${formatted}`;
   return formatted;
@@ -145,6 +146,11 @@ export default function DashboardHistoryContent({
   inrToAedRate,
   isAmountsVisible,
 }: DashboardHistoryContentProps) {
+  const { displayCurrency, convertAed } = useDisplayCurrency();
+  const formatAed = (value: number) =>
+    formatOrMask(convertAed(value), displayCurrency, isAmountsVisible);
+  const formatSignedAed = (value: number) =>
+    formatSignedMoney(convertAed(value), displayCurrency, isAmountsVisible);
   const [selectedRange, setSelectedRange] = useState<HistoryRange>("1M");
   const [activityBreakdownOpen, setActivityBreakdownOpen] = useState(false);
   const [mobileActivityLimit, setMobileActivityLimit] = useState(10);
@@ -307,7 +313,7 @@ export default function DashboardHistoryContent({
             label="Opening value"
             value={
               firstSnapshot
-                ? formatOrMask(firstSnapshot.totalValueAed, "AED", isAmountsVisible)
+                ? formatAed(firstSnapshot.totalValueAed)
                 : "—"
             }
           />
@@ -315,7 +321,7 @@ export default function DashboardHistoryContent({
             label="Net invested"
             value={
               performance.adjustedChangeAed !== null
-                ? formatSignedMoney(performance.estimatedContributionsAed, isAmountsVisible)
+                ? formatSignedAed(performance.estimatedContributionsAed)
                 : "—"
             }
           />
@@ -323,7 +329,7 @@ export default function DashboardHistoryContent({
             label="Market gain / loss"
             value={
               performance.adjustedChangeAed !== null
-                ? formatSignedMoney(performance.adjustedChangeAed, isAmountsVisible)
+                ? formatSignedAed(performance.adjustedChangeAed)
                 : "—"
             }
             detail={
@@ -337,7 +343,7 @@ export default function DashboardHistoryContent({
             label="Closing value"
             value={
               latestSnapshot
-                ? formatOrMask(latestSnapshot.totalValueAed, "AED", isAmountsVisible)
+                ? formatAed(latestSnapshot.totalValueAed)
                 : "—"
             }
           />
@@ -372,7 +378,7 @@ export default function DashboardHistoryContent({
         <div className="grid grid-cols-2 gap-px bg-border-subtle sm:gap-0 sm:bg-transparent sm:divide-x sm:divide-border-default xl:grid-cols-5">
           <BreakdownValue
             label="Total return"
-            value={formatSignedMoney(activityAdjustedReturn, isAmountsVisible)}
+            value={formatSignedAed(activityAdjustedReturn)}
             detail={activityReturnPercent === null ? "No invested capital" : formatSignedPercent(activityReturnPercent)}
             tone={valueTone(activityAdjustedReturn)}
             className="col-span-2 sm:col-span-1"
@@ -380,13 +386,13 @@ export default function DashboardHistoryContent({
           <div className={activityBreakdownOpen ? "contents" : "hidden sm:contents"}>
             <BreakdownValue
               label="Realized P/L"
-              value={formatSignedMoney(transactionPerformance.realizedGainAed, isAmountsVisible)}
+              value={formatSignedAed(transactionPerformance.realizedGainAed)}
               detail="Closed trades"
               tone={valueTone(transactionPerformance.realizedGainAed)}
             />
             <BreakdownValue
               label="Dividends"
-              value={formatSignedMoney(transactionPerformance.dividendIncomeAed, isAmountsVisible)}
+              value={formatSignedAed(transactionPerformance.dividendIncomeAed)}
               detail={`${transactionPerformance.incomeSources.reduce((sum, source) => sum + source.count, 0)} payment${transactionPerformance.incomeSources.reduce((sum, source) => sum + source.count, 0) === 1 ? "" : "s"}`}
               tone={valueTone(transactionPerformance.dividendIncomeAed)}
             />
@@ -394,8 +400,8 @@ export default function DashboardHistoryContent({
               label="Fees"
               value={
                 transactionPerformance.totalFeesAed
-                  ? `-${formatOrMask(transactionPerformance.totalFeesAed, "AED", isAmountsVisible)}`
-                  : formatOrMask(0, "AED", isAmountsVisible)
+                  ? `-${formatAed(transactionPerformance.totalFeesAed)}`
+                  : formatAed(0)
               }
               detail="Trade and account fees"
               tone={transactionPerformance.totalFeesAed ? "text-accent-loss" : "text-text-primary"}
@@ -404,7 +410,7 @@ export default function DashboardHistoryContent({
               label="Net cash flow"
               value={
                 transactionPerformance.depositsAed || transactionPerformance.withdrawalsAed
-                  ? formatSignedMoney(transactionPerformance.netCashFlowAed, isAmountsVisible)
+                  ? formatSignedAed(transactionPerformance.netCashFlowAed)
                   : "—"
               }
               detail={
@@ -429,7 +435,7 @@ export default function DashboardHistoryContent({
                     </div>
                   </div>
                   <div className="shrink-0 font-mono text-sm font-semibold text-accent-gain">
-                    {formatSignedMoney(source.amountAed, isAmountsVisible)}
+                    {formatSignedAed(source.amountAed)}
                   </div>
                 </div>
               ))}
@@ -606,6 +612,7 @@ function MarketMoveRow({
   move: PortfolioActivityPoint | null;
   isAmountsVisible: boolean;
 }) {
+  const { displayCurrency, convertAed } = useDisplayCurrency();
   const change = move?.marketChangeAed ?? null;
   const returnPercent = move?.marketReturnPercent ?? null;
 
@@ -620,7 +627,7 @@ function MarketMoveRow({
       <div className={`text-right font-mono text-sm font-semibold ${valueTone(change)}`}>
         {returnPercent !== null ? formatSignedPercent(returnPercent) : "—"}
         <div className="mt-1 text-xs font-normal">
-          {change !== null ? formatSignedMoney(change, isAmountsVisible) : ""}
+          {change !== null ? formatSignedMoney(convertAed(change), displayCurrency, isAmountsVisible) : ""}
         </div>
       </div>
     </div>
@@ -638,6 +645,8 @@ function ContributorList({
   isAmountsVisible: boolean;
   className?: string;
 }) {
+  const { displayCurrency, convertAed } = useDisplayCurrency();
+
   return (
     <div className={className}>
       <div className="text-xs font-medium text-text-muted">{label}</div>
@@ -649,7 +658,7 @@ function ContributorList({
               <div className="mt-0.5 text-[11px] text-text-muted">{holding.ticker || holding.assetClass}</div>
             </div>
             <div className={`shrink-0 text-right font-mono text-xs font-semibold ${valueTone(holding.gainLossAed)}`}>
-              {formatSignedMoney(holding.gainLossAed, isAmountsVisible)}
+              {formatSignedMoney(convertAed(holding.gainLossAed), displayCurrency, isAmountsVisible)}
               <div className="mt-0.5 font-normal">{formatSignedPercent(holding.gainLossPct)}</div>
             </div>
           </div>
@@ -669,6 +678,7 @@ function ActivityTableRow({
   point: PortfolioActivityPoint;
   isAmountsVisible: boolean;
 }) {
+  const { displayCurrency, convertAed } = useDisplayCurrency();
   const { snapshot, investedChangeAed, marketChangeAed } = point;
 
   return (
@@ -677,21 +687,21 @@ function ActivityTableRow({
         {formatDate(snapshot.snapshotDate)}
       </td>
       <td className="whitespace-nowrap px-5 py-2.5 text-right font-mono">
-        {formatOrMask(snapshot.totalValueAed, "AED", isAmountsVisible)}
+        {formatOrMask(convertAed(snapshot.totalValueAed), displayCurrency, isAmountsVisible)}
       </td>
       <td className="whitespace-nowrap px-5 py-2.5 text-right font-mono">
-        {formatOrMask(snapshot.totalInvestedAed, "AED", isAmountsVisible)}
+        {formatOrMask(convertAed(snapshot.totalInvestedAed), displayCurrency, isAmountsVisible)}
       </td>
       <td className="whitespace-nowrap px-5 py-2.5 text-right font-mono text-text-primary">
         {investedChangeAed === null || investedChangeAed === 0
           ? "—"
-          : formatSignedMoney(investedChangeAed, isAmountsVisible)}
+          : formatSignedMoney(convertAed(investedChangeAed), displayCurrency, isAmountsVisible)}
       </td>
       <td className={`whitespace-nowrap px-5 py-2.5 text-right font-mono ${valueTone(marketChangeAed)}`}>
-        {marketChangeAed === null ? "—" : formatSignedMoney(marketChangeAed, isAmountsVisible)}
+        {marketChangeAed === null ? "—" : formatSignedMoney(convertAed(marketChangeAed), displayCurrency, isAmountsVisible)}
       </td>
       <td className={`whitespace-nowrap px-5 py-2.5 text-right font-mono ${valueTone(snapshot.totalGainLossAed)}`}>
-        {formatSignedMoney(snapshot.totalGainLossAed, isAmountsVisible)}
+        {formatSignedMoney(convertAed(snapshot.totalGainLossAed), displayCurrency, isAmountsVisible)}
       </td>
     </tr>
   );
@@ -704,6 +714,7 @@ function MobileActivityRow({
   point: PortfolioActivityPoint;
   isAmountsVisible: boolean;
 }) {
+  const { displayCurrency, convertAed } = useDisplayCurrency();
   const { snapshot, investedChangeAed, marketChangeAed } = point;
 
   return (
@@ -711,23 +722,23 @@ function MobileActivityRow({
       <div className="flex items-start justify-between gap-4">
         <div className="text-sm font-semibold text-text-primary">{formatDate(snapshot.snapshotDate)}</div>
         <div className={`text-right font-mono text-sm font-semibold ${valueTone(snapshot.totalGainLossAed)}`}>
-          {formatSignedMoney(snapshot.totalGainLossAed, isAmountsVisible)}
+          {formatSignedMoney(convertAed(snapshot.totalGainLossAed), displayCurrency, isAmountsVisible)}
         </div>
       </div>
       <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 text-xs">
-        <ActivityValue label="Value" value={formatOrMask(snapshot.totalValueAed, "AED", isAmountsVisible)} />
-        <ActivityValue label="Invested" value={formatOrMask(snapshot.totalInvestedAed, "AED", isAmountsVisible)} />
+        <ActivityValue label="Value" value={formatOrMask(convertAed(snapshot.totalValueAed), displayCurrency, isAmountsVisible)} />
+        <ActivityValue label="Invested" value={formatOrMask(convertAed(snapshot.totalInvestedAed), displayCurrency, isAmountsVisible)} />
         <ActivityValue
           label="Capital flow"
           value={
             investedChangeAed === null || investedChangeAed === 0
               ? "—"
-              : formatSignedMoney(investedChangeAed, isAmountsVisible)
+              : formatSignedMoney(convertAed(investedChangeAed), displayCurrency, isAmountsVisible)
           }
         />
         <ActivityValue
           label="Market move"
-          value={marketChangeAed === null ? "—" : formatSignedMoney(marketChangeAed, isAmountsVisible)}
+          value={marketChangeAed === null ? "—" : formatSignedMoney(convertAed(marketChangeAed), displayCurrency, isAmountsVisible)}
           tone={valueTone(marketChangeAed)}
         />
       </div>

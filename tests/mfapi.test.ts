@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { parseAmfiNavFeed } from "../src/lib/api/mfapi.ts";
+import { parseAmfiNavFeed, selectPreviousNav } from "../src/lib/api/mfapi.ts";
 
 test("parseAmfiNavFeed reads the current eight-column AMFI format", () => {
   const feed = [
@@ -41,4 +41,18 @@ test("parseAmfiNavFeed reads the legacy AMFI format and filters invalid rows", (
       date: "27-Aug-2026",
     },
   ]);
+});
+
+test("selectPreviousNav uses the latest market day before the current NAV date", () => {
+  assert.equal(
+    selectPreviousNav(
+      [
+        { date: "20-09-2026", nav: "105.00" },
+        { date: "18-09-2026", nav: "102.50" },
+        { date: "17-09-2026", nav: "101.25" },
+      ],
+      "20-Sep-2026"
+    ),
+    102.5
+  );
 });

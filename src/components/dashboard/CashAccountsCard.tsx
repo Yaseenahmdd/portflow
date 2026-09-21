@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { CashBalanceSummary } from "@/lib/cash-balances";
 import { formatOrMask } from "@/lib/utils";
 import { tap } from "@/lib/haptics";
+import { useDisplayCurrency } from "@/components/dashboard/DisplayCurrencyProvider";
 
 export default function CashAccountsCard({
   cash,
@@ -18,6 +19,7 @@ export default function CashAccountsCard({
   showNetWorth?: boolean;
   collapsibleOnMobile?: boolean;
 }) {
+  const { displayCurrency, convertAed } = useDisplayCurrency();
   const [mobileOpen, setMobileOpen] = useState(false);
   const netWorthAed = portfolioValueAed + cash.totalCashAed;
 
@@ -41,7 +43,7 @@ export default function CashAccountsCard({
             <span className="text-right">
               <span className="block text-[11px] text-text-muted">Available</span>
               <span className={`mt-1 block font-mono text-sm font-semibold ${cash.totalCashAed < 0 ? "text-accent-loss" : "text-text-primary"}`}>
-                {formatOrMask(cash.totalCashAed, "AED", isAmountsVisible)}
+                {formatOrMask(convertAed(cash.totalCashAed), displayCurrency, isAmountsVisible)}
               </span>
             </span>
             <svg className={`h-4 w-4 text-text-muted transition-transform ${mobileOpen ? "rotate-180" : ""}`} viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
@@ -118,11 +120,13 @@ function CashTotal({
   value: number;
   isAmountsVisible: boolean;
 }) {
+  const { displayCurrency, convertAed } = useDisplayCurrency();
+
   return (
     <div className="text-right">
       <div className="text-[11px] text-text-muted">{label}</div>
       <div className={`mt-1 font-mono text-sm font-semibold ${value < 0 ? "text-accent-loss" : "text-text-primary"}`}>
-        {formatOrMask(value, "AED", isAmountsVisible)}
+        {formatOrMask(convertAed(value), displayCurrency, isAmountsVisible)}
       </div>
     </div>
   );

@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import DashboardShell from "@/components/DashboardShell";
+import { DisplayCurrencyProvider } from "@/components/dashboard/DisplayCurrencyProvider";
 import { DashboardStateProvider } from "@/components/dashboard/DashboardStateProvider";
 
 export default async function DashboardLayout({
@@ -16,8 +17,10 @@ export default async function DashboardLayout({
   }
 
   return (
-    <DashboardShell user={user}>
-      <DashboardStateProvider initialUserId={user.id}>{children}</DashboardStateProvider>
-    </DashboardShell>
+    <DisplayCurrencyProvider>
+      <DashboardShell user={user}>
+        <DashboardStateProvider initialUserId={user.id}>{children}</DashboardStateProvider>
+      </DashboardShell>
+    </DisplayCurrencyProvider>
   );
 }

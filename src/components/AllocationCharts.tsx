@@ -11,9 +11,11 @@ interface Props {
   holdings: ComputedHolding[];
   totalValue: number;
   totalInvested: number;
+  displayCurrency: "AED" | "USD";
+  displayRate: number;
 }
 
-export default function AllocationCharts({ holdings, totalValue, totalInvested }: Props) {
+export default function AllocationCharts({ holdings, totalValue, totalInvested, displayCurrency, displayRate }: Props) {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [mobileChartIndex, setMobileChartIndex] = useState(0);
   const [categoryMetric, setCategoryMetric] = useState<"current" | "invested">("current");
@@ -178,6 +180,8 @@ export default function AllocationCharts({ holdings, totalValue, totalInvested }
                     items={chart.items}
                     colorMap={chart.colorMap}
                     isDarkMode={isDarkMode}
+                    displayCurrency={displayCurrency}
+                    displayRate={displayRate}
                     metric={chart.metric}
                     onMetricChange={chart.onMetricChange}
                   />
@@ -242,6 +246,8 @@ export default function AllocationCharts({ holdings, totalValue, totalInvested }
             items={chart.items}
             colorMap={chart.colorMap}
             isDarkMode={isDarkMode}
+            displayCurrency={displayCurrency}
+            displayRate={displayRate}
             metric={chart.metric}
             onMetricChange={chart.onMetricChange}
           />
@@ -256,6 +262,8 @@ function PieAllocationCard({
   items,
   colorMap,
   isDarkMode,
+  displayCurrency,
+  displayRate,
   metric,
   onMetricChange,
 }: {
@@ -263,6 +271,8 @@ function PieAllocationCard({
   items: { label: string; value: number; weight: number }[];
   colorMap: Map<string, string>;
   isDarkMode: boolean;
+  displayCurrency: "AED" | "USD";
+  displayRate: number;
   metric?: "current" | "invested";
   onMetricChange?: (metric: "current" | "invested") => void;
 }) {
@@ -330,7 +340,7 @@ function PieAllocationCard({
                     fontSize: "12px",
                     boxShadow: isDarkMode ? "0 8px 24px rgba(15,23,42,0.4)" : "0 8px 24px rgba(15,23,42,0.08)",
                   }}
-                  formatter={(value) => formatMoney(Number(value), "AED")}
+                  formatter={(value) => formatMoney(Number(value) * displayRate, displayCurrency)}
                 />
               </PieChart>
               )}

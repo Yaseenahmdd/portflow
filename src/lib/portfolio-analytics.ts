@@ -96,6 +96,61 @@ export function getSnapshotReturn(startValue: number, endValue: number) {
   return startValue > 0 ? ((endValue - startValue) / startValue) * 100 : 0;
 }
 
+function getDubaiDateKey(date: Date) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Dubai",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+
+  return `${values.year}-${values.month}-${values.day}`;
+}
+
+export function getOvernightTotalReturnChange(
+  snapshots: PortfolioSnapshot[],
+  currentTotalReturnAed: number,
+  now = new Date()
+) {
+  const todayDate = getDubaiDateKey(now);
+  const yesterdayDate = getDubaiDateKey(
+    new Date(
+      new Date(`${todayDate}T00:00:00.000Z`).getTime() - 24 * 60 * 60 * 1000
+    )
+  );
+  const yesterdaySnapshot = snapshots.find(
+    (snapshot) => snapshot.snapshotDate === yesterdayDate
+  );
+
+  if (
+    !yesterdaySnapshot ||
+    !Number.isFinite(currentTotalReturnAed) ||
+    !Number.isFinite(yesterdaySnapshot.totalGainLossAed)
+  ) {
+    return {
+      changeAed: null,
+      changePercent: null,
+      baselineDate: yesterdayDate,
+    };
+  }
+
+  const changeAed = currentTotalReturnAed - yesterdaySnapshot.totalGainLossAed;
+  const changePercent =
+    yesterdaySnapshot.totalValueAed > 0
+      ? (changeAed / yesterdaySnapshot.totalValueAed) * 100
+      : null;
+
+  return {
+    changeAed,
+    changePercent:
+      changePercent !== null && Number.isFinite(changePercent)
+        ? changePercent
+        : null,
+    baselineDate: yesterdayDate,
+  };
+}
+
 export function getContributionAdjustedPerformance(
   snapshots: PortfolioSnapshot[],
   includeOpeningGain = false

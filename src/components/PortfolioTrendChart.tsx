@@ -27,6 +27,7 @@ interface DisplayChartPoint extends ChartPoint {
 }
 
 type ChartView = "performance" | "value";
+type DisplayCurrency = "AED" | "USD";
 
 interface Props {
   chartData: ChartPoint[];
@@ -36,6 +37,7 @@ interface Props {
   emptyMessage?: string;
   headerAction?: ReactNode;
   includeOpeningGain?: boolean;
+  displayCurrency: DisplayCurrency;
 }
 
 function formatSnapshotLabel(snapshotDate: string) {
@@ -114,6 +116,7 @@ function CustomTooltip({
   isAmountsVisible,
   isDarkMode,
   view,
+  displayCurrency,
 }: {
   active?: boolean;
   payload?: Array<{
@@ -124,6 +127,7 @@ function CustomTooltip({
   isAmountsVisible: boolean;
   isDarkMode: boolean;
   view: ChartView;
+  displayCurrency: DisplayCurrency;
 }) {
   const pointDate = payload?.[0]?.payload?.date;
 
@@ -163,7 +167,7 @@ function CustomTooltip({
             <div className="flex items-center justify-between gap-4">
               <span className="text-text-secondary">Investment gain</span>
               <span className={performancePositive ? "text-accent-gain" : "text-accent-loss"}>
-                {formatSignedMoney(performanceGain, "AED", isAmountsVisible)}
+                {formatSignedMoney(performanceGain, displayCurrency, isAmountsVisible)}
               </span>
             </div>
           </>
@@ -171,16 +175,16 @@ function CustomTooltip({
           <>
             <div className="flex items-center justify-between gap-4">
               <span className="text-text-secondary">Portfolio</span>
-              <span>{formatOrMask(value, "AED", isAmountsVisible)}</span>
+              <span>{formatOrMask(value, displayCurrency, isAmountsVisible)}</span>
             </div>
             <div className="flex items-center justify-between gap-4">
               <span className="text-text-secondary">Invested</span>
-              <span>{formatOrMask(invested, "AED", isAmountsVisible)}</span>
+              <span>{formatOrMask(invested, displayCurrency, isAmountsVisible)}</span>
             </div>
             <div className="flex items-center justify-between gap-4">
               <span className="text-text-secondary">Gain / Loss</span>
               <span className={gainLossPositive ? "text-accent-gain" : "text-accent-loss"}>
-                {formatSignedMoney(gainLoss, "AED", isAmountsVisible)}
+                {formatSignedMoney(gainLoss, displayCurrency, isAmountsVisible)}
               </span>
             </div>
             <div className="flex items-center justify-between gap-4">
@@ -204,6 +208,7 @@ export default function PortfolioTrendChart({
   emptyMessage = "No portfolio history yet.",
   headerAction,
   includeOpeningGain = false,
+  displayCurrency,
 }: Props) {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [view, setView] = useState<ChartView>("performance");
@@ -367,6 +372,7 @@ export default function PortfolioTrendChart({
                     isAmountsVisible={isAmountsVisible}
                     isDarkMode={isDarkMode}
                     view={view}
+                    displayCurrency={displayCurrency}
                   />
                 }
               />
