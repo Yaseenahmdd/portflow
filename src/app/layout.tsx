@@ -1,5 +1,9 @@
 import type { Metadata, Viewport } from "next";
 import PwaRegistration from "@/components/PwaRegistration";
+import "@fontsource-variable/ibm-plex-sans/wght.css";
+import "@fontsource/ibm-plex-mono/400.css";
+import "@fontsource/ibm-plex-mono/500.css";
+import "@fontsource/ibm-plex-mono/600.css";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -16,7 +20,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#ff444f",
+  themeColor: "#14202d",
 };
 
 export default function RootLayout({

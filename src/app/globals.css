@@ -1,31 +1,31 @@
 @import "tailwindcss";
 
 @theme {
-  --color-bg-primary: #f8fafc;
-  --color-bg-secondary: #ffffff;
-  --color-bg-card: #ffffff;
-  --color-bg-card-hover: #f8fafc;
-  --color-bg-input: #ffffff;
-  --color-bg-elevated: #f8fafc;
-  --color-border-default: #e2e8f0;
-  --color-border-subtle: #e2e8f0;
+  --color-bg-primary: #f3f1ec;
+  --color-bg-secondary: #f8f7f3;
+  --color-bg-card: #fbfaf7;
+  --color-bg-card-hover: #f6f4ef;
+  --color-bg-input: #efede7;
+  --color-bg-elevated: #ece9e2;
+  --color-border-default: rgba(39, 51, 64, 0.14);
+  --color-border-subtle: rgba(39, 51, 64, 0.09);
 
-  --color-text-primary: #0f172a;
-  --color-text-secondary: #475569;
-  --color-text-muted: #64748b;
+  --color-text-primary: #14202d;
+  --color-text-secondary: #435163;
+  --color-text-muted: #727d89;
 
-  --color-accent-gain: #16a34a;
-  --color-accent-gain-bg: rgba(22, 163, 74, 0.1);
-  --color-accent-loss: #dc2626;
-  --color-accent-loss-bg: rgba(220, 38, 38, 0.1);
-  --color-accent-violet: #0f172a;
-  --color-accent-violet-bg: rgba(15, 23, 42, 0.08);
-  --color-accent-blue: #2563eb;
-  --color-accent-amber: #d97706;
+  --color-accent-gain: #237654;
+  --color-accent-gain-bg: rgba(35, 118, 84, 0.1);
+  --color-accent-loss: #b34b4b;
+  --color-accent-loss-bg: rgba(179, 75, 75, 0.1);
+  --color-accent-violet: #2f6597;
+  --color-accent-violet-bg: rgba(47, 101, 151, 0.1);
+  --color-accent-blue: #2f6597;
+  --color-accent-amber: #a66b20;
 
-  --font-sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --font-display: Sora, Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --font-mono: "Geist Mono", "SFMono-Regular", Consolas, "Liberation Mono", ui-monospace, monospace;
+  --font-sans: "IBM Plex Sans Variable", "Aptos", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "IBM Plex Sans Variable", "Aptos", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", "SFMono-Regular", Consolas, ui-monospace, monospace;
 }
 
 html {
@@ -35,43 +35,42 @@ html {
 
 html.dark {
   color-scheme: dark;
-  --color-bg-primary: #050a10;
-  --color-bg-secondary: #07111b;
-  --color-bg-card: #0d1520;
-  --color-bg-card-hover: #111c2a;
-  --color-bg-input: #070d15;
-  --color-bg-elevated: #0a121d;
-  --color-border-default: #223044;
-  --color-border-subtle: #1a2636;
+  --color-bg-primary: #071019;
+  --color-bg-secondary: #09141f;
+  --color-bg-card: #0c1824;
+  --color-bg-card-hover: #101e2b;
+  --color-bg-input: #08131d;
+  --color-bg-elevated: #101c28;
+  --color-border-default: rgba(190, 205, 220, 0.14);
+  --color-border-subtle: rgba(190, 205, 220, 0.09);
 
-  --color-text-primary: #f6f8fb;
-  --color-text-secondary: #aab2c1;
-  --color-text-muted: #747f91;
+  --color-text-primary: #eef2f5;
+  --color-text-secondary: #aab5c0;
+  --color-text-muted: #74818e;
 
-  --color-accent-gain: #36e07f;
-  --color-accent-gain-bg: rgba(54, 224, 127, 0.13);
-  --color-accent-loss: #ff5a68;
-  --color-accent-loss-bg: rgba(255, 90, 104, 0.13);
-  --color-accent-violet: #ff8a00;
-  --color-accent-violet-bg: rgba(255, 138, 0, 0.16);
-  --color-accent-blue: #4f9cff;
-  --color-accent-amber: #ffb020;
+  --color-accent-gain: #5bc08c;
+  --color-accent-gain-bg: rgba(91, 192, 140, 0.12);
+  --color-accent-loss: #e27777;
+  --color-accent-loss-bg: rgba(226, 119, 119, 0.12);
+  --color-accent-violet: #70a6d7;
+  --color-accent-violet-bg: rgba(112, 166, 215, 0.14);
+  --color-accent-blue: #70a6d7;
+  --color-accent-amber: #d9a45d;
 }
 
 html.dark body {
-  background:
-    linear-gradient(145deg, #070d14 0%, #050a10 42%, #08111b 100%);
+  background: var(--color-bg-primary);
   color: var(--color-text-primary);
 }
 
 html.dark .glass-card {
-  background: linear-gradient(145deg, rgba(15, 24, 37, 0.96), rgba(8, 14, 23, 0.96));
+  background: var(--color-bg-card);
   border-color: var(--color-border-default);
   box-shadow: none;
 }
 
 html.dark .dashboard-card {
-  background: linear-gradient(145deg, rgba(15, 24, 37, 0.96), rgba(8, 14, 23, 0.98));
+  background: var(--color-bg-card);
   border-color: var(--color-border-default);
   box-shadow: none;
 }
@@ -128,7 +127,7 @@ html.dark textarea {
 }
 
 html.dark ::selection {
-  background: rgba(255, 138, 0, 0.28);
+  background: rgba(112, 166, 215, 0.28);
   color: var(--color-text-primary);
 }
 
@@ -142,13 +141,18 @@ html.dark ::-webkit-scrollbar-thumb:hover {
 
 body {
   min-height: 100%;
-  background: #f8fafc;
+  background: var(--color-bg-primary);
   color: var(--color-text-primary);
   font-family: var(--font-sans);
 }
 
 .font-display {
   font-family: var(--font-display);
+}
+
+.font-mono,
+.tabular-nums {
+  font-variant-numeric: tabular-nums slashed-zero;
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -215,9 +219,9 @@ body {
 }
 
 .glass-card {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 1rem;
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border-default);
+  border-radius: 0.75rem;
   box-shadow: none;
 }
 
@@ -227,6 +231,45 @@ body {
     border-color 180ms ease,
     background-color 180ms ease,
     color 180ms ease;
+}
+
+.flow-rail {
+  position: relative;
+  height: 2px;
+  overflow: visible;
+  border-radius: 999px;
+  background: var(--color-border-default);
+}
+
+.flow-rail::before {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--flow-progress, 72%);
+  border-radius: inherit;
+  background: var(--color-accent-violet);
+  content: "";
+}
+
+.flow-rail::after {
+  position: absolute;
+  top: 50%;
+  left: var(--flow-progress, 72%);
+  width: 8px;
+  height: 8px;
+  border: 2px solid var(--color-bg-card);
+  border-radius: 999px;
+  background: var(--color-accent-violet);
+  box-shadow: 0 0 0 1px var(--color-accent-violet);
+  content: "";
+  transform: translate(-50%, -50%);
+}
+
+.ledger-kicker {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
 }
 
 .gradient-text {
@@ -272,7 +315,7 @@ body {
 }
 
 .portfolio-summary-live-dot {
-  filter: drop-shadow(0 0 4px #ff8a00);
+  filter: drop-shadow(0 0 4px rgba(47, 101, 151, 0.45));
 }
 
 @keyframes portfolio-live-pulse {
@@ -289,11 +332,11 @@ body {
 }
 
 .portfolio-summary-gain {
-  color: #21835c;
+  color: var(--color-accent-gain);
 }
 
 html.dark .portfolio-summary-gain {
-  color: #76c39d;
+  color: var(--color-accent-gain);
 }
 
 @keyframes portflow-sheet-fade-in {
@@ -376,8 +419,19 @@ select:focus-visible,
 textarea:focus-visible,
 button:focus-visible,
 a:focus-visible {
-  outline: 2px solid var(--color-text-secondary);
+  outline: 2px solid var(--color-accent-violet);
   outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 .recharts-wrapper:focus,

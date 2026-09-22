@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import {
   getBenchmarkPerformance,
   type BenchmarkPoint,
@@ -281,20 +281,25 @@ export default function DashboardHistoryContent({
         : `${formatDate(firstSnapshot.snapshotDate)} – ${formatDate(latestSnapshot.snapshotDate)}`
       : "No history yet";
   const marketTone = valueTone(performance.adjustedChangeAed);
+  const historyFlowPosition = latestSnapshot?.totalValueAed
+    ? Math.min(92, Math.max(8, (latestSnapshot.totalInvestedAed / Math.max(latestSnapshot.totalValueAed, latestSnapshot.totalInvestedAed)) * 100))
+    : 12;
+  const historyFlowStyle = { "--flow-progress": `${historyFlowPosition}%` } as CSSProperties;
 
   return (
     <div className="space-y-4 sm:space-y-5">
       <header>
         <div>
-          <h1 className="font-display text-2xl font-semibold tracking-[-0.04em] text-text-primary">
+          <div className="ledger-kicker">Portfolio record</div>
+          <h1 className="mt-1 font-display text-2xl font-semibold tracking-[-0.04em] text-text-primary">
             History
           </h1>
           <div className="mt-1 text-xs text-text-muted">{dateSpan}</div>
         </div>
       </header>
 
-      <section className="dashboard-card overflow-visible rounded-2xl border border-border-default bg-bg-card shadow-sm sm:overflow-hidden">
-        <div className="sticky top-0 z-20 flex flex-col gap-2 rounded-t-2xl border-b border-border-default bg-bg-card px-3 py-2 sm:static sm:flex-row sm:items-center sm:justify-between sm:px-5 sm:py-3">
+      <section className="dashboard-card overflow-visible rounded-xl border border-border-default bg-bg-card sm:overflow-hidden">
+        <div className="sticky top-0 z-20 flex flex-col gap-2 rounded-t-xl border-b border-border-default bg-bg-card px-3 py-2 sm:static sm:flex-row sm:items-center sm:justify-between sm:px-5 sm:py-3">
           <h2 className="hidden font-display text-base font-semibold tracking-[-0.03em] text-text-primary sm:block">
             Period Breakdown
           </h2>
@@ -348,9 +353,17 @@ export default function DashboardHistoryContent({
             }
           />
         </div>
+        <div className="border-t border-border-subtle px-4 py-4 sm:px-5">
+          <div className="flow-rail" style={historyFlowStyle} />
+          <div className="mt-2 flex items-center justify-between text-[10px] font-medium uppercase tracking-[0.1em] text-text-muted">
+            <span>Opening capital</span>
+            <span>Capital flows + market movement</span>
+            <span>Closing value</span>
+          </div>
+        </div>
       </section>
 
-      <section className="dashboard-card overflow-hidden rounded-2xl border border-border-default bg-bg-card shadow-sm">
+      <section className="dashboard-card overflow-hidden rounded-xl border border-border-default bg-bg-card">
         <div className="flex items-center justify-between gap-4 border-b border-border-default px-4 py-3 sm:block sm:px-5">
           <div>
             <h2 className="font-display text-base font-semibold tracking-[-0.03em] text-text-primary">
@@ -450,7 +463,7 @@ export default function DashboardHistoryContent({
         ) : null}
       </section>
 
-      <section className="dashboard-card overflow-hidden rounded-2xl border border-border-default bg-bg-card shadow-sm">
+      <section className="dashboard-card overflow-hidden rounded-xl border border-border-default bg-bg-card">
         <div className="border-b border-border-default px-4 py-3 sm:px-5">
           <h2 className="font-display text-base font-semibold tracking-[-0.03em] text-text-primary">
             S&amp;P 500 Benchmark
@@ -501,7 +514,7 @@ export default function DashboardHistoryContent({
       </section>
 
       <div className="grid gap-4 lg:grid-cols-[0.8fr_1.2fr]">
-        <section className="dashboard-card rounded-2xl border border-border-default bg-bg-card p-5 shadow-sm">
+        <section className="dashboard-card rounded-xl border border-border-default bg-bg-card p-5">
           <h2 className="font-display text-base font-semibold tracking-[-0.03em] text-text-primary">
             Market Movement
           </h2>
@@ -511,7 +524,7 @@ export default function DashboardHistoryContent({
           </div>
         </section>
 
-        <section className="dashboard-card rounded-2xl border border-border-default bg-bg-card p-5 shadow-sm">
+        <section className="dashboard-card rounded-xl border border-border-default bg-bg-card p-5">
           <h2 className="font-display text-base font-semibold tracking-[-0.03em] text-text-primary">
             Current Contributors
           </h2>
@@ -532,7 +545,7 @@ export default function DashboardHistoryContent({
         </section>
       </div>
 
-      <section className="dashboard-card overflow-hidden rounded-2xl border border-border-default bg-bg-card shadow-sm">
+      <section className="dashboard-card overflow-hidden rounded-xl border border-border-default bg-bg-card">
         <div className="border-b border-border-default px-5 py-4">
           <h2 className="font-display text-base font-semibold tracking-[-0.03em] text-text-primary">
             Activity

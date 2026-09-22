@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   Area,
@@ -274,18 +275,22 @@ export default function PortfolioTrendChart({
     () => (view === "performance" ? getPerformanceDomain(displayData) : getChartDomain(chartData)),
     [chartData, displayData, view]
   );
-  const investedLineColor = "rgba(115,114,108,0.35)";
-  const valueLineColor = isDarkMode ? "var(--color-accent-violet)" : "#3266ad";
+  const investedLineColor = isDarkMode ? "rgba(170,181,192,0.32)" : "rgba(67,81,99,0.32)";
+  const valueLineColor = "var(--color-accent-violet)";
   const chartGridColor = isDarkMode ? "rgba(203, 213, 225, 0.08)" : "rgba(15, 23, 42, 0.05)";
-  const hasEnoughData = chartData.length >= minimumDataPoints;
+  const hasEnoughData =
+    chartData.length >= minimumDataPoints &&
+    chartData.some((point) => (point.value ?? 0) > 0 || (point.invested ?? 0) > 0);
 
   return (
-    <section className="dashboard-card rounded-2xl border border-border-default bg-bg-card p-5 sm:p-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h2 className="sr-only">Portfolio chart</h2>
+    <section className="dashboard-card rounded-xl border border-border-default bg-bg-card p-4 sm:p-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <div className="ledger-kicker">Capital trajectory</div>
+          <h2 className="mt-1 font-display text-lg font-semibold tracking-[-0.025em] text-text-primary">Portfolio performance</h2>
+          {subtitle ? <p className="mt-1 text-xs text-text-muted sm:text-[13px]">{subtitle}</p> : null}
           <div
-            className="inline-flex rounded-xl border border-border-subtle bg-bg-elevated p-1"
+            className="mt-4 inline-flex rounded-lg border border-border-subtle bg-bg-elevated p-0.5"
             role="tablist"
             aria-label="Select portfolio chart view"
           >
@@ -305,9 +310,9 @@ export default function PortfolioTrendChart({
                     tap();
                     setView(option);
                   }}
-                  className={`rounded-lg px-3 py-2 text-sm font-semibold transition sm:px-4 ${
+                  className={`rounded-md px-3 py-2 text-[13px] font-medium transition-[background-color,color,transform] active:scale-[0.97] sm:px-4 ${
                     active
-                      ? "bg-bg-card text-text-primary shadow-sm ring-1 ring-border-default"
+                      ? "bg-bg-card text-text-primary ring-1 ring-border-default"
                       : "text-text-muted hover:text-text-primary"
                   }`}
                 >
@@ -316,12 +321,11 @@ export default function PortfolioTrendChart({
               );
             })}
           </div>
-          {subtitle ? <p className="mt-2 text-xs text-text-muted sm:text-sm">{subtitle}</p> : null}
         </div>
         {headerAction ? <div className="max-w-full overflow-x-auto">{headerAction}</div> : null}
       </div>
 
-      <div className="mt-5 h-[230px] w-full min-h-0 min-w-0">
+      <div className="mt-5 h-[250px] w-full min-h-0 min-w-0 sm:h-[280px]">
         {hasEnoughData ? (
           <MeasuredChart className="h-full w-full min-h-0 min-w-0">
             {({ width, height }) => (
@@ -438,8 +442,15 @@ export default function PortfolioTrendChart({
             )}
           </MeasuredChart>
         ) : (
-          <div className="flex h-full items-center justify-center rounded-xl bg-bg-elevated text-sm text-text-secondary">
-            {emptyMessage}
+          <div className="flex h-full flex-col items-center justify-center rounded-lg border border-dashed border-border-default bg-bg-elevated/60 px-6 text-center">
+            <div className="w-full max-w-sm">
+              <div className="flow-rail" style={{ "--flow-progress": "34%" } as React.CSSProperties} />
+              <div className="mt-5 text-sm font-semibold text-text-primary">A useful trend needs another checkpoint</div>
+              <p className="mt-1.5 text-xs leading-5 text-text-muted">{emptyMessage} Record activity or refresh prices later to extend the capital-flow history.</p>
+              <Link href="/dashboard/transactions" className="mt-4 inline-flex min-h-10 items-center justify-center rounded-lg border border-border-default bg-bg-card px-4 text-xs font-semibold text-text-secondary hover:text-text-primary">
+                Open activity ledger
+              </Link>
+            </div>
           </div>
         )}
       </div>

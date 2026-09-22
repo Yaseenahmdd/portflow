@@ -144,7 +144,7 @@ export default function DashboardShell({
 
   const userInitial = user.email?.[0]?.toUpperCase() || "U";
   const iconButtonClass =
-    "h-11 w-11 items-center justify-center rounded-lg text-text-muted transition-colors hover:bg-bg-elevated hover:text-text-primary";
+    "h-11 w-11 items-center justify-center rounded-lg text-text-muted transition-[background-color,color,transform] hover:bg-bg-elevated hover:text-text-primary active:scale-[0.97]";
 
   function handleMainTouchStart(event: TouchEvent<HTMLElement>) {
     if (!showMobileDashboardNav || !mobileDashboardTarget) {
@@ -210,16 +210,25 @@ export default function DashboardShell({
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 p-4 sm:p-6">
-      <div className="mx-auto max-w-7xl space-y-4 sm:space-y-6">
-        <header className="bg-transparent px-0 py-1 sm:py-1.5">
-          <div className="space-y-3">
+    <div className="min-h-screen bg-bg-primary px-4 pb-8 pt-3 sm:px-6 sm:pb-10 sm:pt-4">
+      <div className="mx-auto max-w-[1440px] space-y-4 sm:space-y-5">
+        <header className="bg-transparent px-0">
+          <div className="space-y-2.5">
             <div className="flex items-center justify-between gap-3">
               <Link
                 href="/dashboard"
-                className="font-display text-[1.65rem] font-semibold tracking-[-0.04em] text-slate-900 sm:text-[1.8rem]"
+                className="group inline-flex min-h-11 items-center gap-2.5 text-text-primary"
               >
-                Portflow
+                <span className="relative grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-border-default bg-bg-card" aria-hidden="true">
+                  <span className="absolute left-2 top-[9px] h-px w-3 bg-text-muted" />
+                  <span className="absolute left-2 top-[15px] h-px w-4 bg-accent-violet" />
+                  <span className="absolute left-2 top-[21px] h-px w-2 bg-text-muted" />
+                  <span className="absolute left-[21px] top-[12px] h-1.5 w-1.5 rounded-full bg-accent-violet transition-transform group-hover:scale-125" />
+                </span>
+                <span>
+                  <span className="block font-display text-[1.35rem] font-semibold leading-5 tracking-[-0.035em] sm:text-[1.45rem]">Portflow</span>
+                  <span className="ledger-kicker mt-1 hidden sm:block">Personal capital ledger</span>
+                </span>
               </Link>
               <div className="flex items-center gap-2 sm:gap-2.5">
                 <div
@@ -248,13 +257,13 @@ export default function DashboardShell({
                 </div>
 
                 {statusMeta ? (
-                  <div className="hidden items-center text-xs text-text-muted xl:flex">
+                  <div className="ledger-kicker hidden items-center xl:flex">
                     <span>{statusMeta.lastRefresh}</span>
-                    <span className="mx-2 h-3.5 w-px bg-slate-200" aria-hidden="true" />
+                    <span className="mx-3 h-3.5 w-px bg-border-default" aria-hidden="true" />
                     <span>
-                      AED/INR <span className="font-mono text-slate-600">{statusMeta.fxRate}</span>
+                      AED/INR <span className="font-mono font-medium text-text-secondary">{statusMeta.fxRate}</span>
                     </span>
-                    <span className="mx-2 h-3.5 w-px bg-slate-200" aria-hidden="true" />
+                    <span className="mx-3 h-3.5 w-px bg-border-default" aria-hidden="true" />
                     <span>{statusMeta.fxUpdatedAt}</span>
                   </div>
                 ) : null}
@@ -329,26 +338,26 @@ export default function DashboardShell({
                 <div ref={profileMenuRef} className="relative">
                   <button
                     onClick={() => { tap(); setProfileMenuOpen((current) => !current); }}
-                    className="flex h-11 w-11 items-center justify-center rounded-full bg-bg-elevated text-sm font-semibold text-text-secondary"
+                    className="flex h-11 w-11 items-center justify-center rounded-lg border border-border-subtle bg-bg-card font-mono text-xs font-semibold text-text-secondary transition-[background-color,transform] hover:bg-bg-elevated active:scale-[0.97]"
                     aria-label="Open profile menu"
                   >
                     {userInitial}
                   </button>
 
                   {profileMenuOpen && (
-                    <div className="absolute right-0 top-11 z-50 min-w-56 overflow-hidden rounded-2xl bg-white shadow-lg ring-1 ring-slate-200">
-                      <div className="border-b border-slate-200 px-4 py-3">
-                        <div className="truncate text-sm font-semibold text-slate-900">{user.email}</div>
+                    <div className="absolute right-0 top-12 z-50 min-w-56 overflow-hidden rounded-xl border border-border-default bg-bg-card shadow-[0_16px_44px_rgba(20,32,45,0.14)]">
+                      <div className="border-b border-border-default px-4 py-3">
+                        <div className="truncate text-sm font-semibold text-text-primary">{user.email}</div>
                       </div>
                       <a
                         href="/dashboard/settings"
-                        className="block w-full px-4 py-3 text-left text-sm font-medium text-slate-700 hover:bg-slate-50"
+                        className="block w-full px-4 py-3 text-left text-sm font-medium text-text-secondary hover:bg-bg-elevated"
                       >
                         Settings
                       </a>
                       <button
                         onClick={handleSignOut}
-                        className="block w-full px-4 py-3 text-left text-sm font-medium text-slate-700 hover:bg-slate-50"
+                        className="block w-full px-4 py-3 text-left text-sm font-medium text-text-secondary hover:bg-bg-elevated"
                       >
                         Sign Out
                       </button>
@@ -360,7 +369,7 @@ export default function DashboardShell({
 
             {showDashboardNav ? (
               <nav aria-label="Dashboard">
-                <div className="grid grid-cols-4 border-b border-border-default sm:flex sm:gap-8">
+                <div className="grid grid-cols-4 border-y border-border-subtle sm:flex sm:gap-7">
                   {DASHBOARD_NAV_ITEMS.map((item) => {
                     const active = pathname === item.href;
 
@@ -369,7 +378,7 @@ export default function DashboardShell({
                         key={item.href}
                         href={item.href}
                         aria-current={active ? "page" : undefined}
-                        className={`relative inline-flex min-h-11 items-center justify-center px-3 py-3 text-center text-sm font-medium transition-colors sm:px-0 ${
+                        className={`relative inline-flex min-h-11 items-center justify-center px-2 py-3 text-center text-[13px] font-medium transition-colors sm:px-0 ${
                           active
                             ? "text-text-primary"
                             : "text-text-muted hover:text-text-primary"
@@ -377,8 +386,8 @@ export default function DashboardShell({
                       >
                         {item.label}
                         <span
-                          className={`absolute bottom-[-1px] left-1/2 h-0.5 w-[58%] -translate-x-1/2 transition-opacity sm:w-full ${
-                            active ? "bg-text-primary opacity-100" : "bg-transparent opacity-0"
+                          className={`absolute bottom-[-1px] left-1/2 h-0.5 w-[48%] -translate-x-1/2 transition-opacity sm:w-full ${
+                            active ? "bg-accent-violet opacity-100" : "bg-transparent opacity-0"
                           }`}
                           aria-hidden="true"
                         />

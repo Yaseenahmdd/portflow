@@ -280,16 +280,17 @@ function PieAllocationCard({
 
   return (
     <div
-      className="dashboard-card flex h-full flex-col overflow-hidden rounded-2xl border p-5"
+      className="dashboard-card flex h-full flex-col overflow-hidden rounded-xl border p-5"
       style={{
-        backgroundColor: isDarkMode ? "var(--color-bg-card)" : "#ffffff",
-        borderColor: isDarkMode ? "var(--color-border-default)" : "#e2e8f0",
+        backgroundColor: "var(--color-bg-card)",
+        borderColor: "var(--color-border-default)",
       }}
     >
       <div className="flex items-start justify-between gap-3">
-        <h2 style={{ color: isDarkMode ? "var(--color-text-primary)" : "#0f172a" }} className="font-display text-base font-semibold tracking-[-0.02em]">
-          {title}
-        </h2>
+        <div>
+          <div className="ledger-kicker">Allocation</div>
+          <h2 className="mt-1 font-display text-base font-semibold tracking-[-0.02em] text-text-primary">{title}</h2>
+        </div>
         {showMetricToggle ? (
           <button
             type="button"
@@ -372,14 +373,8 @@ function PieAllocationCard({
           </div>
         </>
       ) : (
-        <div
-          className="mt-4 rounded-xl p-4 text-center text-sm"
-          style={{
-            backgroundColor: isDarkMode ? "var(--color-bg-elevated)" : "#f1f5f9",
-            color: isDarkMode ? "var(--color-text-muted)" : "#64748b",
-          }}
-        >
-          No data yet
+        <div className="mt-4 flex min-h-28 flex-1 items-center justify-center rounded-lg border border-dashed border-border-default bg-bg-elevated/60 p-4 text-center text-sm text-text-muted">
+          Add holdings to reveal this exposure.
         </div>
       )}
     </div>

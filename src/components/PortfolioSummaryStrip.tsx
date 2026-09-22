@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, type CSSProperties } from "react";
 import { formatOrMask } from "@/lib/utils";
 import { tap, toggle } from "@/lib/haptics";
 
@@ -119,25 +119,30 @@ export default function PortfolioSummaryStrip({
   const gainChange = gainView === "today" ? todayChange : totalGainLoss;
   const gainPercent = gainView === "today" ? todayChangePercent : totalGainLossPercent;
   const portfolioAmount = formatAmountWithoutCurrency(portfolioValue, displayCurrency, isAmountsVisible);
+  const capitalPosition = portfolioValue > 0
+    ? Math.min(92, Math.max(8, (investedAmount / Math.max(portfolioValue, investedAmount)) * 100))
+    : 12;
+  const flowStyle = { "--flow-progress": `${capitalPosition}%` } as CSSProperties;
 
   return (
     <>
-      <section aria-label="Portfolio summary" className="rounded-3xl border border-border-subtle bg-bg-card p-5 text-text-primary sm:hidden">
+      <section aria-label="Portfolio summary" className="rounded-xl border border-border-default bg-bg-card p-5 text-text-primary sm:hidden">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
+            <div className="ledger-kicker">Portfolio value</div>
             <Link
               href="/dashboard/holdings"
               onClick={tap}
-              className="inline-flex min-h-8 items-center gap-1.5 text-[12px] font-semibold uppercase tracking-[0.14em] text-text-muted"
+              className="mt-1 inline-flex min-h-7 items-center gap-1.5 text-xs font-medium text-text-secondary"
             >
-              Holdings ({holdingsCount})
+              {holdingsCount} holding{holdingsCount === 1 ? "" : "s"}
               <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                 <path fillRule="evenodd" d="M5.22 7.22a.75.75 0 011.06 0L10 10.94l3.72-3.72a.75.75 0 111.06 1.06l-4.25 4.25a.75.75 0 01-1.06 0L5.22 8.28a.75.75 0 010-1.06z" clipRule="evenodd" />
               </svg>
             </Link>
-            <div className="mt-2 flex min-w-0 items-baseline gap-2 whitespace-nowrap font-semibold tracking-[-0.035em]">
+            <div className="mt-2 flex min-w-0 items-baseline gap-2 whitespace-nowrap font-semibold tracking-[-0.04em]">
               <CurrencySymbol currency={displayCurrency} className="shrink-0 text-base font-medium text-text-muted" />
-              <span className="truncate text-[2rem] leading-tight tabular-nums">{portfolioAmount}</span>
+              <span className="truncate font-mono text-[2rem] leading-tight tabular-nums">{portfolioAmount}</span>
             </div>
           </div>
 
@@ -177,7 +182,15 @@ export default function PortfolioSummaryStrip({
           </div>
         </div>
 
-        <div className="mt-5 space-y-4 border-t border-dashed border-border-default pt-5">
+        <div className="mt-5">
+          <div className="flow-rail" style={flowStyle} />
+          <div className="mt-2 flex items-center justify-between text-[10px] font-medium uppercase tracking-[0.1em] text-text-muted">
+            <span>Capital in</span>
+            <span>Market value</span>
+          </div>
+        </div>
+
+        <div className="mt-5 space-y-4 border-t border-border-subtle pt-5">
           <div className="flex items-baseline justify-between gap-4">
             <span className="text-sm text-text-muted">Today returns</span>
             <span className={`text-right text-sm font-semibold tabular-nums ${valueTone(todayChange)}`}>
@@ -204,11 +217,11 @@ export default function PortfolioSummaryStrip({
         </div>
       </section>
 
-      <section aria-label="Portfolio summary" tabIndex={0} className="portfolio-summary-scroll hidden rounded-xl border border-border-subtle bg-bg-card text-text-primary sm:block">
+      <section aria-label="Portfolio summary" tabIndex={0} className="portfolio-summary-scroll hidden rounded-xl border border-border-default bg-bg-card text-text-primary sm:block">
         <div className="portfolio-summary-grid">
         <div className="min-w-0 p-4 sm:p-6">
           <div className="relative flex min-h-8 flex-wrap items-center gap-x-2 pr-10 lg:pr-0">
-            <h1 className="text-sm font-medium text-text-secondary">Portfolio value</h1>
+            <h1 className="ledger-kicker">Portfolio value</h1>
             <span aria-hidden="true" className="text-text-muted">·</span>
             <span className="text-[13px] text-text-muted">{holdingsCount} holdings</span>
             <button
@@ -232,13 +245,17 @@ export default function PortfolioSummaryStrip({
           <div className="portfolio-summary-value-row mt-2 font-semibold tracking-[-0.03em]">
             <div className="flex items-baseline gap-x-2 whitespace-nowrap">
             <span className="text-sm font-normal tracking-normal text-text-muted sm:text-base">{displayCurrency}</span>
-            <span className="text-[1.75rem] leading-10 tabular-nums sm:text-[2rem]">{portfolioAmount}</span>
+            <span className="font-mono text-[1.75rem] leading-10 tabular-nums sm:text-[2.25rem]">{portfolioAmount}</span>
             </div>
             <PortfolioValueSparkline points={portfolioHistory} />
           </div>
-          <p className="mt-2 text-[13px] leading-5 text-text-muted">
-            Invested <span className="ml-1 tabular-nums text-text-secondary">{formatOrMask(investedAmount, displayCurrency, isAmountsVisible)}</span>
-          </p>
+          <div className="mt-3">
+            <div className="flow-rail" style={flowStyle} />
+            <div className="mt-2 flex items-center justify-between gap-4 text-[11px] text-text-muted">
+              <span>Capital in <span className="ml-1 font-mono tabular-nums text-text-secondary">{formatOrMask(investedAmount, displayCurrency, isAmountsVisible)}</span></span>
+              <span>Market value</span>
+            </div>
+          </div>
         </div>
 
           <div className="min-w-0 border-t border-border-subtle p-4 sm:border-l sm:border-t-0 sm:p-6">
@@ -255,7 +272,7 @@ export default function PortfolioSummaryStrip({
                 </button>
               ))}
             </div>
-            <div className={`mt-2 min-h-10 break-words text-lg font-semibold leading-10 tabular-nums sm:text-2xl ${valueTone(gainChange)}`}>
+            <div className={`mt-2 min-h-10 break-words font-mono text-lg font-semibold leading-10 tabular-nums sm:text-2xl ${valueTone(gainChange)}`}>
               {gainChange === null ? "—" : formatSignedMoney(gainChange, displayCurrency, isAmountsVisible)}
             </div>
             <p className="mt-2 text-[13px] leading-5 text-text-muted">
@@ -266,7 +283,7 @@ export default function PortfolioSummaryStrip({
             <div className="flex items-center justify-between gap-4 sm:block">
               <div className="flex min-h-8 items-center text-[13px] text-text-secondary">{periodLabel} performance</div>
               <div className="min-w-0 text-right sm:text-left">
-                <div className={`break-words text-base font-semibold leading-6 tabular-nums sm:mt-2 sm:min-h-10 sm:text-2xl sm:leading-10 ${valueTone(periodChange)}`}>
+                <div className={`break-words font-mono text-base font-semibold leading-6 tabular-nums sm:mt-2 sm:min-h-10 sm:text-2xl sm:leading-10 ${valueTone(periodChange)}`}>
                   {periodChange === null ? "—" : formatSignedMoney(periodChange, displayCurrency, isAmountsVisible)}
                 </div>
                 <p className="mt-0.5 text-[12px] leading-4 text-text-muted sm:mt-2 sm:text-[13px] sm:leading-5">

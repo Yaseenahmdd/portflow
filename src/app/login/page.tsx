@@ -55,12 +55,13 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-transparent px-4 py-8 sm:px-6 lg:px-10">
       <div className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-md items-center">
-        <section className="glass-card glow w-full p-6 sm:p-8">
+        <section className="glass-card w-full p-6 sm:p-8">
           <div>
-            <div className="text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-text-muted">Portflow</div>
+            <div className="ledger-kicker">Personal capital ledger</div>
             <h2 className="font-display mt-3 text-3xl font-semibold tracking-[-0.04em] text-text-primary">
               {mode === "login" ? "Sign in" : "Create account"}
             </h2>
+            <p className="mt-2 text-sm leading-6 text-text-secondary">A clear record of what you invested, what the market moved, and where your capital stands.</p>
           </div>
 
           {error && (
@@ -87,7 +88,7 @@ export default function LoginPage() {
                 onChange={(event) => setEmail(event.target.value)}
                 required
                 placeholder="you@example.com"
-                className="w-full rounded-[1.2rem] border border-black/8 bg-white px-4 py-3.5 text-sm text-text-primary transition placeholder:text-text-muted focus:border-accent-violet"
+                className="w-full rounded-lg border border-border-default bg-bg-input px-4 py-3.5 text-sm text-text-primary transition placeholder:text-text-muted focus:border-accent-violet"
               />
             </div>
 
@@ -103,7 +104,7 @@ export default function LoginPage() {
                 required
                 minLength={6}
                 placeholder="At least 6 characters"
-                className="w-full rounded-[1.2rem] border border-black/8 bg-white px-4 py-3.5 text-sm text-text-primary transition placeholder:text-text-muted focus:border-accent-violet"
+                className="w-full rounded-lg border border-border-default bg-bg-input px-4 py-3.5 text-sm text-text-primary transition placeholder:text-text-muted focus:border-accent-violet"
               />
             </div>
 
@@ -111,7 +112,7 @@ export default function LoginPage() {
               type="submit"
               onClick={tap}
               disabled={loading}
-              className="w-full rounded-full bg-accent-violet px-5 py-3.5 text-sm font-semibold text-white transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-55"
+              className="w-full rounded-lg bg-accent-violet px-5 py-3.5 text-sm font-semibold text-white transition-[filter,transform] hover:brightness-105 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-55"
             >
               {loading ? (mode === "login" ? "Signing in" : "Creating account") : mode === "login" ? "Sign in" : "Create account"}
             </button>

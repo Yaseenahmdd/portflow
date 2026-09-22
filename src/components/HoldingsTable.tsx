@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useCallback, useMemo, useState } from "react";
+import { memo, useCallback, useMemo, useState, type CSSProperties } from "react";
 import { useIsCompactViewport } from "@/hooks/useIsCompactViewport";
 import { ASSET_CLASS_OPTIONS, GEOGRAPHY_OPTIONS, RISK_OPTIONS, type ComputedHolding, type Holding } from "@/lib/constants";
 import { tap, toggle, medium, destructive as hapticDestructive } from "@/lib/haptics";
@@ -319,9 +319,9 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
   }
 
   function getMobileValueTone(value: number) {
-    if (value > 0) return "text-green-600";
-    if (value < 0) return "text-red-600";
-    return "text-slate-900";
+    if (value > 0) return "text-accent-gain";
+    if (value < 0) return "text-accent-loss";
+    return "text-text-primary";
   }
 
   function getMobileSortOptionLabel(key: MobileSortKey) {
@@ -348,15 +348,18 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
   }
 
   return (
-    <section className="dashboard-card rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
-      <div className="border-b border-slate-200 p-4 sm:p-4">
+    <section className="dashboard-card overflow-hidden rounded-xl border border-border-default bg-bg-card">
+      <div className="border-b border-border-default p-4">
         <div className="flex items-center justify-between gap-3">
           <div className="flex min-w-0 items-baseline gap-2.5">
-            <h2 className="text-xl font-semibold text-slate-900">Holdings</h2>
+            <div>
+              <div className="ledger-kicker hidden sm:block">Portfolio ledger</div>
+              <h2 className="mt-0.5 text-xl font-semibold tracking-[-0.025em] text-text-primary">Holdings</h2>
+            </div>
             <span className="hidden text-sm text-text-muted sm:inline">{holdings.length} holdings</span>
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
-            <div className="text-xs text-slate-500 sm:hidden">
+            <div className="font-mono text-xs text-text-muted sm:hidden">
               {filteredHoldings.length} of {holdings.length}
             </div>
             {hasActiveFilters ? (
@@ -375,7 +378,7 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
             ) : null}
             <button
               onClick={() => { tap(); onAddHolding(); }}
-              className="inline-flex h-9 w-9 items-center justify-center gap-2 rounded-xl bg-accent-violet text-bg-primary shadow-sm transition hover:brightness-105 sm:h-10 sm:w-auto sm:px-4"
+              className="inline-flex h-10 w-10 items-center justify-center gap-2 rounded-lg bg-accent-violet text-white transition-[filter,transform] hover:brightness-105 active:scale-[0.97] sm:w-auto sm:px-4"
               aria-label="Add holding"
             >
               <svg className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2} aria-hidden="true">
@@ -394,10 +397,10 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
                   key={chip.key}
                   type="button"
                   onClick={() => clearSingleFilter(chip.key)}
-                  className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-700"
+                  className="inline-flex shrink-0 items-center gap-1.5 rounded-md bg-bg-elevated px-3 py-1.5 text-xs font-medium text-text-secondary"
                 >
                   <span>{chip.label}</span>
-                  <span className="text-slate-400">x</span>
+                  <span className="text-text-muted">×</span>
                 </button>
               ))}
             </div>
@@ -629,17 +632,17 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
           mobileSortedHoldings.map((holding, holdingIndex) => (
             <div
               key={holding.id}
-              className="bg-white"
+              className="bg-bg-card"
               style={holdingIndex === 0 ? undefined : {
                 borderTop: "0.5px solid color-mix(in srgb, var(--color-text-muted) 18%, transparent)",
               }}
             >
               <div className="flex items-center justify-between gap-3 px-4 py-[14px]">
                 <button type="button" className="min-w-0 flex-1 pr-3 text-left" onClick={() => { tap(); onView(holding); }}>
-                  <div className="truncate text-[12px] font-semibold leading-[1.2] text-slate-900">{getMobileAssetName(holding.assetName)}</div>
-                  <div className="mt-1 flex items-center gap-1.5 text-[9px] font-normal leading-[1.2] text-slate-500">
+                  <div className="truncate text-[12px] font-semibold leading-[1.2] text-text-primary">{getMobileAssetName(holding.assetName)}</div>
+                  <div className="mt-1 flex items-center gap-1.5 text-[9px] font-normal leading-[1.2] text-text-muted">
                     {getAssetMetaLine(holding).ticker ? (
-                      <span className="rounded-md bg-slate-100 px-1.5 py-0.5 font-mono text-[9px] text-slate-700">
+                      <span className="rounded-md bg-bg-elevated px-1.5 py-0.5 font-mono text-[9px] text-text-secondary">
                         {getAssetMetaLine(holding).ticker}
                       </span>
                     ) : null}
@@ -651,19 +654,19 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
                 <div className="text-right">
                   {mobileColumn3Mode === "value" ? (
                     <>
-                      <div className="font-mono text-[12px] font-semibold leading-[1.15] text-slate-900">
+                      <div className="font-mono text-[12px] font-semibold leading-[1.15] text-text-primary">
                         {formatPortfolioAmount(holding.currentValueAed)}
                       </div>
-                      <div className="mt-[3px] font-mono text-[9px] font-normal leading-[1.15] text-slate-400">
+                      <div className="mt-[3px] font-mono text-[9px] font-normal leading-[1.15] text-text-muted">
                         ({formatPortfolioAmountWithoutCurrency(holding.investedAmountAed)})
                       </div>
                     </>
                   ) : mobileColumn3Mode === "price" ? (
                     <>
-                      <div className="font-mono text-[12px] font-semibold leading-[1.15] text-slate-900">
+                      <div className="font-mono text-[12px] font-semibold leading-[1.15] text-text-primary">
                         {formatOrMask(holding.currentPrice, holding.currency, isAmountsVisible)}
                       </div>
-                      <div className={`mt-[3px] text-[9px] font-normal leading-[1.15] ${holding.dayGainPct === null ? "text-slate-400" : getMobileValueTone(holding.dayGainPct)}`}>
+                      <div className={`mt-[3px] text-[9px] font-normal leading-[1.15] ${holding.dayGainPct === null ? "text-text-muted" : getMobileValueTone(holding.dayGainPct)}`}>
                         {holding.dayGainPct === null ? "No 1D data" : formatSignedPercent(holding.dayGainPct)}
                       </div>
                     </>
@@ -672,7 +675,7 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
                       <div className={`font-mono text-[12px] font-semibold leading-[1.15] ${getMobileValueTone(holding.gainLossAed)}`}>
                         {formatPortfolioAmount(holding.gainLossAed)}
                       </div>
-                      <div className="mt-[3px] text-[9px] font-normal leading-[1.15] text-slate-500">
+                      <div className="mt-[3px] text-[9px] font-normal leading-[1.15] text-text-muted">
                         {formatSignedPercent(holding.gainLossPct)}
                       </div>
                     </>
@@ -731,13 +734,20 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
             </div>
           ))
         ) : (
-          <div className="py-12 text-center text-sm text-slate-500">No holdings found</div>
+          <div className="px-6 py-12 text-center">
+            <div className="mx-auto max-w-xs">
+              <div className="flow-rail" style={{ "--flow-progress": "18%" } as CSSProperties} />
+              <div className="mt-5 text-sm font-semibold text-text-primary">Your portfolio ledger is empty</div>
+              <p className="mt-1.5 text-xs leading-5 text-text-muted">Add a holding to start tracking capital, allocation, and market movement.</p>
+              <button type="button" onClick={onAddHolding} className="mt-4 inline-flex min-h-10 items-center justify-center rounded-lg bg-accent-violet px-4 text-xs font-semibold text-white">Add first holding</button>
+            </div>
+          </div>
         )}
       </div>
 
       <div className="hidden overflow-x-auto sm:block">
         <table className="min-w-full text-left text-sm">
-          <thead className="border-b border-slate-200 text-xs uppercase tracking-wider text-slate-500">
+          <thead className="border-b border-border-default bg-bg-elevated/50 text-[11px] uppercase tracking-[0.1em] text-text-muted">
             <tr>
               <th className="w-10 whitespace-nowrap px-3 py-3 text-center">#</th>
               <SortHeader label="Asset" sortKey="asset" currentKey={sortKey} dir={sortDir} onSort={handleSort} className="px-5 py-3" />
@@ -758,14 +768,14 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
             {sortedHoldings.length ? (
               sortedHoldings.map((holding, index) => (
                 <tr key={holding.id} className="cursor-pointer border-b border-slate-100 hover:bg-slate-50" onClick={() => onView(holding)}>
-                  <td className="w-10 whitespace-nowrap px-3 py-3.5 text-center text-sm font-semibold text-slate-400">
+                  <td className="w-10 whitespace-nowrap px-3 py-3.5 text-center font-mono text-xs font-semibold text-text-muted">
                     {index + 1}
                   </td>
                   <td className="px-5 py-3">
-                    <div className="font-medium text-slate-900">{holding.assetName}</div>
-                    <div className="mt-0.5 flex items-center gap-1.5 text-xs text-slate-500">
+                    <div className="font-medium text-text-primary">{holding.assetName}</div>
+                    <div className="mt-0.5 flex items-center gap-1.5 text-xs text-text-muted">
                       {getAssetMetaLine(holding).ticker ? (
-                        <span className="rounded-md bg-slate-100 px-1.5 py-0.5 font-mono text-[11px] text-slate-700">
+                        <span className="rounded-md bg-bg-elevated px-1.5 py-0.5 font-mono text-[11px] text-text-secondary">
                           {getAssetMetaLine(holding).ticker}
                         </span>
                       ) : null}
@@ -784,19 +794,19 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
                       placeholder="0"
                     />
                   </td>
-                  <td className="px-3 py-3 text-center font-mono text-slate-600">
+                  <td className="px-3 py-3 text-center font-mono text-text-secondary">
                     {formatOrMask(holding.currentValue, holding.currency, isAmountsVisible)}
                   </td>
                   <td className="px-3 py-3 text-center">
-                    <div className="font-mono text-slate-900">
+                    <div className="font-mono text-text-primary">
                       {totalInvestedAed ? `${((holding.investedAmountAed / totalInvestedAed) * 100).toFixed(2)}%` : "0.00%"}
                     </div>
                   </td>
                   <td className="px-3 py-3">
-                    <div className="font-mono text-slate-900">
+                    <div className="font-mono text-text-primary">
                       {formatPortfolioAmount(holding.currentValueAed)}
                     </div>
-                    <div className="mt-0.5 font-mono text-xs text-slate-500">
+                    <div className="mt-0.5 font-mono text-xs text-text-muted">
                       ({formatPortfolioAmountWithoutCurrency(holding.investedAmountAed)})
                     </div>
                   </td>
@@ -825,7 +835,7 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
                       {formatSignedPercent(holding.gainLossPct)}
                     </div>
                   </td>
-                  <td className="px-3 py-3 text-xs text-slate-500">{timeAgo(holding.lastPriceUpdate)}</td>
+                  <td className="px-3 py-3 text-xs text-text-muted">{timeAgo(holding.lastPriceUpdate)}</td>
                   <td className="relative px-3 py-3">
                     <button
                       onClick={(event) => {
@@ -885,8 +895,8 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
               ))
             ) : (
               <tr>
-                <td colSpan={10} className="py-12 text-center text-slate-500">
-                  No holdings
+                <td colSpan={10} className="py-12 text-center text-text-muted">
+                  Add a holding to begin your portfolio ledger.
                 </td>
               </tr>
             )}

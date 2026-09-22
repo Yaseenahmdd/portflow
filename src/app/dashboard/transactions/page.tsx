@@ -243,7 +243,8 @@ export default function TransactionsPage() {
       <div className="sm:hidden">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-text-primary">Activity</h1>
+            <div className="ledger-kicker">Capital movements</div>
+            <h1 className="mt-1 text-2xl font-semibold tracking-tight text-text-primary">Activity</h1>
             <p className="mt-1 text-xs text-text-muted">{transactions.length} ledger entr{transactions.length === 1 ? "y" : "ies"}</p>
           </div>
           <button
@@ -253,7 +254,7 @@ export default function TransactionsPage() {
               setEditing(null);
               setModalOpen(true);
             }}
-            className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-accent-violet text-white"
+            className="inline-flex h-11 w-11 items-center justify-center rounded-lg bg-accent-violet text-white transition-transform active:scale-[0.97]"
             aria-label="Add transaction"
           >
             <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
@@ -278,7 +279,7 @@ export default function TransactionsPage() {
 
       <div className="hidden flex-col gap-4 sm:flex sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <div className="text-xs font-semibold uppercase tracking-[0.2em] text-text-muted">Activity ledger</div>
+          <div className="ledger-kicker">Capital movements</div>
           <h1 className="mt-2 text-3xl font-semibold tracking-tight text-text-primary">Transactions</h1>
           <p className="mt-2 max-w-2xl text-sm text-text-secondary">
             Buys, sells, and splits automatically control Holdings quantities and average costs.
@@ -292,7 +293,7 @@ export default function TransactionsPage() {
                 tap();
                 setImportPreviewOpen(true);
               }}
-              className="inline-flex min-h-11 items-center justify-center rounded-full border border-border-default bg-white px-5 py-3 text-sm font-semibold text-text-primary hover:bg-bg-elevated"
+              className="inline-flex min-h-11 items-center justify-center rounded-lg border border-border-default bg-bg-card px-5 py-3 text-sm font-semibold text-text-primary hover:bg-bg-elevated"
             >
               Import existing purchases
             </button>
@@ -304,7 +305,7 @@ export default function TransactionsPage() {
               setEditing(null);
               setModalOpen(true);
             }}
-            className="inline-flex min-h-11 items-center justify-center rounded-full bg-accent-violet px-5 py-3 text-sm font-semibold text-white hover:brightness-105"
+            className="inline-flex min-h-11 items-center justify-center rounded-lg bg-accent-violet px-5 py-3 text-sm font-semibold text-white transition-[filter,transform] hover:brightness-105 active:scale-[0.97]"
           >
             Add transaction
           </button>
@@ -354,8 +355,8 @@ export default function TransactionsPage() {
         collapsibleOnMobile
       />
 
-      <section className="overflow-visible rounded-2xl border border-border-default bg-white sm:overflow-hidden">
-        <div className="sticky top-0 z-20 flex flex-col gap-3 rounded-t-2xl border-b border-border-default bg-bg-card px-4 py-4 sm:static sm:flex-row sm:items-center sm:justify-between sm:px-5">
+      <section className="overflow-visible rounded-xl border border-border-default bg-bg-card sm:overflow-hidden">
+        <div className="sticky top-0 z-20 flex flex-col gap-3 rounded-t-xl border-b border-border-default bg-bg-card px-4 py-4 sm:static sm:flex-row sm:items-center sm:justify-between sm:px-5">
           <div>
             <h2 className="font-semibold text-text-primary">Ledger entries</h2>
             <p className="mt-0.5 text-xs text-text-muted">{transactions.length} total</p>
@@ -369,9 +370,9 @@ export default function TransactionsPage() {
                   setFilter(item.value);
                   setMobileActionMenuId(null);
                 }}
-                className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold transition ${
+                className={`shrink-0 rounded-md px-3 py-1.5 text-xs font-semibold transition ${
                   filter === item.value
-                    ? "bg-text-primary text-bg-primary"
+                    ? "bg-accent-violet text-white"
                     : "bg-bg-elevated text-text-secondary hover:text-text-primary"
                 }`}
               >
