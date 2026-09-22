@@ -1,4 +1,4 @@
-import { fetchTwelveDataQuotes } from '@/lib/api/twelvedata';
+import { fetchDfmQuotes } from '@/lib/api/dfm';
 import { UAE_STOCK_TICKERS } from '@/lib/constants';
 import { createClient } from '@/lib/supabase/server';
 
@@ -11,7 +11,10 @@ export async function GET() {
     return Response.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   }
   try {
-    const results = await fetchTwelveDataQuotes(UAE_STOCK_TICKERS, 'DFM');
+    const results = await fetchDfmQuotes(UAE_STOCK_TICKERS);
+    if (!Object.keys(results).length) {
+      throw new Error('DFM returned no quotes');
+    }
     return Response.json({ success: true, data: results, timestamp: new Date().toISOString() });
   } catch (error) {
     console.error('UAE Stocks API error:', error);

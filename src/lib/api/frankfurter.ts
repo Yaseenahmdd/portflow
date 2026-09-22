@@ -10,12 +10,15 @@ export interface ExchangeRates {
   fetchedAt?: string;
 }
 
+const REQUEST_TIMEOUT_MS = 8_000;
+
 export async function fetchExchangeRates(
 ): Promise<ExchangeRates | null> {
   try {
     // AED is pegged to USD (1 USD = 3.6725 AED). We fetch USD to INR.
     const res = await fetch(`https://api.frankfurter.app/latest?from=USD&to=INR`, {
       cache: "no-store",
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
     if (!res.ok) throw new Error(`Frankfurter error: ${res.status}`);
     const data: ExchangeRates = await res.json();

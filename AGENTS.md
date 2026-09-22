@@ -1,7 +1,11 @@
 <!-- BEGIN:nextjs-agent-rules -->
+
 # This is NOT the Next.js you know
 
-This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
 <!-- END:nextjs-agent-rules -->
 
 # Portflow Workspace Instructions
@@ -43,7 +47,7 @@ npm run lint       # ESLint check
 - Hybrid persistence: Supabase primary, localStorage fallback
 
 ### Price Refresh System
-- Parallel API calls to 6+ market data sources
+- Parallel API calls to multiple market data sources
 - Currency conversions with AED as base currency
 - Cached FX rates (Frankfurter API)
 
@@ -67,8 +71,7 @@ Required:
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 
 Optional:
-- `TWELVE_DATA_API_KEY` (US ETFs)
-- `ALPHA_VANTAGE_API_KEY` (Indian stocks, legacy)
+- No additional market-data keys are required by the current integrations
 
 ## Key Files & Patterns
 

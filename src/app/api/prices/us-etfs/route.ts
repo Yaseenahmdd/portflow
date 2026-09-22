@@ -12,6 +12,9 @@ export async function GET() {
   }
   try {
     const results = await fetchAlphaVantageMultiple(US_ETF_TICKERS);
+    if (!Object.keys(results).length) {
+      throw new Error('Yahoo Finance returned no US quotes');
+    }
     return Response.json({ success: true, data: results, timestamp: new Date().toISOString() });
   } catch (error) {
     console.error('US ETFs API error:', error);

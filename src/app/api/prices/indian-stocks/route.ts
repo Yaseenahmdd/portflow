@@ -13,6 +13,9 @@ export async function GET() {
   try {
     const symbols = Object.values(INDIAN_STOCK_TICKERS);
     const results = await fetchAlphaVantageMultiple(symbols);
+    if (!Object.keys(results).length) {
+      throw new Error('Yahoo Finance returned no Indian quotes');
+    }
     return Response.json({ success: true, data: results, timestamp: new Date().toISOString() });
   } catch (error) {
     console.error('Indian Stocks API error:', error);

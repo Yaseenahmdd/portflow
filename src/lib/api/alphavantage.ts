@@ -11,6 +11,8 @@ export interface StockQuote {
   changePercent: string;
 }
 
+const REQUEST_TIMEOUT_MS = 8_000;
+
 const YAHOO_SYMBOL_ALIASES: Record<string, string> = {
   MAM150ETF: "MIDCAPETF",
 };
@@ -27,6 +29,7 @@ export async function fetchStockQuote(symbol: string): Promise<StockQuote | null
 
     const res = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${yahooSymbol}?interval=1d&range=1d`, {
       cache: "no-store",
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       headers: {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
       },

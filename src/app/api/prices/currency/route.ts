@@ -11,6 +11,9 @@ export async function GET() {
   }
   try {
     const results = await fetchExchangeRates();
+    if (!results) {
+      throw new Error('Frankfurter returned no exchange rates');
+    }
     return Response.json({ success: true, data: results, timestamp: new Date().toISOString() });
   } catch (error) {
     console.error('Currency API error:', error);

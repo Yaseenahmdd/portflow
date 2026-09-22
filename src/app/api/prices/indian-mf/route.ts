@@ -13,6 +13,9 @@ export async function GET() {
   try {
     const schemeCodes = Object.values(MF_SCHEMES).map((s) => s.schemeCode);
     const results = await fetchMutualFundNav(schemeCodes);
+    if (!results.length) {
+      throw new Error('AMFI and MFAPI returned no NAV data');
+    }
     return Response.json({ success: true, data: results, timestamp: new Date().toISOString() });
   } catch (error) {
     console.error('Indian MF API error:', error);

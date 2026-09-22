@@ -1,5 +1,5 @@
 {
-  "name": "asset-viz",
+  "name": "portflow",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -12,7 +12,6 @@
   "dependencies": {
     "@supabase/ssr": "^0.10.0",
     "@supabase/supabase-js": "^2.101.1",
-    "framer-motion": "^12.38.0",
     "next": "^16.3.4",
     "react": "19.2.4",
     "react-dom": "19.2.4",

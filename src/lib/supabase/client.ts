@@ -1,11 +1,17 @@
 import { createBrowserClient } from '@supabase/ssr';
 
+export function isSupabaseConfigured() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  return Boolean(url && key && url !== 'your_supabase_project_url');
+}
+
 export function createClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   // If Supabase is not configured, return a mock client
-  if (!url || !key || url === 'your_supabase_project_url') {
+  if (!isSupabaseConfigured()) {
     return {
       auth: {
         signInWithPassword: async () => ({ data: { user: null, session: null }, error: null }),
@@ -28,5 +34,5 @@ export function createClient() {
     } as ReturnType<typeof createBrowserClient>;
   }
 
-  return createBrowserClient(url, key);
+  return createBrowserClient(url!, key!);
 }

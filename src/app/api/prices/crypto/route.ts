@@ -13,6 +13,9 @@ export async function GET() {
   try {
     const ids = Object.values(CRYPTO_IDS);
     const results = await fetchCryptoPrices(ids);
+    if (!Object.keys(results).length) {
+      throw new Error('CoinGecko returned no prices');
+    }
     return Response.json({ success: true, data: results, timestamp: new Date().toISOString() });
   } catch (error) {
     console.error('Crypto API error:', error);

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import { tap, toggle, success as hapticSuccess, destructive as hapticError } from "@/lib/haptics";
 import { useRouter } from "next/navigation";
 
@@ -10,6 +10,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
   const [mode, setMode] = useState<"login" | "signup">("login");
   const router = useRouter();
 
@@ -17,6 +18,7 @@ export default function LoginPage() {
     event.preventDefault();
     setLoading(true);
     setError("");
+    setMessage("");
 
     const supabase = createClient();
 
@@ -29,10 +31,17 @@ export default function LoginPage() {
         return;
       }
     } else {
-      const { error: signUpError } = await supabase.auth.signUp({ email, password });
+      const { data, error: signUpError } = await supabase.auth.signUp({ email, password });
       if (signUpError) {
         hapticError();
         setError(signUpError.message);
+        setLoading(false);
+        return;
+      }
+
+      if (!data.session && isSupabaseConfigured()) {
+        hapticSuccess();
+        setMessage("Check your email to confirm your account, then sign in.");
         setLoading(false);
         return;
       }
@@ -57,6 +66,12 @@ export default function LoginPage() {
           {error && (
             <div className="mt-6 rounded-[1.2rem] border border-accent-loss/20 bg-accent-loss-bg px-4 py-3 text-sm text-accent-loss">
               {error}
+            </div>
+          )}
+
+          {message && (
+            <div className="mt-6 rounded-[1.2rem] border border-accent-gain/20 bg-accent-gain-bg px-4 py-3 text-sm text-accent-gain">
+              {message}
             </div>
           )}
 
@@ -109,6 +124,7 @@ export default function LoginPage() {
                 toggle();
                 setMode((current) => (current === "login" ? "signup" : "login"));
                 setError("");
+                setMessage("");
               }}
               className="text-sm font-medium text-text-secondary transition hover:text-text-primary"
             >

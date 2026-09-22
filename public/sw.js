@@ -1,9 +1,9 @@
-const CACHE_NAME = "portflow-v2";
-const OFFLINE_FALLBACKS = ["/dashboard", "/manifest.webmanifest", "/apple-icon", "/icon"];
+const CACHE_NAME = "portflow-v3";
+const STATIC_ASSETS = ["/manifest.webmanifest", "/apple-icon", "/icon"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(OFFLINE_FALLBACKS)).catch(() => undefined)
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS)).catch(() => undefined)
   );
   self.skipWaiting();
 });
@@ -38,19 +38,9 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
+  // Authenticated navigation responses may contain user-specific data.
+  // Leave them to the network instead of storing them in a shared cache.
   if (request.mode === "navigate") {
-    event.respondWith(
-      fetch(request)
-        .then((response) => {
-          const copy = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, copy)).catch(() => undefined);
-          return response;
-        })
-        .catch(async () => {
-          const cached = await caches.match(request);
-          return cached || caches.match("/dashboard") || Response.error();
-        })
-    );
     return;
   }
 

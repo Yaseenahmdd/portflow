@@ -2,7 +2,7 @@ import {
   fetchHistoricalInrToAedRates,
   fetchHistoricalPriceHistories,
 } from "@/lib/api/historical-prices";
-import type { Holding } from "@/lib/constants";
+import { isHolding } from "@/lib/holding-validation";
 import {
   buildHistoricalPortfolioSnapshots,
   getHistoricalPortfolioStartDate,
@@ -18,19 +18,6 @@ interface HistoryRequestBody {
   holdings?: unknown;
   transactions?: unknown;
   fallbackInrToAedRate?: unknown;
-}
-
-function isHolding(value: unknown): value is Holding {
-  if (!value || typeof value !== "object") return false;
-  const holding = value as Partial<Holding>;
-
-  return (
-    typeof holding.id === "string" &&
-    typeof holding.assetName === "string" &&
-    typeof holding.ticker === "string" &&
-    typeof holding.currency === "string" &&
-    typeof holding.priceSource === "string"
-  );
 }
 
 function getDubaiTodayDateKey() {

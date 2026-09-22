@@ -72,7 +72,10 @@ export async function fetchCryptoPrices(
     const idsStr = ids.join(',');
     const res = await fetch(
       `https://api.coingecko.com/api/v3/simple/price?ids=${idsStr}&vs_currencies=usd,aed&include_24hr_change=true`,
-      { cache: "no-store" }
+      {
+        cache: "no-store",
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      }
     );
     if (!res.ok) throw new Error(`CoinGecko error: ${res.status}`);
     const data = await res.json();
