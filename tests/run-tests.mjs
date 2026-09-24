@@ -11,3 +11,4 @@ import "./ledger-holdings.test.ts";
 import "./transaction-performance.test.ts";
 import "./cash-balances.test.ts";
 import "./benchmark-performance.test.ts";
+import "./premarket-prices.test.ts";

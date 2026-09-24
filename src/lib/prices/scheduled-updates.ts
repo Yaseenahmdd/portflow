@@ -10,6 +10,8 @@ export interface ScheduledPriceUpdate extends ScheduledHoldingIdentity {
   previousClose: number | null;
   dayChangePercent: number | null;
   lastPriceUpdate: string;
+  priceAsOf: string | null;
+  priceSession: "pre-market" | null;
 }
 
 export function buildScheduledPriceUpdates(
@@ -44,6 +46,8 @@ export function buildScheduledPriceUpdates(
       previousClose: refreshed.previousClose ?? null,
       dayChangePercent: refreshed.dayChangePercent ?? null,
       lastPriceUpdate: refreshed.lastPriceUpdate,
+      priceAsOf: refreshed.priceAsOf ?? null,
+      priceSession: refreshed.priceSession ?? null,
     });
   }
 

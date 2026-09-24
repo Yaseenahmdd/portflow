@@ -33,6 +33,8 @@ export function mergeRemoteHoldingsWithLocalPrices(remoteHoldings: Holding[], lo
       ...remoteHolding,
       currentPrice: localHolding.currentPrice,
       lastPriceUpdate: localHolding.lastPriceUpdate,
+      priceAsOf: localHolding.priceAsOf,
+      priceSession: localHolding.priceSession,
     };
   });
 }

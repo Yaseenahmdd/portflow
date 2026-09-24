@@ -35,6 +35,8 @@ test("scheduled updates include only holdings that received a fresh price", () =
       previousClose: 11,
       dayChangePercent: 9.09,
       lastPriceUpdate: "2026-09-16T21:00:00.000Z",
+      priceAsOf: "2026-09-16T20:59:00.000Z",
+      priceSession: "pre-market",
     }),
     original[1],
   ];
@@ -52,6 +54,8 @@ test("scheduled updates include only holdings that received a fresh price", () =
       previousClose: 11,
       dayChangePercent: 9.09,
       lastPriceUpdate: "2026-09-16T21:00:00.000Z",
+      priceAsOf: "2026-09-16T20:59:00.000Z",
+      priceSession: "pre-market",
     },
   ]);
 });

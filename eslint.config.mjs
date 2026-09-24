@@ -14,6 +14,7 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     "investment-portfolio-app/**",
     "backups/**",
+    "Portflow Promo/**",
   ]),
 ]);
 

@@ -73,8 +73,8 @@ export default function HoldingDetailsModal({ holding, inrToAedRate, onClose }: 
           <section className="grid grid-cols-2 gap-3">
             <MetricCard label="Current Value" value={formatMoney(computed.currentValue, holding.currency)} />
             <MetricCard label="Investor Return" value={formatMoney(convertAed(computed.gainLossAed), displayCurrency)} detail={`${computed.gainLossPct.toFixed(2)}%`} tone={computed.gainLossAed >= 0 ? "positive" : "negative"} />
-            <MetricCard label="Current Price" value={formatMoney(holding.currentPrice, holding.currency)} />
-            <MetricCard label="Last Updated" value={timeAgo(holding.lastPriceUpdate)} />
+            <MetricCard label={holding.priceSession === "pre-market" ? "Pre-market Price" : "Current Price"} value={formatMoney(holding.currentPrice, holding.currency)} />
+            <MetricCard label="Quote As Of" value={timeAgo(holding.priceAsOf || holding.lastPriceUpdate)} />
           </section>
 
           <section className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
@@ -164,8 +164,8 @@ export default function HoldingDetailsModal({ holding, inrToAedRate, onClose }: 
             <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
               <StatCard title="Quantity" value={holding.quantity < 1 ? holding.quantity.toFixed(7) : holding.quantity.toLocaleString()} />
               <StatCard title="Avg Buy Price" value={formatMoney(holding.avgBuyPrice, holding.currency)} />
-              <StatCard title="Current Price" value={formatMoney(holding.currentPrice, holding.currency)} />
-              <StatCard title="Last Price Update" value={timeAgo(holding.lastPriceUpdate)} />
+              <StatCard title={holding.priceSession === "pre-market" ? "Pre-market Price" : "Current Price"} value={formatMoney(holding.currentPrice, holding.currency)} />
+              <StatCard title="Quote As Of" value={timeAgo(holding.priceAsOf || holding.lastPriceUpdate)} />
             </section>
 
             <section className="rounded-2xl border border-slate-200 bg-white p-4">

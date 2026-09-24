@@ -83,6 +83,8 @@ export function isHolding(value: unknown): value is Holding {
     PRICE_SOURCES.has(holding.priceSource) &&
     isOptionalString(holding.schemeCode) &&
     isOptionalString(holding.lastPriceUpdate) &&
+    isOptionalString(holding.priceAsOf) &&
+    (holding.priceSession === undefined || holding.priceSession === "pre-market") &&
     isOptionalFiniteNumber(holding.previousClose) &&
     isOptionalFiniteNumber(holding.dayChangePercent) &&
     (holding.purchases === undefined ||

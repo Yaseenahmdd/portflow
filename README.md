@@ -17,12 +17,13 @@ It is built with Next.js and Supabase and supports authenticated users, live mar
 - Record buys, sells, dividends, cash movements, fees, splits, and currency exchanges in a transaction ledger
 - Price refresh across:
   - Yahoo Finance for Indian stocks and ETFs
-  - Yahoo Finance for US stocks and ETFs
+  - Yahoo Finance for US stocks and ETFs, including available pre-market trades
   - DFM delayed quotes for UAE stocks
   - CoinGecko for crypto
   - Frankfurter for FX
   - AMFI with MFAPI fallback for Indian mutual funds
 - Near-live dashboard updates every minute for supported stocks, ETFs, gold funds, crypto, and delayed DFM quotes while the app is open
+- US pre-market quotes update holding values and daily changes when Yahoo provides an intraday trade. Holdings show a pre-market label and the quote time; otherwise they retain the regular-market price.
 - Mobile-friendly holdings view
 - Installable PWA with manifest, icons, and a lightweight service worker
 
@@ -104,6 +105,8 @@ Apply the migrations in `supabase/migrations/` to your Supabase project. The tra
 ```sql
 supabase/migrations/20260918_create_transactions_table.sql
 ```
+
+Pre-market quote labels and times require `supabase/migrations/20260924_add_price_session_to_holdings.sql` before deploying this version against Supabase.
 
 The migrations create:
 

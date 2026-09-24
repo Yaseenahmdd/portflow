@@ -22,6 +22,8 @@ async function updateHoldingPrices(
             previous_close: update.previousClose,
             day_change_percent: update.dayChangePercent,
             last_price_update: update.lastPriceUpdate,
+            price_as_of: update.priceAsOf,
+            price_session: update.priceSession,
           })
           .eq("user_id", update.userId)
           .eq("id", update.id);

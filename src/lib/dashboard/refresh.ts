@@ -1,5 +1,6 @@
 import { computeInrToAed, type ExchangeRates } from "@/lib/api/frankfurter";
 import type { CryptoPrice } from "@/lib/api/coingecko";
+import type { StockQuote } from "@/lib/api/alphavantage";
 import { CRYPTO_IDS, type Holding } from "@/lib/constants";
 import type { PriceRefreshScope } from "@/lib/prices/refresh-all";
 import {
@@ -81,8 +82,9 @@ export function applyRefreshResults(holdings: Holding[], results: PriceResult[])
       }
 
       case "indian-stocks": {
-        const quotes = result.data as Record<string, { price: number; previousClose?: number; changePercent?: string }>;
+        const quotes = result.data as Record<string, StockQuote>;
         for (const [ticker, quote] of Object.entries(quotes)) {
+          if (!Number.isFinite(quote.price) || quote.price <= 0) continue;
           updateHoldingsAtIndexes(
             updated,
             getPriceIndexes(priceIndexes.indianStocks, ticker),
@@ -91,6 +93,8 @@ export function applyRefreshResults(holdings: Holding[], results: PriceResult[])
               currentPrice: quote.price,
               previousClose: quote.previousClose,
               dayChangePercent: Number.parseFloat(quote.changePercent || "0"),
+              priceAsOf: quote.priceAsOf,
+              priceSession: undefined,
               lastPriceUpdate: now,
             })
           );
@@ -99,9 +103,9 @@ export function applyRefreshResults(holdings: Holding[], results: PriceResult[])
       }
 
       case "us-etfs": {
-        const quotes = result.data as Record<string, { price: number; previousClose?: number; changePercent?: string }>;
+        const quotes = result.data as Record<string, StockQuote>;
         for (const [symbol, quote] of Object.entries(quotes)) {
-          if (quote.price !== undefined) {
+          if (Number.isFinite(quote.price) && quote.price > 0) {
             updateHoldingsAtIndexes(
               updated,
               getPriceIndexes(priceIndexes.usStocks, symbol),
@@ -110,6 +114,8 @@ export function applyRefreshResults(holdings: Holding[], results: PriceResult[])
                 currentPrice: quote.price,
                 previousClose: quote.previousClose,
                 dayChangePercent: Number.parseFloat(quote.changePercent || "0"),
+                priceAsOf: quote.priceAsOf,
+                priceSession: quote.priceSession,
                 lastPriceUpdate: now,
               })
             );

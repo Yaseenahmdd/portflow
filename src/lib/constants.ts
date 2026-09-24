@@ -100,6 +100,8 @@ export interface Holding {
   priceSource: PriceSource;
   schemeCode?: string; // for MFs
   lastPriceUpdate?: string; // ISO timestamp
+  priceAsOf?: string; // Exchange quote timestamp when available
+  priceSession?: 'pre-market';
   previousClose?: number;
   dayChangePercent?: number;
   purchases?: Purchase[];

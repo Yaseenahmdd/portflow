@@ -197,7 +197,7 @@ export function useDashboardHoldings(initialUserId: string) {
   const updatePrice = useCallback((id: string, price: number) => {
     const lastPriceUpdate = new Date().toISOString();
     setHoldings((current) =>
-      current.map((holding) => (holding.id === id ? { ...holding, currentPrice: price, lastPriceUpdate } : holding))
+      current.map((holding) => (holding.id === id ? { ...holding, currentPrice: price, lastPriceUpdate, priceAsOf: undefined, priceSession: undefined } : holding))
     );
   }, []);
 

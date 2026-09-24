@@ -20,6 +20,8 @@ export interface HoldingRow {
   price_source: string;
   scheme_code: string | null;
   last_price_update: string | null;
+  price_as_of: string | null;
+  price_session: string | null;
   previous_close: number | null;
   day_change_percent: number | null;
   purchases: string | null;
@@ -69,6 +71,8 @@ export function mapRowToHolding(row: HoldingRow): Holding {
     priceSource: row.price_source as Holding["priceSource"],
     schemeCode: row.scheme_code || undefined,
     lastPriceUpdate: row.last_price_update || undefined,
+    priceAsOf: row.price_as_of || undefined,
+    priceSession: row.price_session === "pre-market" ? "pre-market" : undefined,
     previousClose: row.previous_close ?? undefined,
     dayChangePercent: row.day_change_percent ?? undefined,
     purchases: parseHoldingPurchases(row.purchases),
@@ -95,6 +99,8 @@ function mapHoldingToRow(userId: string, holding: Holding): HoldingRow {
     price_source: holding.priceSource,
     scheme_code: holding.schemeCode || null,
     last_price_update: holding.lastPriceUpdate || null,
+    price_as_of: holding.priceAsOf || null,
+    price_session: holding.priceSession || null,
     previous_close: holding.previousClose ?? null,
     day_change_percent: holding.dayChangePercent ?? null,
     purchases: holding.purchases ? JSON.stringify(holding.purchases) : null,

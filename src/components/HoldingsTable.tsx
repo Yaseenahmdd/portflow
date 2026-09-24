@@ -640,6 +640,7 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
               <div className="flex items-center justify-between gap-3 px-4 py-[14px]">
                 <button type="button" className="min-w-0 flex-1 pr-3 text-left" onClick={() => { tap(); onView(holding); }}>
                   <div className="truncate text-[12px] font-semibold leading-[1.2] text-text-primary">{getMobileAssetName(holding.assetName)}</div>
+                  {holding.priceSession === "pre-market" ? <div className="mt-1 text-[9px] font-semibold text-accent-violet">Pre-market · {timeAgo(holding.priceAsOf || holding.lastPriceUpdate)}</div> : null}
                   <div className="mt-1 flex items-center gap-1.5 text-[9px] font-normal leading-[1.2] text-text-muted">
                     {getAssetMetaLine(holding).ticker ? (
                       <span className="rounded-md bg-bg-elevated px-1.5 py-0.5 font-mono text-[9px] text-text-secondary">
@@ -793,6 +794,7 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
                       className="w-24 rounded-lg border border-slate-200 px-2 py-1.5 font-mono text-sm"
                       placeholder="0"
                     />
+                    {holding.priceSession === "pre-market" ? <div className="mt-1 whitespace-nowrap text-[10px] font-semibold text-accent-violet">Pre-market</div> : null}
                   </td>
                   <td className="px-3 py-3 text-center font-mono text-text-secondary">
                     {formatOrMask(holding.currentValue, holding.currency, isAmountsVisible)}
@@ -835,7 +837,7 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
                       {formatSignedPercent(holding.gainLossPct)}
                     </div>
                   </td>
-                  <td className="px-3 py-3 text-xs text-text-muted">{timeAgo(holding.lastPriceUpdate)}</td>
+                  <td className="px-3 py-3 text-xs text-text-muted">{timeAgo(holding.priceAsOf || holding.lastPriceUpdate)}</td>
                   <td className="relative px-3 py-3">
                     <button
                       onClick={(event) => {
