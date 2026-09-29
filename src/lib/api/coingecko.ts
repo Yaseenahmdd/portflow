@@ -3,6 +3,8 @@
  * Used for crypto prices (BTC, ETH, etc.).
  */
 
+import { CRYPTO_IDS } from '@/lib/constants';
+
 export interface CryptoPrice {
   id: string;
   usd: number;
@@ -107,7 +109,57 @@ export async function fetchCryptoPrices(
 
     return results;
   } catch (err) {
-    console.error('CoinGecko: failed to fetch crypto prices:', err);
-    return {};
+    console.warn('CoinGecko: failed to fetch crypto prices, falling back to Coinbase:', err);
+    return fetchCoinbasePrices(ids);
   }
+}
+
+// AED is pegged to USD.
+const USD_TO_AED = 3.6725;
+
+async function fetchCoinbasePrices(
+  ids: string[]
+): Promise<Record<string, CryptoPrice>> {
+  const tickerById = new Map(
+    Object.entries(CRYPTO_IDS).map(([ticker, id]) => [id, ticker] as const)
+  );
+  const results: Record<string, CryptoPrice> = {};
+
+  await Promise.all(
+    ids.map(async (id) => {
+      const ticker = tickerById.get(id);
+      if (!ticker) return;
+      // MATIC now trades as POL.
+      const symbol = `${ticker === 'MATIC' ? 'POL' : ticker}-USD`;
+      try {
+        // Daily candles, newest first: [time, low, high, open, close, volume].
+        // Today's open is the previous UTC close.
+        const res = await fetch(
+          `https://api.exchange.coinbase.com/products/${symbol}/candles?granularity=86400`,
+          {
+            cache: 'no-store',
+            headers: { 'User-Agent': 'portflow' },
+            signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+          }
+        );
+        if (!res.ok) throw new Error(`Coinbase error: ${res.status}`);
+        const [candle] = (await res.json()) as number[][];
+        const usd = Number(candle?.[4]);
+        const previousCloseUsd = Number(candle?.[3]);
+        if (!(usd > 0)) return;
+        results[id] = {
+          id,
+          usd,
+          aed: usd * USD_TO_AED,
+          usd_24h_change: previousCloseUsd > 0 ? ((usd - previousCloseUsd) / previousCloseUsd) * 100 : 0,
+          previousCloseUsd: previousCloseUsd > 0 ? previousCloseUsd : undefined,
+          previousCloseAed: previousCloseUsd > 0 ? previousCloseUsd * USD_TO_AED : undefined,
+        };
+      } catch (error) {
+        console.warn(`Coinbase: failed to fetch ${symbol}:`, error);
+      }
+    })
+  );
+
+  return results;
 }
