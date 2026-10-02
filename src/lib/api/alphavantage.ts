@@ -4,6 +4,8 @@
  * No API key required.
  */
 
+import { isHongKongTicker } from "@/lib/constants";
+
 export interface StockQuote {
   symbol: string;
   price: number;
@@ -14,6 +16,7 @@ export interface StockQuote {
 }
 
 const REQUEST_TIMEOUT_MS = 8_000;
+const HKD_PER_USD_PEG = 7.8;
 
 const YAHOO_SYMBOL_ALIASES: Record<string, string> = {
   MAM150ETF: "MIDCAPETF",
@@ -43,7 +46,7 @@ export function selectYahooQuote(result: YahooChartResult, symbol: string, nowSe
 
   const previousClose = meta.chartPreviousClose ?? meta.previousClose ?? 0;
   const pre = meta.currentTradingPeriod?.pre;
-  const isUsSymbol = !symbol.startsWith("NSE:");
+  const isUsSymbol = !symbol.startsWith("NSE:") && !isHongKongTicker(symbol);
   let price = meta.regularMarketPrice;
   let priceSession: StockQuote["priceSession"];
   let priceAsOf = meta.regularMarketTime ? new Date(meta.regularMarketTime * 1000).toISOString() : undefined;
@@ -75,11 +78,26 @@ export function selectYahooQuote(result: YahooChartResult, symbol: string, nowSe
   };
 }
 
+async function fetchHkdToUsdRate(): Promise<number> {
+  try {
+    const res = await fetch("https://query1.finance.yahoo.com/v8/finance/chart/HKDUSD=X?interval=1d&range=1d", {
+      cache: "no-store",
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" },
+    });
+    const rate = (await res.json())?.chart?.result?.[0]?.meta?.regularMarketPrice;
+    if (typeof rate === "number" && Number.isFinite(rate) && rate > 0) return rate;
+  } catch {
+    // fall through to the peg
+  }
+  return 1 / HKD_PER_USD_PEG;
+}
+
 export async function fetchStockQuote(symbol: string): Promise<StockQuote | null> {
   try {
     const yahooSymbol = toYahooSymbol(symbol);
 
-    const isUsSymbol = !symbol.startsWith("NSE:");
+    const isUsSymbol = !symbol.startsWith("NSE:") && !isHongKongTicker(symbol);
     const query = isUsSymbol ? "interval=1m&range=1d&includePrePost=true" : "interval=1d&range=1d";
     const res = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${yahooSymbol}?${query}`, {
       cache: "no-store",
@@ -94,7 +112,13 @@ export async function fetchStockQuote(symbol: string): Promise<StockQuote | null
     }
 
     const data = await res.json();
-    return selectYahooQuote(data?.chart?.result?.[0] ?? {}, symbol);
+    const quote = selectYahooQuote(data?.chart?.result?.[0] ?? {}, symbol);
+    if (quote && isHongKongTicker(symbol)) {
+      // Holdings are stored in USD, so convert the HKD quote.
+      const rate = await fetchHkdToUsdRate();
+      return { ...quote, price: quote.price * rate, previousClose: quote.previousClose * rate };
+    }
+    return quote;
   } catch (err) {
     console.error(`Yahoo Finance: failed to fetch ${symbol}:`, err);
     return null;

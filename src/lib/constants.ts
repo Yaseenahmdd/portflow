@@ -17,6 +17,9 @@ export const GEOGRAPHY_OPTIONS: Geography[] = ['India', 'US', 'UAE', 'Global', '
 export const RISK_OPTIONS: Risk[] = ['Low', 'Medium', 'High'];
 export const CURRENCY_OPTIONS: Currency[] = ['AED', 'USD', 'INR'];
 
+// Hong Kong listings (Yahoo symbols like 9618.HK) are quoted in HKD and converted to USD
+export const isHongKongTicker = (ticker: string) => /\.HK$/i.test(ticker.trim());
+
 // Fixed USD → AED peg
 export const USD_TO_AED = 3.6725;
 

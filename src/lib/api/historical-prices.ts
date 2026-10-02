@@ -1,4 +1,4 @@
-import type { Holding } from "@/lib/constants";
+import { isHongKongTicker, type Holding } from "@/lib/constants";
 import type {
   HistoricalPriceHistories,
   HistoricalPricePoint,
@@ -10,6 +10,7 @@ const COINGECKO_BASE_URL = "https://api.coingecko.com/api/v3";
 const DFM_HISTORY_URL = "https://api2.dfm.ae/web/widgets/v1/data";
 const FRANKFURTER_RATES_URL = "https://api.frankfurter.dev/v2/rates";
 const REQUEST_TIMEOUT_MS = 12_000;
+const HKD_PER_USD_PEG = 7.8;
 const DFM_WINDOW_DAYS = 7;
 const DFM_CONCURRENCY = 6;
 
@@ -181,7 +182,17 @@ async function fetchYahooSymbolHistory(symbol: string, startDate: string, endDat
 }
 
 async function fetchYahooHistory(holding: Holding, startDate: string, endDate: string) {
-  return fetchYahooSymbolHistory(getYahooSymbol(holding), startDate, endDate);
+  const points = await fetchYahooSymbolHistory(getYahooSymbol(holding), startDate, endDate);
+  if (!isHongKongTicker(holding.ticker)) return points;
+
+  // Hong Kong closes are in HKD but holdings are stored in USD.
+  const rates = await fetchYahooSymbolHistory("HKDUSD=X", addDays(startDate, -7), endDate).catch(() => []);
+  let rateIndex = -1;
+  return points.map((point) => {
+    while (rateIndex + 1 < rates.length && rates[rateIndex + 1].date <= point.date) rateIndex += 1;
+    const rate = rateIndex >= 0 ? rates[rateIndex].price : rates[0]?.price ?? 1 / HKD_PER_USD_PEG;
+    return { date: point.date, price: point.price * rate };
+  });
 }
 
 export function fetchSp500History(startDate: string, endDate: string) {

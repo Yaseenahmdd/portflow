@@ -3,7 +3,7 @@ import { fetchCryptoPrices } from "@/lib/api/coingecko";
 import { fetchDfmQuotes } from "@/lib/api/dfm";
 import { fetchExchangeRates } from "@/lib/api/frankfurter";
 import { fetchMutualFundNav } from "@/lib/api/mfapi";
-import { CRYPTO_IDS, type Holding } from "@/lib/constants";
+import { CRYPTO_IDS, isHongKongTicker, type Holding } from "@/lib/constants";
 
 export type PriceRefreshScope = "all" | "live";
 
@@ -86,7 +86,7 @@ export async function fetchAllPriceResults(
       .filter(
         (holding) =>
           holding.priceSource === "alphavantage" &&
-          holding.geography === "US" &&
+          (holding.geography === "US" || isHongKongTicker(holding.ticker)) &&
           Boolean(holding.ticker)
       )
       .map((holding) => holding.ticker)
