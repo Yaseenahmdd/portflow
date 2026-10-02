@@ -1,13 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
+import { createClient } from "@/lib/supabase/client";
 import { tap, toggle, success as hapticSuccess, destructive as hapticError } from "@/lib/haptics";
 import { useRouter } from "next/navigation";
+import { USERNAME_PATTERN, normalizeUsername, usernameToEmail } from "@/lib/username";
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [inviteCode, setInviteCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
@@ -20,6 +22,14 @@ export default function LoginPage() {
     setError("");
     setMessage("");
 
+    if (!USERNAME_PATTERN.test(normalizeUsername(username))) {
+      hapticError();
+      setError("Username must be 3-30 characters: letters, numbers, dot, dash or underscore.");
+      setLoading(false);
+      return;
+    }
+
+    const email = usernameToEmail(username);
     const supabase = createClient();
 
     if (mode === "login") {
@@ -31,17 +41,23 @@ export default function LoginPage() {
         return;
       }
     } else {
-      const { data, error: signUpError } = await supabase.auth.signUp({ email, password });
-      if (signUpError) {
+      const response = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password, inviteCode }),
+      });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
         hapticError();
-        setError(signUpError.message);
+        setError(payload?.error ?? "Could not create the account.");
         setLoading(false);
         return;
       }
 
-      if (!data.session && isSupabaseConfigured()) {
-        hapticSuccess();
-        setMessage("Check your email to confirm your account, then sign in.");
+      const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+      if (signInError) {
+        hapticError();
+        setError(signInError.message);
         setLoading(false);
         return;
       }
@@ -78,16 +94,18 @@ export default function LoginPage() {
 
           <form onSubmit={handleSubmit} className="mt-8 space-y-4">
             <div>
-              <label className="mb-2 block text-[0.78rem] font-semibold uppercase tracking-[0.18em] text-text-muted" htmlFor="email">
-                Email
+              <label className="mb-2 block text-[0.78rem] font-semibold uppercase tracking-[0.18em] text-text-muted" htmlFor="username">
+                Username
               </label>
               <input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
+                id="username"
+                type="text"
+                value={username}
+                onChange={(event) => setUsername(event.target.value)}
                 required
-                placeholder="you@example.com"
+                autoComplete="username"
+                autoCapitalize="none"
+                placeholder="your username"
                 className="w-full rounded-lg border border-border-default bg-bg-input px-4 py-3.5 text-sm text-text-primary transition placeholder:text-text-muted focus:border-accent-violet"
               />
             </div>
@@ -107,6 +125,25 @@ export default function LoginPage() {
                 className="w-full rounded-lg border border-border-default bg-bg-input px-4 py-3.5 text-sm text-text-primary transition placeholder:text-text-muted focus:border-accent-violet"
               />
             </div>
+
+            {mode === "signup" && (
+              <div>
+                <label className="mb-2 block text-[0.78rem] font-semibold uppercase tracking-[0.18em] text-text-muted" htmlFor="invite-code">
+                  Invite code
+                </label>
+                <input
+                  id="invite-code"
+                  type="text"
+                  value={inviteCode}
+                  onChange={(event) => setInviteCode(event.target.value)}
+                  required
+                  autoComplete="off"
+                  autoCapitalize="none"
+                  placeholder="Provided by the admin"
+                  className="w-full rounded-lg border border-border-default bg-bg-input px-4 py-3.5 text-sm text-text-primary transition placeholder:text-text-muted focus:border-accent-violet"
+                />
+              </div>
+            )}
 
             <button
               type="submit"

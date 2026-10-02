@@ -80,6 +80,16 @@ CRON_SECRET=...
 Keep both values server-only. The service-role key must never use the
 `NEXT_PUBLIC_` prefix.
 
+Optional, to allow new accounts:
+
+```bash
+SIGNUP_INVITE_CODE=...
+```
+
+Sign-up is closed when this is unset; when set, new accounts must enter it.
+Also turn off "Allow new users to sign up" in Supabase Auth settings so
+accounts can only be created through the app's invite-gated route.
+
 The current market-data integrations do not require additional API keys.
 
 ## Local Development
