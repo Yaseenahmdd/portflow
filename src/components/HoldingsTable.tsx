@@ -753,6 +753,7 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
               <th className="w-10 whitespace-nowrap px-3 py-3 text-center">#</th>
               <SortHeader label="Asset" sortKey="asset" currentKey={sortKey} dir={sortDir} onSort={handleSort} className="px-5 py-3" />
               <th className="px-3 py-3">Market Price</th>
+              <th className="px-3 py-3 text-center">Cost Price</th>
               <SortHeader label="Value" sortKey="value" currentKey={sortKey} dir={sortDir} onSort={handleSort} className="px-3 py-3 text-center" />
               <SortHeader label="Allocation" sortKey="allocation" currentKey={sortKey} dir={sortDir} onSort={handleSort} />
               <SortHeader sortKey="currentAed" currentKey={sortKey} dir={sortDir} onSort={handleSort}>
@@ -795,6 +796,9 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
                       placeholder="0"
                     />
                     {holding.priceSession === "pre-market" ? <div className="mt-1 whitespace-nowrap text-[10px] font-semibold text-accent-violet">Pre-market</div> : null}
+                  </td>
+                  <td className="px-3 py-3 text-center font-mono text-text-secondary">
+                    {formatOrMask(holding.avgBuyPrice, holding.currency, isAmountsVisible)}
                   </td>
                   <td className="px-3 py-3 text-center font-mono text-text-secondary">
                     {formatOrMask(holding.currentValue, holding.currency, isAmountsVisible)}
@@ -897,7 +901,7 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
               ))
             ) : (
               <tr>
-                <td colSpan={10} className="py-12 text-center text-text-muted">
+                <td colSpan={11} className="py-12 text-center text-text-muted">
                   Add a holding to begin your portfolio ledger.
                 </td>
               </tr>
