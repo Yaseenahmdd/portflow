@@ -25,7 +25,7 @@ function uniqueSchemeCodes(schemeCodes: string[]) {
   return [...new Set(schemeCodes.map((code) => code.trim()).filter(Boolean))];
 }
 
-function parseNavDate(value: string) {
+export function parseNavDate(value: string) {
   const match = /^(\d{1,2})-([A-Za-z]{3}|\d{1,2})-(\d{4})$/.exec(value.trim());
   if (!match) return null;
 

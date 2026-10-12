@@ -5,12 +5,15 @@ import {
   getBestAndWorstMarketMoves,
   getContributionAdjustedPerformance,
   getHistorySummary,
+  getHoldingsDayChange,
   getMaxDrawdown,
   getOvernightTotalReturnChange,
   getPortfolioActivity,
   type HistoryRange,
 } from "../src/lib/portfolio-analytics.ts";
 import type { PortfolioSnapshot } from "../src/lib/portfolio-snapshots.ts";
+import type { ComputedHolding, Holding } from "../src/lib/constants.ts";
+import { computeHolding } from "../src/lib/utils.ts";
 
 function snapshot(snapshotDate: string, totalValueAed: number, totalInvestedAed = 1000): PortfolioSnapshot {
   return {
@@ -236,4 +239,71 @@ test("getHistorySummary reports contribution-adjusted return and daily moves", (
   assert.equal(summary.investedChangeAed, 200);
   assert.equal(summary.bestDailyMove?.snapshotDate, "2026-01-04");
   assert.equal(summary.worstDailyMove?.snapshotDate, "2026-01-03");
+});
+
+function dayHolding(overrides: Partial<ComputedHolding>): ComputedHolding {
+  return {
+    ...computeHolding(
+      {
+        id: "h",
+        platform: "",
+        assetName: "Test",
+        ticker: "TEST",
+        assetClass: "Stocks",
+        sector: "",
+        geography: "US",
+        risk: "Medium",
+        quantity: 10,
+        avgBuyPrice: 100,
+        currentPrice: 110,
+        previousClose: 100,
+        currency: "AED",
+        notes: "",
+        priceSource: "alphavantage",
+        ...overrides,
+      } as Holding,
+      1
+    ),
+  };
+}
+
+// Monday 2026-10-12 07:00 UTC: 11:00 Dubai, 12:30 IST, 03:00 New York.
+const mondayMorning = new Date("2026-10-12T07:00:00.000Z");
+
+test("getHoldingsDayChange ignores last session's move before a market opens", () => {
+  const change = getHoldingsDayChange(
+    [dayHolding({ priceAsOf: "2026-10-09T20:00:00.000Z" })],
+    mondayMorning
+  );
+
+  assert.equal(change.changeAed, 0);
+  assert.equal(change.changePercent, 0);
+});
+
+test("getHoldingsDayChange sums only quotes from each market's current day", () => {
+  const change = getHoldingsDayChange(
+    [
+      dayHolding({ priceAsOf: "2026-10-09T20:00:00.000Z" }), // US, Friday close
+      dayHolding({ geography: "India", ticker: "NSE:TEST", priceAsOf: "2026-10-12T06:30:00.000Z" }),
+      dayHolding({ priceSource: "dfm", geography: "UAE", priceAsOf: "2026-10-12T07:00:00.000Z" }),
+    ],
+    mondayMorning
+  );
+
+  assert.equal(change.changeAed, 200);
+  assert.ok(Math.abs((change.changePercent ?? 0) - 10) < 1e-9);
+});
+
+test("getHoldingsDayChange counts US pre-market quotes once New York's day starts", () => {
+  const change = getHoldingsDayChange(
+    [dayHolding({ priceSession: "pre-market", priceAsOf: "2026-10-12T09:00:00.000Z" })],
+    new Date("2026-10-12T09:05:00.000Z")
+  );
+
+  assert.equal(change.changeAed, 100);
+});
+
+test("getHoldingsDayChange always counts crypto and returns null without price data", () => {
+  assert.equal(getHoldingsDayChange([dayHolding({ priceSource: "coingecko" })], mondayMorning).changeAed, 100);
+  assert.equal(getHoldingsDayChange([dayHolding({ previousClose: undefined })], mondayMorning).changeAed, null);
 });

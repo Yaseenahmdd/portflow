@@ -1,6 +1,8 @@
 import { computeInrToAed, type ExchangeRates } from "@/lib/api/frankfurter";
 import type { CryptoPrice } from "@/lib/api/coingecko";
 import type { StockQuote } from "@/lib/api/alphavantage";
+import type { DfmQuote } from "@/lib/api/dfm";
+import { parseNavDate } from "@/lib/api/mfapi";
 import { CRYPTO_IDS, type Holding } from "@/lib/constants";
 import type { PriceRefreshScope } from "@/lib/prices/refresh-all";
 import {
@@ -49,8 +51,10 @@ export function applyRefreshResults(holdings: Holding[], results: PriceResult[])
       }
 
       case "indian-mf": {
-        const navData = result.data as { schemeCode: string; nav: number; previousNav?: number }[];
+        const navData = result.data as { schemeCode: string; nav: number; date?: string; previousNav?: number }[];
         for (const nav of navData) {
+          const navTimestamp = nav.date ? parseNavDate(nav.date) : null;
+          const navAsOf = navTimestamp !== null ? new Date(navTimestamp).toISOString() : undefined;
           updateHoldingsAtIndexes(
             updated,
             getPriceIndexes(priceIndexes.mutualFunds, nav.schemeCode),
@@ -73,6 +77,7 @@ export function applyRefreshResults(holdings: Holding[], results: PriceResult[])
                   previousClose && previousClose > 0
                     ? ((nav.nav - previousClose) / previousClose) * 100
                     : undefined,
+                priceAsOf: navAsOf,
                 lastPriceUpdate: now,
               };
             }
@@ -125,7 +130,7 @@ export function applyRefreshResults(holdings: Holding[], results: PriceResult[])
       }
 
       case "uae-stocks": {
-        const quotes = result.data as Record<string, { lastradeprice: number; previousclosingprice?: number; changepercentage?: number }>;
+        const quotes = result.data as Record<string, DfmQuote>;
         for (const [symbol, quote] of Object.entries(quotes)) {
           if (quote.lastradeprice > 0) {
             updateHoldingsAtIndexes(
@@ -136,6 +141,8 @@ export function applyRefreshResults(holdings: Holding[], results: PriceResult[])
                 currentPrice: quote.lastradeprice,
                 previousClose: quote.previousclosingprice,
                 dayChangePercent: quote.changepercentage,
+                // DFM reports trade times in Dubai local time without an offset.
+                priceAsOf: quote.lastradetime ? new Date(`${quote.lastradetime}+04:00`).toISOString() : undefined,
                 lastPriceUpdate: now,
               })
             );

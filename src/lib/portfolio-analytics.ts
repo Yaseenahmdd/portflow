@@ -1,4 +1,4 @@
-import type { ComputedHolding } from "@/lib/constants";
+import { isHongKongTicker, type ComputedHolding } from "@/lib/constants";
 import type { PortfolioSnapshot } from "@/lib/portfolio-snapshots";
 
 export type HistoryRange = "1W" | "1M" | "3M" | "YTD" | "1Y" | "ALL";
@@ -108,24 +108,66 @@ export function getDubaiDateKey(date: Date) {
   return `${values.year}-${values.month}-${values.day}`;
 }
 
+function getDateKeyInZone(date: Date, timeZone: string) {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
+}
+
+function getMarketTimeZone(holding: ComputedHolding) {
+  if (holding.priceSource === "mfapi" || holding.geography === "India") return "Asia/Kolkata";
+  if (holding.priceSource === "dfm" || holding.geography === "UAE") return "Asia/Dubai";
+  if (isHongKongTicker(holding.ticker)) return "Asia/Hong_Kong";
+  return "America/New_York";
+}
+
 /**
- * Sum each holding's move since its previous close. Unlike the snapshot
- * comparison, this doesn't depend on the app having been opened yesterday.
+ * Whether the holding's quote belongs to the market's current trading day.
+ * Before a market opens (or on weekends) the quote is still the last
+ * session's, so its move since previous close isn't "today's" move.
  */
-export function getHoldingsDayChange(holdings: ComputedHolding[]) {
+export function isQuoteFromToday(holding: ComputedHolding, now = new Date()) {
+  // Crypto trades around the clock and is priced against a rolling daily close.
+  if (holding.priceSource === "coingecko") return true;
+  if (!holding.priceAsOf) return false;
+
+  const quoteTime = new Date(holding.priceAsOf);
+  if (!Number.isFinite(quoteTime.getTime())) return false;
+
+  const timeZone = getMarketTimeZone(holding);
+  return getDateKeyInZone(quoteTime, timeZone) === getDateKeyInZone(now, timeZone);
+}
+
+/**
+ * Sum each holding's move since its previous close, counting only quotes
+ * from the current trading day. Unlike the snapshot comparison, this doesn't
+ * depend on the app having been opened yesterday.
+ */
+export function getHoldingsDayChange(holdings: ComputedHolding[], now = new Date()) {
   let changeAed = 0;
   let previousValueAed = 0;
   let pricedCount = 0;
+  let todayCount = 0;
 
   for (const holding of holdings) {
     if (!holding.hasDayGain || !Number.isFinite(holding.dayGainAed)) continue;
+    pricedCount += 1;
+    if (!isQuoteFromToday(holding, now)) continue;
     changeAed += holding.dayGainAed;
     previousValueAed += holding.currentValueAed - holding.dayGainAed;
-    pricedCount += 1;
+    todayCount += 1;
   }
 
   if (pricedCount === 0) {
     return { changeAed: null, changePercent: null };
+  }
+
+  // Prices are known but no market has traded yet today.
+  if (todayCount === 0) {
+    return { changeAed: 0, changePercent: 0 };
   }
 
   const changePercent = previousValueAed > 0 ? (changeAed / previousValueAed) * 100 : null;
