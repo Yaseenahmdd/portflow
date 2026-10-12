@@ -2,7 +2,12 @@ import { applyRefreshResults } from "@/lib/dashboard/refresh";
 import { mapRowToHolding, type HoldingRow } from "@/lib/holdings-store";
 import { normalizeHoldings } from "@/lib/holdings-normalize";
 import { fetchAllPriceResults } from "@/lib/prices/refresh-all";
-import { buildScheduledPriceUpdates } from "@/lib/prices/scheduled-updates";
+import { fetchRemoteInrToAedRate } from "@/lib/market-rates";
+import {
+  buildScheduledPriceUpdates,
+  buildScheduledSnapshots,
+  getScheduledSnapshotDate,
+} from "@/lib/prices/scheduled-updates";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const UPDATE_BATCH_SIZE = 10;
@@ -75,10 +80,39 @@ export async function runScheduledPriceRefresh() {
     }
   }
 
+  const inrToAedRate = refreshed.inrToAedRate ?? (await fetchRemoteInrToAedRate(admin))?.rate;
+  const snapshotDate = getScheduledSnapshotDate();
+  let snapshotsWritten = 0;
+
+  if (inrToAedRate) {
+    const snapshots = buildScheduledSnapshots(
+      refreshed.holdings,
+      rows.map((row) => row.user_id),
+      inrToAedRate,
+      snapshotDate
+    );
+
+    if (snapshots.length) {
+      const { error: snapshotError } = await admin
+        .from("portfolio_snapshots")
+        .upsert(snapshots, { onConflict: "user_id,snapshot_date" });
+
+      if (snapshotError) {
+        throw new Error(snapshotError.message);
+      }
+    }
+
+    snapshotsWritten = snapshots.length;
+  } else {
+    console.warn("[cron/refresh-prices] No INR to AED rate available; skipped snapshots.");
+  }
+
   return {
     success: true,
     holdingsScanned: originalHoldings.length,
     holdingsUpdated: updates.length,
+    snapshotDate,
+    snapshotsWritten,
     failures: results
       .filter((result) => !result.success)
       .map((result) => ({ source: result.source, error: result.error })),
