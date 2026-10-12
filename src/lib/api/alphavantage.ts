@@ -44,7 +44,7 @@ export function selectYahooQuote(result: YahooChartResult, symbol: string, nowSe
   const meta = result.meta;
   if (!meta) return null;
 
-  const previousClose = meta.chartPreviousClose ?? meta.previousClose ?? 0;
+  let previousClose = meta.chartPreviousClose ?? meta.previousClose ?? 0;
   const pre = meta.currentTradingPeriod?.pre;
   const isUsSymbol = !symbol.startsWith("NSE:") && !isHongKongTicker(symbol);
   let price = meta.regularMarketPrice;
@@ -58,6 +58,19 @@ export function selectYahooQuote(result: YahooChartResult, symbol: string, nowSe
       const timestamp = timestamps[index];
       const close = closes[index];
       if (timestamp >= pre.start && timestamp <= nowSeconds && typeof close === "number" && Number.isFinite(close) && close > 0) {
+        // Until the regular session opens, Yahoo's chartPreviousClose still
+        // refers to the session before the last one, so the last regular
+        // close is the baseline for the pre-market move.
+        const lastRegularClose = meta.regularMarketPrice;
+        if (
+          meta.regularMarketTime &&
+          meta.regularMarketTime < pre.start &&
+          typeof lastRegularClose === "number" &&
+          Number.isFinite(lastRegularClose) &&
+          lastRegularClose > 0
+        ) {
+          previousClose = lastRegularClose;
+        }
         price = close;
         priceSession = "pre-market";
         priceAsOf = new Date(timestamp * 1000).toISOString();

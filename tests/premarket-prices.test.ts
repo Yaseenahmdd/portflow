@@ -42,3 +42,19 @@ test("Indian listings never use the US premarket window", () => {
   assert.equal(quote?.price, 100);
   assert.equal(quote?.priceSession, undefined);
 });
+
+test("premarket moves are measured from the last regular close, not Yahoo's stale chartPreviousClose", () => {
+  // Monday pre-market: Yahoo still reports Thursday's close as chartPreviousClose.
+  const quote = selectYahooQuote(
+    {
+      ...chart,
+      meta: { ...chart.meta, regularMarketPrice: 161.48, chartPreviousClose: 156.14 },
+      indicators: { quote: [{ close: [161.48, 159.47] }] },
+    },
+    "VST",
+    barTime + 60
+  );
+  assert.equal(quote?.price, 159.47);
+  assert.equal(quote?.previousClose, 161.48);
+  assert.equal(quote?.changePercent, "-1.24%");
+});

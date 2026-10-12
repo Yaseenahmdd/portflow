@@ -159,6 +159,20 @@ export function compactNumber(value: number): string {
 }
 
 /**
+ * Describe how fresh a holding's price is. Fund NAVs are published once per
+ * trading day, so their NAV date says more than a relative time.
+ */
+export function formatQuoteAge(holding: Pick<Holding, 'priceSource' | 'priceAsOf' | 'lastPriceUpdate'>): string {
+  if (holding.priceSource === 'mfapi' && holding.priceAsOf) {
+    const navDate = new Date(holding.priceAsOf);
+    if (Number.isFinite(navDate.getTime())) {
+      return `NAV ${navDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'Asia/Kolkata' })}`;
+    }
+  }
+  return timeAgo(holding.priceAsOf || holding.lastPriceUpdate);
+}
+
+/**
  * Format a relative time since a given ISO string.
  */
 export function timeAgo(isoString: string | undefined): string {

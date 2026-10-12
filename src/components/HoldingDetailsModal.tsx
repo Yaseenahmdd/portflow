@@ -3,7 +3,7 @@
 import { useEffect, useMemo } from "react";
 import type { Holding } from "@/lib/constants";
 import { tap } from "@/lib/haptics";
-import { computeHolding, formatMoney, timeAgo, toNumber } from "@/lib/utils";
+import { computeHolding, formatMoney, formatQuoteAge, toNumber } from "@/lib/utils";
 import { useDisplayCurrency } from "@/components/dashboard/DisplayCurrencyProvider";
 
 interface Props {
@@ -74,7 +74,7 @@ export default function HoldingDetailsModal({ holding, inrToAedRate, onClose }: 
             <MetricCard label="Current Value" value={formatMoney(computed.currentValue, holding.currency)} />
             <MetricCard label="Investor Return" value={formatMoney(convertAed(computed.gainLossAed), displayCurrency)} detail={`${computed.gainLossPct.toFixed(2)}%`} tone={computed.gainLossAed >= 0 ? "positive" : "negative"} />
             <MetricCard label={holding.priceSession === "pre-market" ? "Pre-market Price" : "Current Price"} value={formatMoney(holding.currentPrice, holding.currency)} />
-            <MetricCard label="Quote As Of" value={timeAgo(holding.priceAsOf || holding.lastPriceUpdate)} />
+            <MetricCard label="Quote As Of" value={formatQuoteAge(holding)} />
           </section>
 
           <section className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
@@ -165,7 +165,7 @@ export default function HoldingDetailsModal({ holding, inrToAedRate, onClose }: 
               <StatCard title="Quantity" value={holding.quantity < 1 ? holding.quantity.toFixed(7) : holding.quantity.toLocaleString()} />
               <StatCard title="Avg Buy Price" value={formatMoney(holding.avgBuyPrice, holding.currency)} />
               <StatCard title={holding.priceSession === "pre-market" ? "Pre-market Price" : "Current Price"} value={formatMoney(holding.currentPrice, holding.currency)} />
-              <StatCard title="Quote As Of" value={timeAgo(holding.priceAsOf || holding.lastPriceUpdate)} />
+              <StatCard title="Quote As Of" value={formatQuoteAge(holding)} />
             </section>
 
             <section className="rounded-2xl border border-slate-200 bg-white p-4">

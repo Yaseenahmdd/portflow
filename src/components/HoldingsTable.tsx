@@ -4,7 +4,7 @@ import { memo, useCallback, useMemo, useState, type CSSProperties } from "react"
 import { useIsCompactViewport } from "@/hooks/useIsCompactViewport";
 import { ASSET_CLASS_OPTIONS, GEOGRAPHY_OPTIONS, RISK_OPTIONS, type ComputedHolding, type Holding } from "@/lib/constants";
 import { tap, toggle, medium, destructive as hapticDestructive } from "@/lib/haptics";
-import { formatOrMask, timeAgo } from "@/lib/utils";
+import { formatOrMask, formatQuoteAge, timeAgo } from "@/lib/utils";
 import { useDisplayCurrency } from "@/components/dashboard/DisplayCurrencyProvider";
 
 interface Props {
@@ -841,7 +841,7 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
                       {formatSignedPercent(holding.gainLossPct)}
                     </div>
                   </td>
-                  <td className="px-3 py-3 text-xs text-text-muted">{timeAgo(holding.priceAsOf || holding.lastPriceUpdate)}</td>
+                  <td className="px-3 py-3 text-xs text-text-muted">{formatQuoteAge(holding)}</td>
                   <td className="relative px-3 py-3">
                     <button
                       onClick={(event) => {
