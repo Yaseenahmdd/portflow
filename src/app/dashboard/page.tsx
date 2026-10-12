@@ -4,7 +4,7 @@ import { useEffect, useMemo } from "react";
 import DashboardOverviewContent from "@/components/dashboard/DashboardOverviewContent";
 import DashboardPullToRefreshIndicator from "@/components/dashboard/DashboardPullToRefreshIndicator";
 import { useDashboardStateContext } from "@/components/dashboard/DashboardStateProvider";
-import { getOvernightTotalReturnChange } from "@/lib/portfolio-analytics";
+import { getHoldingsDayChange, getOvernightTotalReturnChange } from "@/lib/portfolio-analytics";
 import { timeAgo } from "@/lib/utils";
 
 export default function DashboardPage() {
@@ -39,8 +39,13 @@ export default function DashboardPage() {
     return new Date(Math.max(...timestamps)).toISOString();
   }, [computedHoldings]);
   const todayPerformance = useMemo(() => {
+    const fromHoldings = getHoldingsDayChange(computedHoldings);
+    if (fromHoldings.changeAed !== null) {
+      return fromHoldings;
+    }
+    // No holding has a previous close yet (e.g. before the first price refresh).
     return getOvernightTotalReturnChange(snapshots, summary.totalGainLoss);
-  }, [snapshots, summary.totalGainLoss]);
+  }, [computedHoldings, snapshots, summary.totalGainLoss]);
 
   useEffect(() => {
     window.dispatchEvent(

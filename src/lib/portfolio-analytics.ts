@@ -96,7 +96,7 @@ export function getSnapshotReturn(startValue: number, endValue: number) {
   return startValue > 0 ? ((endValue - startValue) / startValue) * 100 : 0;
 }
 
-function getDubaiDateKey(date: Date) {
+export function getDubaiDateKey(date: Date) {
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Dubai",
     year: "numeric",
@@ -106,6 +106,34 @@ function getDubaiDateKey(date: Date) {
   const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
 
   return `${values.year}-${values.month}-${values.day}`;
+}
+
+/**
+ * Sum each holding's move since its previous close. Unlike the snapshot
+ * comparison, this doesn't depend on the app having been opened yesterday.
+ */
+export function getHoldingsDayChange(holdings: ComputedHolding[]) {
+  let changeAed = 0;
+  let previousValueAed = 0;
+  let pricedCount = 0;
+
+  for (const holding of holdings) {
+    if (!holding.hasDayGain || !Number.isFinite(holding.dayGainAed)) continue;
+    changeAed += holding.dayGainAed;
+    previousValueAed += holding.currentValueAed - holding.dayGainAed;
+    pricedCount += 1;
+  }
+
+  if (pricedCount === 0) {
+    return { changeAed: null, changePercent: null };
+  }
+
+  const changePercent = previousValueAed > 0 ? (changeAed / previousValueAed) * 100 : null;
+
+  return {
+    changeAed,
+    changePercent: changePercent !== null && Number.isFinite(changePercent) ? changePercent : null,
+  };
 }
 
 export function getOvernightTotalReturnChange(

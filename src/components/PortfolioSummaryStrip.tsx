@@ -276,7 +276,7 @@ export default function PortfolioSummaryStrip({
               {gainChange === null ? "—" : formatSignedMoney(gainChange, displayCurrency, isAmountsVisible)}
             </div>
             <p className="mt-2 text-[13px] leading-5 text-text-muted">
-              {gainChange === null ? "Price data unavailable" : gainPercent === null ? "—" : formatSignedPercent(gainPercent)}
+              {gainChange === null ? "Refresh prices to see today's move" : gainPercent === null ? "—" : formatSignedPercent(gainPercent)}
             </p>
           </div>
           <div className="min-w-0 border-t border-border-subtle px-4 py-3 sm:border-l sm:border-t-0 sm:p-6">

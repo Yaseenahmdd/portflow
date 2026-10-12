@@ -9,6 +9,7 @@ import {
   upsertSnapshotInList,
 } from "@/lib/portfolio-snapshots";
 import { isRefreshTokenReuseError } from "@/lib/supabase/errors";
+import { getDubaiDateKey } from "@/lib/portfolio-analytics";
 
 interface SummarySnapshotInput {
   totalValue: number;
@@ -23,13 +24,9 @@ interface UsePortfolioSnapshotsOptions {
   summary: SummarySnapshotInput;
 }
 
+// Keyed in Dubai time so it matches the lookups in portfolio-analytics.
 function getTodaySnapshotDate() {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const day = String(now.getDate()).padStart(2, "0");
-
-  return `${year}-${month}-${day}`;
+  return getDubaiDateKey(new Date());
 }
 
 export function usePortfolioSnapshots({
