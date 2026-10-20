@@ -225,10 +225,7 @@ export default function DashboardShell({
                   <span className="absolute left-2 top-[21px] h-px w-2 bg-text-muted" />
                   <span className="absolute left-[21px] top-[12px] h-1.5 w-1.5 rounded-full bg-accent-violet transition-transform group-hover:scale-125" />
                 </span>
-                <span>
-                  <span className="block font-display text-[1.35rem] font-semibold leading-5 tracking-[-0.035em] sm:text-[1.45rem]">Portflow</span>
-                  <span className="ledger-kicker mt-1 hidden sm:block">Personal capital ledger</span>
-                </span>
+                <span className="font-display text-[1.35rem] font-semibold leading-none tracking-[-0.035em] sm:text-[1.45rem]">Portflow</span>
               </Link>
               <div className="flex items-center gap-2 sm:gap-2.5">
                 <div
