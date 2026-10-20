@@ -18,9 +18,9 @@
   --color-accent-gain-bg: rgba(35, 118, 84, 0.1);
   --color-accent-loss: #b34b4b;
   --color-accent-loss-bg: rgba(179, 75, 75, 0.1);
-  --color-accent-violet: #2f6597;
-  --color-accent-violet-bg: rgba(47, 101, 151, 0.1);
-  --color-accent-blue: #2f6597;
+  --color-accent-violet: #1f3a6e;
+  --color-accent-violet-bg: rgba(31, 58, 110, 0.1);
+  --color-accent-blue: #1f3a6e;
   --color-accent-amber: #a66b20;
 
   --font-sans: "IBM Plex Sans Variable", "Aptos", ui-sans-serif, system-ui, sans-serif;
@@ -52,9 +52,9 @@ html.dark {
   --color-accent-gain-bg: rgba(91, 192, 140, 0.12);
   --color-accent-loss: #e27777;
   --color-accent-loss-bg: rgba(226, 119, 119, 0.12);
-  --color-accent-violet: #70a6d7;
-  --color-accent-violet-bg: rgba(112, 166, 215, 0.14);
-  --color-accent-blue: #70a6d7;
+  --color-accent-violet: #3a5ba8;
+  --color-accent-violet-bg: rgba(58, 91, 168, 0.18);
+  --color-accent-blue: #3a5ba8;
   --color-accent-amber: #d9a45d;
 }
 
@@ -127,7 +127,7 @@ html.dark textarea {
 }
 
 html.dark ::selection {
-  background: rgba(112, 166, 215, 0.28);
+  background: rgba(58, 91, 168, 0.4);
   color: var(--color-text-primary);
 }
 
@@ -315,7 +315,7 @@ body {
 }
 
 .portfolio-summary-live-dot {
-  filter: drop-shadow(0 0 4px rgba(47, 101, 151, 0.45));
+  filter: drop-shadow(0 0 4px rgba(31, 58, 110, 0.45));
 }
 
 @keyframes portfolio-live-pulse {

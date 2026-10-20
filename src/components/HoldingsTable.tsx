@@ -552,7 +552,7 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
               <button
                 type="button"
                 onClick={applyMobileSortSelection}
-                className="mt-4 inline-flex w-full items-center justify-center rounded-xl bg-accent-violet px-4 py-3 text-[13px] font-semibold text-bg-primary transition hover:brightness-105"
+                className="mt-4 inline-flex w-full items-center justify-center rounded-xl bg-accent-violet px-4 py-3 text-[13px] font-semibold text-white transition hover:brightness-105"
               >
                 Apply
               </button>
@@ -617,7 +617,7 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
               <button
                 type="button"
                 onClick={applyMobileFilters}
-                className="mt-4 inline-flex w-full items-center justify-center rounded-xl bg-accent-violet px-4 py-3 text-[13px] font-semibold text-bg-primary transition hover:brightness-105"
+                className="mt-4 inline-flex w-full items-center justify-center rounded-xl bg-accent-violet px-4 py-3 text-[13px] font-semibold text-white transition hover:brightness-105"
               >
                 Apply
               </button>

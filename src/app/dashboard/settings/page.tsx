@@ -228,7 +228,7 @@ export default function SettingsPage() {
           <button
             onClick={() => { tap(); runTests(); }}
             disabled={testing}
-            className="rounded-full bg-accent-violet px-5 py-3 text-sm font-semibold text-bg-primary transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-55"
+            className="rounded-full bg-accent-violet px-5 py-3 text-sm font-semibold text-white transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-55"
           >
             {testing ? "Running checks" : "Run API checks"}
           </button>

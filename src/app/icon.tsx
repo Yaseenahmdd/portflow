@@ -41,7 +41,7 @@ export default function Icon() {
               width: 34,
               height: 34,
               borderRadius: 999,
-              background: "#2f6597",
+              background: "#1f3a6e",
             }}
           />
           <div
