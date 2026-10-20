@@ -35,14 +35,14 @@ html {
 
 html.dark {
   color-scheme: dark;
-  --color-bg-primary: #071019;
-  --color-bg-secondary: #09141f;
-  --color-bg-card: #0c1824;
-  --color-bg-card-hover: #101e2b;
-  --color-bg-input: #08131d;
-  --color-bg-elevated: #101c28;
-  --color-border-default: rgba(190, 205, 220, 0.14);
-  --color-border-subtle: rgba(190, 205, 220, 0.09);
+  --color-bg-primary: #000000;
+  --color-bg-secondary: #050505;
+  --color-bg-card: #0a0a0a;
+  --color-bg-card-hover: #121212;
+  --color-bg-input: #0a0a0a;
+  --color-bg-elevated: #161616;
+  --color-border-default: rgba(255, 255, 255, 0.12);
+  --color-border-subtle: rgba(255, 255, 255, 0.07);
 
   --color-text-primary: #eef2f5;
   --color-text-secondary: #aab5c0;
@@ -106,7 +106,7 @@ html.dark .border-slate-50 {
 }
 
 html.dark .bg-slate-50\/50 {
-  background-color: rgba(10, 18, 29, 0.72) !important;
+  background-color: rgba(10, 10, 10, 0.72) !important;
 }
 
 html.dark .ring-slate-200 {
@@ -132,11 +132,11 @@ html.dark ::selection {
 }
 
 html.dark ::-webkit-scrollbar-thumb {
-  background: #26354b;
+  background: #2a2a2a;
 }
 
 html.dark ::-webkit-scrollbar-thumb:hover {
-  background: #344760;
+  background: #3a3a3a;
 }
 
 body {
