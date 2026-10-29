@@ -13,6 +13,7 @@ export interface StockQuote {
   changePercent: string;
   priceSession?: "pre-market";
   priceAsOf?: string;
+  name?: string;
 }
 
 const REQUEST_TIMEOUT_MS = 8_000;
@@ -32,6 +33,8 @@ interface YahooChartResult {
   meta?: {
     regularMarketPrice?: number;
     regularMarketTime?: number;
+    longName?: string;
+    shortName?: string;
     chartPreviousClose?: number;
     previousClose?: number;
     currentTradingPeriod?: { pre?: { start?: number; end?: number } };
@@ -88,6 +91,7 @@ export function selectYahooQuote(result: YahooChartResult, symbol: string, nowSe
     changePercent: previousClose > 0 ? `${(((price - previousClose) / previousClose) * 100).toFixed(2)}%` : "0.00%",
     priceSession,
     priceAsOf,
+    ...(meta.longName || meta.shortName ? { name: meta.longName || meta.shortName } : {}),
   };
 }
 

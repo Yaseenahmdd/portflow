@@ -170,6 +170,13 @@ Make sure the deployed environment includes the same Supabase and market-data en
 which is 1:00 AM in Dubai. The protected route refreshes prices in Supabase
 without requiring the dashboard to be open.
 
+`/api/cron/refresh-earnings` runs at 23:00 UTC and stores earnings dates,
+estimates, results and post-report price moves for every held stock in the
+shared `earnings_*` tables (see `supabase/migrations/20261029_create_earnings_tables.sql`).
+Report history accumulates there beyond the four quarters the source returns.
+The Earnings tab reads those tables and fetches live only for symbols that are
+missing or stale.
+
 ## Project Goal
 
 The core goal of Portflow is to track performance across a mixed portfolio that spans:

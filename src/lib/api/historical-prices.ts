@@ -199,6 +199,10 @@ export function fetchSp500History(startDate: string, endDate: string) {
   return fetchYahooSymbolHistory("^GSPC", startDate, endDate);
 }
 
+export function fetchYahooCloseHistory(symbol: string, startDate: string, endDate: string) {
+  return fetchYahooSymbolHistory(symbol, startDate, endDate);
+}
+
 async function fetchBitcoinHistory(startDate: string, endDate: string) {
   const params = new URLSearchParams({
     vs_currency: "aed",
