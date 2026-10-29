@@ -16,6 +16,7 @@ const DASHBOARD_NAV_ITEMS = [
   { href: "/dashboard/holdings", label: "Holdings" },
   { href: "/dashboard/transactions", label: "Activity" },
   { href: "/dashboard/history", label: "History" },
+  { href: "/dashboard/earnings", label: "Earnings" },
 ];
 
 export default function DashboardShell({
@@ -366,7 +367,7 @@ export default function DashboardShell({
 
             {showDashboardNav ? (
               <nav aria-label="Dashboard">
-                <div className="grid grid-cols-4 border-y border-border-subtle sm:flex sm:gap-7">
+                <div className="grid grid-cols-5 border-y border-border-subtle sm:flex sm:gap-7">
                   {DASHBOARD_NAV_ITEMS.map((item) => {
                     const active = pathname === item.href;
 

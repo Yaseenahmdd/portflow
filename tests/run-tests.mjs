@@ -12,3 +12,8 @@ import "./transaction-performance.test.ts";
 import "./cash-balances.test.ts";
 import "./benchmark-performance.test.ts";
 import "./premarket-prices.test.ts";
+import "./earnings.test.ts";
+import "./earnings-insights.test.ts";
+import "./earnings-reported.test.ts";
+import "./earnings-store.test.ts";
+import "./earnings-enrich.test.ts";
