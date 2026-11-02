@@ -18,3 +18,4 @@ import "./earnings-reported.test.ts";
 import "./earnings-store.test.ts";
 import "./earnings-enrich.test.ts";
 import "./positions-export.test.ts";
+import "./holdings-sync.test.ts";

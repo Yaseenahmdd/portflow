@@ -4,6 +4,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState, type Dispatc
 import type { Holding } from "@/lib/constants";
 import { registerDashboardRefreshHandler } from "@/lib/dashboard/refresh-controller";
 import { refreshDashboardPrices, type RefreshFailure } from "@/lib/dashboard/refresh";
+import { applyRefreshedPrices } from "@/lib/dashboard/holdings-sync";
 import { threshold as hapticThreshold, success as hapticSuccess, destructive as hapticError } from "@/lib/haptics";
 
 const LIVE_REFRESH_INTERVAL_MS = 60 * 1000;
@@ -64,7 +65,7 @@ export function useDashboardRefresh({
 
     try {
       const refreshedState = await refreshDashboardPrices(holdingsRef.current, scope);
-      setHoldings(refreshedState.holdings);
+      setHoldings((current) => applyRefreshedPrices(current, refreshedState.holdings));
       setRefreshFailures(refreshedState.failures);
       setRefreshError(null);
       if (provideFeedback) {

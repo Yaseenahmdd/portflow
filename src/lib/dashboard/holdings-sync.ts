@@ -32,9 +32,20 @@ export function mergeRemoteHoldingsWithLocalPrices(remoteHoldings: Holding[], lo
     return {
       ...remoteHolding,
       currentPrice: localHolding.currentPrice,
+      previousClose: localHolding.previousClose,
+      dayChangePercent: localHolding.dayChangePercent,
       lastPriceUpdate: localHolding.lastPriceUpdate,
       priceAsOf: localHolding.priceAsOf,
       priceSession: localHolding.priceSession,
     };
   });
+}
+
+/**
+ * Apply a finished price refresh to the latest holdings. The refresh started
+ * from an earlier snapshot, so only its newer quotes are taken; renames, edits
+ * and remote syncs made while prices loaded are kept.
+ */
+export function applyRefreshedPrices(currentHoldings: Holding[], refreshedHoldings: Holding[]) {
+  return mergeRemoteHoldingsWithLocalPrices(currentHoldings, refreshedHoldings);
 }
