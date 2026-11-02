@@ -8,6 +8,7 @@ import DashboardPullToRefreshIndicator from "@/components/dashboard/DashboardPul
 import DashboardRefreshNotices from "@/components/dashboard/DashboardRefreshNotices";
 import { useDashboardStateContext } from "@/components/dashboard/DashboardStateProvider";
 import type { Holding } from "@/lib/constants";
+import { downloadPositionsWorkbook } from "@/lib/positions-export";
 
 export default function DashboardHoldingsPage() {
   const [modalOpen, setModalOpen] = useState(false);
@@ -77,6 +78,11 @@ export default function DashboardHoldingsPage() {
           onAddHolding={() => {
             setEditingHolding(null);
             setModalOpen(true);
+          }}
+          onExport={() => {
+            downloadPositionsWorkbook(computedHoldings, inrToAedRate).catch((error) => {
+              window.alert(error instanceof Error ? error.message : "Failed to export holdings");
+            });
           }}
         />
       </div>

@@ -15,6 +15,7 @@ interface Props {
   onDelete: (id: string) => void;
   onPriceUpdate: (id: string, price: number) => void;
   onAddHolding: () => void;
+  onExport?: () => void;
 }
 
 type MobileSortKey = "currentValue" | "returnPct" | "dayChangePct" | "stockName";
@@ -34,7 +35,7 @@ const DEFAULT_MOBILE_FILTERS: MobileFilterState = {
   risk: "All",
 };
 
-export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEdit, onDelete, onPriceUpdate, onAddHolding }: Props) {
+export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEdit, onDelete, onPriceUpdate, onAddHolding, onExport }: Props) {
   const isCompactViewport = useIsCompactViewport();
   const { displayCurrency, convertAed } = useDisplayCurrency();
   const formatPortfolioAmount = (value: number) =>
@@ -375,6 +376,19 @@ export default function HoldingsTable({ holdings, isAmountsVisible, onView, onEd
                   Clear filters
                 </button>
               </>
+            ) : null}
+            {onExport && holdings.length > 0 ? (
+              <button
+                type="button"
+                onClick={() => { tap(); onExport(); }}
+                className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-border-default bg-bg-card text-text-secondary transition-[background-color,color,transform] hover:bg-bg-elevated hover:text-text-primary active:scale-[0.97]"
+                aria-label="Export to Excel"
+                title="Export to Excel"
+              >
+                <svg className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v11m0 0l-4-4m4 4l4-4M5 19h14" />
+                </svg>
+              </button>
             ) : null}
             <button
               onClick={() => { tap(); onAddHolding(); }}

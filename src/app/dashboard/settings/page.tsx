@@ -9,6 +9,7 @@ import { useDashboardStateContext } from "@/components/dashboard/DashboardStateP
 import { normalizeHoldings } from "@/lib/holdings-normalize";
 import { replaceRemoteHoldings } from "@/lib/holdings-store";
 import { replacePortfolioSnapshots, type PortfolioSnapshot } from "@/lib/portfolio-snapshots";
+import { downloadPositionsWorkbook } from "@/lib/positions-export";
 import { createClient } from "@/lib/supabase/client";
 
 const REQUIRED_HOLDING_FIELDS: (keyof Holding)[] = [
@@ -56,7 +57,7 @@ const apiStatuses: ApiStatus[] = [
 
 export default function SettingsPage() {
   const router = useRouter();
-  const { userId, holdings, transactions, inrToAedRate, setHoldings } = useDashboardStateContext();
+  const { userId, holdings, computedHoldings, transactions, inrToAedRate, setHoldings } = useDashboardStateContext();
   const [testResults, setTestResults] = useState<Record<string, string>>({});
   const [testing, setTesting] = useState(false);
   const [rebuildingHistory, setRebuildingHistory] = useState(false);
@@ -64,6 +65,7 @@ export default function SettingsPage() {
   const [resetting, setResetting] = useState(false);
   const [resetConfirming, setResetConfirming] = useState(false);
   const [dataError, setDataError] = useState<string | null>(null);
+  const [exportingExcel, setExportingExcel] = useState(false);
 
 
   const storageKey = `portflow-holdings-${userId}`;
@@ -197,6 +199,24 @@ export default function SettingsPage() {
     input.click();
   };
 
+  const handleExportExcel = async () => {
+    if (!computedHoldings.length) {
+      setDataError("No holdings to export");
+      return;
+    }
+
+    setExportingExcel(true);
+    setDataError(null);
+
+    try {
+      await downloadPositionsWorkbook(computedHoldings, inrToAedRate);
+    } catch (error) {
+      setDataError(error instanceof Error ? error.message : "Failed to export holdings");
+    } finally {
+      setExportingExcel(false);
+    }
+  };
+
   const handleReset = async () => {
     setResetting(true);
     setDataError(null);
@@ -257,7 +277,7 @@ export default function SettingsPage() {
         <div className="glass-card p-6">
           <h2 className="font-display text-xl font-semibold tracking-[-0.03em] text-text-primary">Data management</h2>
 
-          <div className="mt-5 grid gap-3 sm:grid-cols-3">
+          <div className="mt-5 grid gap-3 sm:grid-cols-2">
             <ActionButton
               label="Export holdings"
               onClick={() => {
@@ -272,6 +292,12 @@ export default function SettingsPage() {
                 anchor.click();
                 URL.revokeObjectURL(url);
               }}
+            />
+
+            <ActionButton
+              label={exportingExcel ? "Exporting…" : "Export to Excel"}
+              disabled={exportingExcel}
+              onClick={() => { tap(); handleExportExcel(); }}
             />
 
             <ActionButton label="Import holdings" onClick={() => { tap(); handleImport(); }} />
@@ -364,15 +390,18 @@ function ActionButton({
   label,
   onClick,
   destructive,
+  disabled,
 }: {
   label: string;
   onClick: () => void;
   destructive?: boolean;
+  disabled?: boolean;
 }) {
   return (
     <button
       onClick={onClick}
-      className={`rounded-[1.2rem] border px-4 py-4 text-left text-sm font-medium transition ${
+      disabled={disabled}
+      className={`rounded-[1.2rem] border px-4 py-4 text-left text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-55 ${
         destructive
           ? "border-accent-loss/20 bg-accent-loss-bg text-accent-loss hover:brightness-105"
           : "border-border-default bg-bg-card text-text-primary hover:bg-bg-elevated"

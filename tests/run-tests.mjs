@@ -17,3 +17,4 @@ import "./earnings-insights.test.ts";
 import "./earnings-reported.test.ts";
 import "./earnings-store.test.ts";
 import "./earnings-enrich.test.ts";
+import "./positions-export.test.ts";
