@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import type { Holding } from "@/lib/constants";
 import { registerDashboardRefreshHandler } from "@/lib/dashboard/refresh-controller";
 import { refreshDashboardPrices, type RefreshFailure } from "@/lib/dashboard/refresh";
@@ -43,9 +43,9 @@ export function useDashboardRefresh({
   const lastRefreshAttemptAtRef = useRef(0);
   const lastFullRefreshAttemptAtRef = useRef(0);
 
-  holdingsRef.current = holdings;
-  isRefreshingRef.current = isRefreshing;
-  pullDistanceRef.current = pullDistance;
+  useLayoutEffect(() => {
+    holdingsRef.current = holdings;
+  }, [holdings]);
 
   const refreshPrices = useCallback(async (
     scope: "all" | "live" = "all",
