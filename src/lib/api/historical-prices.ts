@@ -1,4 +1,4 @@
-import { isHongKongTicker, type Holding } from "@/lib/constants";
+import { isHongKongTicker, isLondonTicker, type Holding } from "@/lib/constants";
 import type {
   HistoricalPriceHistories,
   HistoricalPricePoint,
@@ -45,6 +45,7 @@ interface MfHistoryResponse {
 interface YahooHistoryResponse {
   chart?: {
     result?: Array<{
+      meta?: { currency?: string };
       timestamp?: number[];
       indicators?: { quote?: Array<{ close?: Array<number | null> }> };
     }>;
@@ -169,6 +170,8 @@ async function fetchYahooSymbolHistory(symbol: string, startDate: string, endDat
 
   const data = (await response.json()) as YahooHistoryResponse;
   const result = data.chart?.result?.[0];
+  // Holdings are stored in USD, and London lines also trade in GBP or pence.
+  if (isLondonTicker(symbol) && result?.meta?.currency !== "USD") return [];
   const timestamps = result?.timestamp || [];
   const closes = result?.indicators?.quote?.[0]?.close || [];
 

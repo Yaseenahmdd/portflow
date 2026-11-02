@@ -6,6 +6,7 @@ import {
   getPriceIndexes,
   updateHoldingsAtIndexes,
 } from "../src/lib/dashboard/holding-price-index.ts";
+import { normalizeHolding } from "../src/lib/holdings-normalize.ts";
 
 function createHolding(overrides: Partial<Holding>): Holding {
   return {
@@ -38,6 +39,15 @@ test("price indexes retain every holding with the same market identifier", () =>
 
   assert.deepEqual(getPriceIndexes(indexes.indianStocks, "HDFCAMC"), [0, 1]);
   assert.deepEqual(getPriceIndexes(indexes.usStocks, "HDFCAMC"), [2]);
+});
+
+test("London tickers are priced from Yahoo whatever their geography", () => {
+  const holding = createHolding({ ticker: "VWRA.L", assetClass: "ETFs", geography: "Global" });
+  const normalized = normalizeHolding(holding);
+  assert.equal(normalized.priceSource, "alphavantage");
+
+  const indexes = buildHoldingPriceIndexes([normalized]);
+  assert.deepEqual(getPriceIndexes(indexes.usStocks, "vwra.l"), [0]);
 });
 
 test("price updates apply to all matching holding indexes", () => {

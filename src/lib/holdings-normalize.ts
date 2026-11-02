@@ -1,4 +1,4 @@
-import { CRYPTO_IDS, isHongKongTicker, type Holding } from "@/lib/constants";
+import { CRYPTO_IDS, isHongKongTicker, isLondonTicker, type Holding } from "@/lib/constants";
 
 const KNOWN_FUND_SCHEME_CODES: Array<{ pattern: RegExp; schemeCode: string }> = [
   { pattern: /bandhan\s+small\s+cap\s+fund/i, schemeCode: "147946" },
@@ -56,7 +56,7 @@ export function normalizeHolding(holding: Holding): Holding {
     normalized.priceSource = "alphavantage";
   }
 
-  if (isHongKongTicker(normalized.ticker) && ["Stocks", "ETFs"].includes(normalized.assetClass)) {
+  if ((isHongKongTicker(normalized.ticker) || isLondonTicker(normalized.ticker)) && ["Stocks", "ETFs"].includes(normalized.assetClass)) {
     normalized.priceSource = "alphavantage";
   }
 

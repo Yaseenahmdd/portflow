@@ -1,4 +1,4 @@
-import { isHongKongTicker, type Holding } from "@/lib/constants";
+import { isHongKongTicker, isLondonTicker, type Holding } from "@/lib/constants";
 
 export interface HoldingPriceIndexes {
   mutualFunds: Map<string, number[]>;
@@ -43,7 +43,7 @@ export function buildHoldingPriceIndexes(holdings: Holding[]): HoldingPriceIndex
       addIndex(indexes.indianStocks, normalizeIndianTicker(holding.ticker), holdingIndex);
     }
 
-    if (holding.priceSource === "alphavantage" && (holding.geography === "US" || isHongKongTicker(holding.ticker))) {
+    if (holding.priceSource === "alphavantage" && (holding.geography === "US" || isHongKongTicker(holding.ticker) || isLondonTicker(holding.ticker))) {
       addIndex(indexes.usStocks, holding.ticker, holdingIndex);
     }
 

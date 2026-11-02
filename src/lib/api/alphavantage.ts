@@ -4,7 +4,7 @@
  * No API key required.
  */
 
-import { isHongKongTicker } from "@/lib/constants";
+import { isHongKongTicker, isLondonTicker } from "@/lib/constants";
 
 export interface StockQuote {
   symbol: string;
@@ -31,6 +31,7 @@ function toYahooSymbol(symbol: string) {
 
 interface YahooChartResult {
   meta?: {
+    currency?: string;
     regularMarketPrice?: number;
     regularMarketTime?: number;
     longName?: string;
@@ -46,10 +47,12 @@ interface YahooChartResult {
 export function selectYahooQuote(result: YahooChartResult, symbol: string, nowSeconds = Math.floor(Date.now() / 1000)): StockQuote | null {
   const meta = result.meta;
   if (!meta) return null;
+  // Holdings are stored in USD, and London lines also trade in GBP or pence.
+  if (isLondonTicker(symbol) && meta.currency !== "USD") return null;
 
   let previousClose = meta.chartPreviousClose ?? meta.previousClose ?? 0;
   const pre = meta.currentTradingPeriod?.pre;
-  const isUsSymbol = !symbol.startsWith("NSE:") && !isHongKongTicker(symbol);
+  const isUsSymbol = !symbol.startsWith("NSE:") && !isHongKongTicker(symbol) && !isLondonTicker(symbol);
   let price = meta.regularMarketPrice;
   let priceSession: StockQuote["priceSession"];
   let priceAsOf = meta.regularMarketTime ? new Date(meta.regularMarketTime * 1000).toISOString() : undefined;
@@ -114,7 +117,7 @@ export async function fetchStockQuote(symbol: string): Promise<StockQuote | null
   try {
     const yahooSymbol = toYahooSymbol(symbol);
 
-    const isUsSymbol = !symbol.startsWith("NSE:") && !isHongKongTicker(symbol);
+    const isUsSymbol = !symbol.startsWith("NSE:") && !isHongKongTicker(symbol) && !isLondonTicker(symbol);
     const query = isUsSymbol ? "interval=1m&range=1d&includePrePost=true" : "interval=1d&range=1d";
     const res = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${yahooSymbol}?${query}`, {
       cache: "no-store",

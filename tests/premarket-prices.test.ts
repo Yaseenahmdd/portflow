@@ -43,6 +43,17 @@ test("Indian listings never use the US premarket window", () => {
   assert.equal(quote?.priceSession, undefined);
 });
 
+test("London listings never use the US premarket window", () => {
+  const quote = selectYahooQuote({ ...chart, meta: { ...chart.meta, currency: "USD" } }, "VWRA.L", barTime + 60);
+  assert.equal(quote?.price, 100);
+  assert.equal(quote?.priceSession, undefined);
+});
+
+test("London listings quoted outside USD are skipped", () => {
+  assert.equal(selectYahooQuote({ ...chart, meta: { ...chart.meta, currency: "GBp" } }, "VUSA.L", barTime + 60), null);
+  assert.equal(selectYahooQuote(chart, "VWRA.L", barTime + 60), null);
+});
+
 test("premarket moves are measured from the last regular close, not Yahoo's stale chartPreviousClose", () => {
   // Monday pre-market: Yahoo still reports Thursday's close as chartPreviousClose.
   const quote = selectYahooQuote(

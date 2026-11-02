@@ -20,6 +20,9 @@ export const CURRENCY_OPTIONS: Currency[] = ['AED', 'USD', 'INR'];
 // Hong Kong listings (Yahoo symbols like 9618.HK) are quoted in HKD and converted to USD
 export const isHongKongTicker = (ticker: string) => /\.HK$/i.test(ticker.trim());
 
+// London listings (Yahoo symbols like VWRA.L); only USD-quoted lines are priced
+export const isLondonTicker = (ticker: string) => /\.L$/i.test(ticker.trim());
+
 // Fixed USD → AED peg
 export const USD_TO_AED = 3.6725;
 

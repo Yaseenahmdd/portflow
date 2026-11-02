@@ -1,4 +1,4 @@
-import { isHongKongTicker, type ComputedHolding } from "@/lib/constants";
+import { isHongKongTicker, isLondonTicker, type ComputedHolding } from "@/lib/constants";
 import type { PortfolioSnapshot } from "@/lib/portfolio-snapshots";
 
 export type HistoryRange = "1W" | "1M" | "3M" | "YTD" | "1Y" | "ALL";
@@ -121,6 +121,7 @@ function getMarketTimeZone(holding: ComputedHolding) {
   if (holding.priceSource === "mfapi" || holding.geography === "India") return "Asia/Kolkata";
   if (holding.priceSource === "dfm" || holding.geography === "UAE") return "Asia/Dubai";
   if (isHongKongTicker(holding.ticker)) return "Asia/Hong_Kong";
+  if (isLondonTicker(holding.ticker)) return "Europe/London";
   return "America/New_York";
 }
 
