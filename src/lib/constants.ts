@@ -23,6 +23,12 @@ export const isHongKongTicker = (ticker: string) => /\.HK$/i.test(ticker.trim())
 // London listings (Yahoo symbols like VWRA.L); only USD-quoted lines are priced
 export const isLondonTicker = (ticker: string) => /\.L$/i.test(ticker.trim());
 
+// Yahoo-priced holdings fetched by their plain symbol, whatever geography they
+// are tagged with. Indian tickers are fetched separately with their NSE symbol.
+export const isInternationalYahooHolding = (holding: Pick<Holding, 'priceSource' | 'geography' | 'ticker'>) =>
+  holding.priceSource === 'alphavantage' &&
+  (holding.geography !== 'India' || isHongKongTicker(holding.ticker) || isLondonTicker(holding.ticker));
+
 // Fixed USD → AED peg
 export const USD_TO_AED = 3.6725;
 

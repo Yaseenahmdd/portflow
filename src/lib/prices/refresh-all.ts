@@ -3,7 +3,7 @@ import { fetchCryptoPrices } from "@/lib/api/coingecko";
 import { fetchDfmQuotes } from "@/lib/api/dfm";
 import { fetchExchangeRates } from "@/lib/api/frankfurter";
 import { fetchMutualFundNav } from "@/lib/api/mfapi";
-import { CRYPTO_IDS, isHongKongTicker, isLondonTicker, type Holding } from "@/lib/constants";
+import { CRYPTO_IDS, isInternationalYahooHolding, type Holding } from "@/lib/constants";
 
 export type PriceRefreshScope = "all" | "live";
 
@@ -83,12 +83,7 @@ export async function fetchAllPriceResults(
 
   const usEtfSymbols = unique(
     holdings
-      .filter(
-        (holding) =>
-          holding.priceSource === "alphavantage" &&
-          (holding.geography === "US" || isHongKongTicker(holding.ticker) || isLondonTicker(holding.ticker)) &&
-          Boolean(holding.ticker)
-      )
+      .filter((holding) => isInternationalYahooHolding(holding) && Boolean(holding.ticker))
       .map((holding) => holding.ticker)
   );
 
